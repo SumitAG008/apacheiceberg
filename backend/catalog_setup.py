@@ -13,16 +13,24 @@ def get_catalog():
     # Check if we are running in the cloud (e.g. AWS App Runner)
     s3_uri = os.environ.get("S3_WAREHOUSE_URI")
     aws_region = os.environ.get("AWS_REGION", "eu-west-2")
+    aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     
     if s3_uri:
         print(f"Connecting to AWS Glue Catalog in {aws_region} with S3 warehouse: {s3_uri}")
+        properties = {
+            "type": "glue",
+            "client.region": aws_region,
+            "warehouse": s3_uri
+        }
+        if aws_access_key:
+            properties["client.access-key-id"] = aws_access_key
+        if aws_secret_key:
+            properties["client.secret-access-key"] = aws_secret_key
+            
         catalog = load_catalog(
             catalog_name,
-            **{
-                "type": "glue",
-                "s3.region": aws_region,
-                "warehouse": s3_uri
-            }
+            **properties
         )
         return catalog
     else:
