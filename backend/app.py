@@ -108,7 +108,6 @@ st.markdown("""
     .badge-orange { background: rgba(243,156,18,0.15); color: #f39c12; border: 1px solid #f39c12; }
     
     /* Hide Streamlit Branding */
-    #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 </style>
