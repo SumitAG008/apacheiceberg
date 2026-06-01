@@ -5,7 +5,7 @@ from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tools import (
     create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data,
-    analyze_attrition_risk, detect_fraud_rings, trace_data_lineage
+    run_generic_graph_analysis
 )
 
 # Load environment variables
@@ -23,9 +23,7 @@ def create_iceberg_agent():
         create_iceberg_table,
         ingest_csv_to_iceberg,
         query_iceberg_data,
-        analyze_attrition_risk,
-        detect_fraud_rings,
-        trace_data_lineage
+        run_generic_graph_analysis
     ]
     
     prompt = ChatPromptTemplate.from_messages([
@@ -41,11 +39,14 @@ def create_iceberg_agent():
         1. Use `query_iceberg_data` to run SQL against the table.
         2. Remember that in `query_iceberg_data`, the table is ALWAYS named 'iceberg_table' in the SQL FROM clause.
         
-        Advanced Use Cases:
-        - For SAP HR/Workforce flight risk questions, use `analyze_attrition_risk`.
-        - For Financial Crime/AML layering questions, use `detect_fraud_rings`.
-        - For Pharma/Clinical trial data correction impact, use `trace_data_lineage`.
+        Advanced Graph Use Cases:
+        Instead of specialized tools, you now have a generic `run_generic_graph_analysis` tool.
+        - To answer a graph-related question, first determine the schema of the table.
+        - Identify the source and target node columns to form relationships (edges).
+        - Pass these columns to `run_generic_graph_analysis` along with the appropriate algorithm ('find_cycles' for fraud/layering, 'degree_centrality' for isolation/attrition, 'connected_components' for lineage).
+        - You can optionally pass a pandas query string (like "amount > 9000") to filter the graph.
         """),
+        MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
@@ -63,8 +64,12 @@ def create_iceberg_agent():
 
 
 if __name__ == "__main__":
+    from langchain_core.messages import HumanMessage, AIMessage
+    
     print("Welcome to the Apache Iceberg Data Lake Agent!")
     agent = create_iceberg_agent()
+    
+    chat_history = []
     
     while True:
         try:
@@ -72,8 +77,18 @@ if __name__ == "__main__":
             if user_input.lower() in ['exit', 'quit', 'q']:
                 break
                 
-            response = agent.invoke({"input": user_input})
-            print(f"\nAgent: {response['output']}")
+            response = agent.invoke({
+                "input": user_input,
+                "chat_history": chat_history
+            })
+            
+            output = response['output']
+            print(f"\nAgent: {output}")
+            
+            # Update chat history
+            chat_history.append(HumanMessage(content=user_input))
+            chat_history.append(AIMessage(content=output))
+            
         except KeyboardInterrupt:
             break
         except Exception as e:

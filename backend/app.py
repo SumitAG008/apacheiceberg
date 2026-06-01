@@ -252,7 +252,19 @@ I can help you:
         with st.chat_message("assistant", avatar="🧊"):
             with st.spinner("🔍 Thinking..."):
                 try:
-                    response = st.session_state.agent.invoke({"input": user_input})
+                    from langchain_core.messages import HumanMessage, AIMessage
+                    chat_history = []
+                    # Skip the first welcome message
+                    for msg in st.session_state.messages[1:]:
+                        if msg["role"] == "user":
+                            chat_history.append(HumanMessage(content=msg["content"]))
+                        elif msg["role"] == "assistant":
+                            chat_history.append(AIMessage(content=msg["content"]))
+                            
+                    response = st.session_state.agent.invoke({
+                        "input": user_input,
+                        "chat_history": chat_history
+                    })
                     bot_response = response.get('output', '')
                     
                     if isinstance(bot_response, list):

@@ -147,13 +147,17 @@ def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
         return f"Error executing query: {str(e)}"
 
 @tool
-def analyze_attrition_risk(namespace: str, table_name: str) -> str:
+def run_generic_graph_analysis(namespace: str, table_name: str, source_node_col: str, target_node_col: str, algorithm: str, filter_query: Optional[str] = None) -> str:
     """
-    Analyze employee attrition (flight risk) based on HR data using graph isolation metrics.
+    Dynamically build a graph from any Iceberg table and run a graph algorithm.
     
     Args:
-        namespace: The namespace of the HR table.
-        table_name: The name of the HR table.
+        namespace: The namespace of the table.
+        table_name: The name of the table.
+        source_node_col: The column name to use as the source node for edges.
+        target_node_col: The column name to use as the target node for edges.
+        algorithm: The algorithm to run ('find_cycles' for fraud, 'degree_centrality' for isolation, 'connected_components' for lineage/clustering).
+        filter_query: Optional pandas query string to filter the data before building the graph (e.g. "amount > 9000" or "correction_flag == True").
     """
     try:
         catalog = get_catalog()
@@ -161,117 +165,63 @@ def analyze_attrition_risk(namespace: str, table_name: str) -> str:
         table = catalog.load_table(identifier)
         df = table.scan().to_arrow().to_pandas()
         
-        # Simple risk logic based on performance and graph isolation
-        risks = []
-        for _, row in df.iterrows():
-            # High performer, isolated, and hasn't been promoted in a while
-            if row['performance_rating'] >= 4.0 and row['cross_team_connections'] == 0 and row['last_promotion_months_ago'] >= 18:
-                risks.append({
-                    "employee_id": row["employee_id"],
-                    "name": row["name"],
-                    "reason": f"High performer (Rating: {row['performance_rating']}), 0 cross-team connections, no promotion in {row['last_promotion_months_ago']} months."
-                })
-        
-        if not risks:
-            return "No immediate flight risks detected based on graph isolation metrics."
+        if filter_query:
+            try:
+                df = df.query(filter_query)
+            except Exception as e:
+                return f"Error filtering data with query '{filter_query}': {str(e)}"
+                
+        if df.empty:
+            return "No data matches the criteria to build a graph."
             
-        result_str = f"Found {len(risks)} high-risk employees:\n"
-        for r in risks:
-            result_str += f"- {r['name']} ({r['employee_id']}): {r['reason']}\n"
-        result_str += "\nRecommended Action: Immediate promotion review and cross-functional project rotation."
-        
-        # Build networkx graph using lineage_graph module (just to show we can)
-        from lineage_graph import build_lineage_graph
-        nodes = [{"id": r["employee_id"], "label": r["name"], "color": "red"} for r in risks]
-        # In a real scenario, we'd add edges to their managers, but for the summary this is fine.
-        
-        return result_str
-    except Exception as e:
-        return f"Error analyzing attrition risk: {str(e)}"
-
-@tool
-def detect_fraud_rings(namespace: str, table_name: str, days: int = 30) -> str:
-    """
-    Detect money laundering rings (layering) in transaction data using graph community detection.
-    
-    Args:
-        namespace: The namespace of the transaction table.
-        table_name: The name of the transaction table.
-        days: Lookback period in days.
-    """
-    try:
-        catalog = get_catalog()
-        identifier = (namespace, table_name)
-        table = catalog.load_table(identifier)
-        df = table.scan().to_arrow().to_pandas()
-        
-        # Simple layering detection logic (circular flows)
         import networkx as nx
         from lineage_graph import build_lineage_graph
         
-        # Filter for amounts just under reporting limit ($10k)
-        suspicious = df[(df['amount'] >= 9000) & (df['amount'] < 10000)]
-        
+        # Build Nodes
         nodes = []
-        accounts = set(suspicious['from_account']).union(set(suspicious['to_account']))
-        for acc in accounts:
-            nodes.append({"id": acc, "label": acc, "color": "orange"})
+        all_entities = set(df[source_node_col]).union(set(df[target_node_col]))
+        for ent in all_entities:
+            nodes.append({"id": ent, "label": str(ent), "color": "blue"})
             
+        # Build Edges
         relationships = []
-        for _, row in suspicious.iterrows():
-            relationships.append((row['from_account'], row['to_account'], f"${row['amount']}"))
+        for _, row in df.iterrows():
+            relationships.append((row[source_node_col], row[target_node_col], "related_to"))
             
         G = build_lineage_graph(nodes, relationships)
         
-        # Find simple cycles (rings)
-        cycles = list(nx.simple_cycles(G))
-        rings = [c for c in cycles if len(c) > 2]
+        result_str = f"Graph built successfully with {len(nodes)} nodes and {len(relationships)} edges.\n\n"
         
-        if not rings:
-            return "No layering rings detected."
+        # Run Mathematical Algorithm
+        if algorithm == "find_cycles":
+            cycles = list(nx.simple_cycles(G))
+            meaningful_cycles = [c for c in cycles if len(c) > 2]
+            if not meaningful_cycles:
+                result_str += "Algorithm Output: No cyclical rings detected."
+            else:
+                result_str += f"Algorithm Output: Detected {len(meaningful_cycles)} cycles (potential rings):\n"
+                for i, ring in enumerate(meaningful_cycles):
+                    path = " -> ".join([str(x) for x in ring]) + f" -> {ring[0]}"
+                    result_str += f"Ring {i+1}: {path}\n"
+                    
+        elif algorithm == "degree_centrality":
+            centrality = nx.degree_centrality(G)
+            # Find most isolated (degree 0 or close to 0) in this subgraph
+            isolated = sorted(centrality.items(), key=lambda x: x[1])[:5]
+            result_str += "Algorithm Output: Most isolated nodes (lowest degree centrality):\n"
+            for node, score in isolated:
+                result_str += f"- {node}: score {score:.4f}\n"
+                
+        elif algorithm == "connected_components":
+            # Connected components require undirected graph
+            undirected_G = G.to_undirected()
+            components = list(nx.connected_components(undirected_G))
+            result_str += f"Algorithm Output: Found {len(components)} separate connected communities/lineage trees.\n"
+            for i, comp in enumerate(components[:5]): # show top 5
+                result_str += f"Community {i+1} size: {len(comp)} nodes. Sample: {list(comp)[:3]}\n"
+        else:
+            result_str += f"Warning: Algorithm '{algorithm}' is not supported. Try 'find_cycles', 'degree_centrality', or 'connected_components'."
             
-        result_str = f"Detected {len(rings)} potential money laundering rings:\n"
-        for i, ring in enumerate(rings):
-            path = " -> ".join(ring) + f" -> {ring[0]}"
-            result_str += f"Ring {i+1}: {path}\n"
-            
-        result_str += "\nAction: Recommend filing SAR (Suspicious Activity Report) for these accounts."
         return result_str
     except Exception as e:
-        return f"Error detecting fraud rings: {str(e)}"
-
-@tool
-def trace_data_lineage(namespace: str, table_name: str, corrected_rows: int = 400) -> str:
-    """
-    Trace the downstream impact of a data correction in pharma clinical trials.
-    
-    Args:
-        namespace: The namespace of the clinical trials table.
-        table_name: The name of the clinical trials table.
-        corrected_rows: The number of rows corrected.
-    """
-    try:
-        catalog = get_catalog()
-        identifier = (namespace, table_name)
-        table = catalog.load_table(identifier)
-        df = table.scan().to_arrow().to_pandas()
-        
-        # Find affected cohorts and arms
-        affected = df[df['correction_flag'] == True]
-        
-        cohorts = affected['cohort'].unique().tolist()
-        arms = affected['trial_arm'].unique().tolist()
-        submissions = affected['submission_id'].unique().tolist()
-        
-        result_str = f"Lineage trace complete for data correction.\n"
-        result_str += f"Affected downstream assets:\n"
-        result_str += f"- Cohorts: {', '.join(cohorts)}\n"
-        result_str += f"- Trial Arms: {', '.join(arms)}\n"
-        result_str += f"- FDA Submissions: {', '.join(submissions)}\n\n"
-        
-        result_str += f"Impact: {len(affected)} patients' statistical models need recalculation.\n"
-        result_str += "Estimated delay risk: 6 weeks.\n"
-        
-        return result_str
-    except Exception as e:
-        return f"Error tracing lineage: {str(e)}"
+        return f"Error in graph analysis: {str(e)}"
