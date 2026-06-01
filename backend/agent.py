@@ -40,7 +40,13 @@ def create_iceberg_agent():
     ])
     
     agent = create_tool_calling_agent(llm, tools, prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    agent_executor = AgentExecutor(
+        agent=agent,
+        tools=tools,
+        verbose=True,
+        max_iterations=20,
+        max_execution_time=120
+    )
     
     return agent_executor
 
