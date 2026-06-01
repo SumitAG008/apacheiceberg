@@ -201,6 +201,10 @@ with tab1:
     
     st.markdown("")
     
+    if "session_id" not in st.session_state:
+        import uuid
+        st.session_state.session_id = f"demo_{uuid.uuid4().hex[:8]}"
+        
     # Initialize agent
     if "agent" not in st.session_state:
         with st.spinner("Initializing Iceberg agent..."):
@@ -210,20 +214,22 @@ with tab1:
     if "messages" not in st.session_state:
         st.session_state.messages = []
         # Welcome message
+        namespace_info = ""
+        if not use_custom_aws:
+            namespace_info = f"\n\n*Note: You are in a temporary demo workspace. Your isolated namespace is **`{st.session_state.session_id}`**.*"
+            
         st.session_state.messages.append({
             "role": "assistant",
-            "content": """👋 Welcome to **IcebergGPT** — your natural language interface for Apache Iceberg!
+            "content": f"""👋 Welcome to **IcebergGPT** — your natural language interface for Apache Iceberg!
 
 I can help you:
 - 🗂 **Create tables** with custom schemas in your data lake
 - 📥 **Ingest data** from CSV files into Iceberg format on S3
 - 🔍 **Query your data** using plain English (powered by DuckDB)
-- 🔧 **Manage your lake** — list tables, check schemas, explore metadata
+- 🔧 **Manage your lake** — list tables, check schemas, explore metadata{namespace_info}
 
 **Try asking:**
-> *"Create a table called orders with columns: order_id (integer), customer_name (string), amount (float), order_date (string)"*
-
-Your data lands directly in Amazon S3 as Parquet files with full Iceberg ACID guarantees. 🚀"""
+> *"Create a table called orders in namespace {st.session_state.session_id if not use_custom_aws else 'default'} with columns: order_id (integer), customer_name (string), amount (float)"*"""
         })
     
     # Display messages
@@ -464,7 +470,8 @@ with tab3:
     with col_b:
         st.markdown("### 2️⃣ Configure Ingestion")
         
-        namespace = st.text_input("Namespace", value="default", placeholder="e.g. default, sales, marketing", key="ingest_namespace")
+        default_ns = st.session_state.get("session_id", "default") if not use_custom_aws else "default"
+        namespace = st.text_input("Namespace", value=default_ns, placeholder="e.g. default, sales", key="ingest_namespace")
         
         suggested_name = ""
         if "uploaded_csv_name" in st.session_state:
