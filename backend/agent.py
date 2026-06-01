@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain_anthropic import ChatAnthropic
+from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tools import create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data
 
@@ -10,11 +10,11 @@ load_dotenv()
 
 def create_iceberg_agent():
     # Verify API key is available
-    if not os.environ.get("OPENAI_API_KEY"):
-        print("Warning: OPENAI_API_KEY environment variable not found. The agent will not run without it.")
-        print("You can create a .env file with OPENAI_API_KEY=your_key")
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("Warning: ANTHROPIC_API_KEY environment variable not found. The agent will not run without it.")
+        print("You can create a .env file with ANTHROPIC_API_KEY=your_key")
         
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0)
     
     tools = [
         create_iceberg_table,
@@ -39,10 +39,11 @@ def create_iceberg_agent():
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])
     
-    agent = create_openai_tools_agent(llm, tools, prompt)
+    agent = create_tool_calling_agent(llm, tools, prompt)
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
     
     return agent_executor
+
 
 if __name__ == "__main__":
     print("Welcome to the Apache Iceberg Data Lake Agent!")

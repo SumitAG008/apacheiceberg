@@ -1,7 +1,9 @@
 pyiceberg[pyarrow,duckdb,ray]==0.8.1
 langchain==0.3.7
 langchain-openai==0.2.10
+langchain-anthropic
 langchain-experimental==0.3.3
 pandas==2.2.3
 duckdb==1.1.3
 python-dotenv==1.0.1
+
