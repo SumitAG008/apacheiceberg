@@ -1,0 +1,20 @@
+employee_id,name,department,performance_rating,last_promotion_months_ago,projects_count,cross_team_connections,manager_id
+E001,Alice Smith,Engineering,4.8,19,4,0,M101
+E002,Bob Jones,Engineering,4.5,22,3,1,M101
+E003,Charlie Davis,Engineering,3.2,5,2,4,M101
+E004,Diana Evans,Engineering,4.9,24,5,0,M102
+E005,Ethan Frank,Engineering,4.7,18,3,0,M102
+E006,Fiona Green,Sales,4.2,12,2,5,M201
+E007,George Harris,Engineering,4.6,20,4,0,M102
+E008,Hannah Ivers,Marketing,3.8,8,1,3,M301
+E009,Ian Jackson,Engineering,4.5,18,2,1,M101
+E010,Julia King,Engineering,4.9,25,6,0,M102
+E011,Kevin Lewis,Engineering,4.4,19,3,2,M101
+E012,Laura Moore,Engineering,4.8,21,4,0,M102
+E013,Mike Nelson,Engineering,4.3,17,2,1,M101
+E014,Nina Owens,Engineering,4.7,23,5,0,M102
+E015,Oscar Perez,Engineering,4.6,18,3,0,M101
+E016,Paul Quinn,Engineering,4.5,20,4,0,M102
+E017,Rachel Ross,Engineering,4.8,24,5,0,M101
+M101,Sarah Taylor,Engineering,4.0,36,8,12,VP1
+M102,Tom Vance,Engineering,4.1,40,7,10,VP1

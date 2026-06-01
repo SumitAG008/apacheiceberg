@@ -1,0 +1,11 @@
+patient_id,lab_sample_id,test_result_value,cohort,trial_arm,submission_id,correction_flag
+P001,LS1001,5.4,Cohort_A,Arm_1,SUB_2023_01,false
+P002,LS1002,6.1,Cohort_A,Arm_1,SUB_2023_01,false
+P003,LS1003,8.2,Cohort_B,Arm_2,SUB_2023_01,true
+P004,LS1004,7.9,Cohort_B,Arm_2,SUB_2023_01,true
+P005,LS1005,4.5,Cohort_A,Arm_1,SUB_2023_01,false
+P006,LS1006,8.5,Cohort_B,Arm_2,SUB_2023_01,true
+P007,LS1007,5.2,Cohort_C,Arm_1,SUB_2023_01,false
+P008,LS1008,9.1,Cohort_D,Arm_2,SUB_2023_01,true
+P009,LS1009,8.8,Cohort_D,Arm_2,SUB_2023_01,true
+P010,LS1010,5.0,Cohort_C,Arm_1,SUB_2023_01,false

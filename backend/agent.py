@@ -3,7 +3,10 @@ from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from tools import create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data
+from tools import (
+    create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data,
+    analyze_attrition_risk, detect_fraud_rings, trace_data_lineage
+)
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +22,10 @@ def create_iceberg_agent():
     tools = [
         create_iceberg_table,
         ingest_csv_to_iceberg,
-        query_iceberg_data
+        query_iceberg_data,
+        analyze_attrition_risk,
+        detect_fraud_rings,
+        trace_data_lineage
     ]
     
     prompt = ChatPromptTemplate.from_messages([
@@ -34,6 +40,11 @@ def create_iceberg_agent():
         When a user asks a question about their data:
         1. Use `query_iceberg_data` to run SQL against the table.
         2. Remember that in `query_iceberg_data`, the table is ALWAYS named 'iceberg_table' in the SQL FROM clause.
+        
+        Advanced Use Cases:
+        - For SAP HR/Workforce flight risk questions, use `analyze_attrition_risk`.
+        - For Financial Crime/AML layering questions, use `detect_fraud_rings`.
+        - For Pharma/Clinical trial data correction impact, use `trace_data_lineage`.
         """),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
