@@ -6,7 +6,7 @@ from agent import create_iceberg_agent
 # PAGE CONFIG
 # ─────────────────────────────────────────
 st.set_page_config(
-    page_title="IcebergGPT – Talk to Your Data Lake",
+    page_title="LakeMind Iceberg – Talk to Your Data Lake",
     page_icon="🧊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -115,7 +115,7 @@ st.markdown("""
 # SIDEBAR
 # ─────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🧊 IcebergGPT")
+    st.markdown("## 🧊 LakeMind Iceberg")
     st.caption("Natural language interface for Apache Iceberg")
     
     st.divider()
@@ -171,7 +171,7 @@ with st.sidebar:
     st.markdown("- [GitHub Repo](https://github.com/SumitAG008/apacheiceberg)")
     
     st.divider()
-    st.caption("Built by Sumit | 🧊 IcebergGPT v1.0")
+    st.caption("Built by Sumit | 🧊 LakeMind Iceberg v1.0")
 
 
 # ─────────────────────────────────────────
@@ -180,7 +180,7 @@ with st.sidebar:
 
 st.markdown("""
 <div class="main-header">
-    <h1>🧊 IcebergGPT</h1>
+    <h1>🧊 LakeMind Iceberg</h1>
     <p>Talk to your Apache Iceberg Data Lake in plain English. No SQL expertise needed.</p>
 </div>
 """, unsafe_allow_html=True)
@@ -221,7 +221,7 @@ with tab1:
             
         st.session_state.messages.append({
             "role": "assistant",
-            "content": f"""👋 Welcome to **IcebergGPT** — your natural language interface for Apache Iceberg!
+            "content": f"""👋 Welcome to **LakeMind Iceberg** — your natural language interface for Apache Iceberg!
 
 I can help you:
 - 🗂 **Create tables** with custom schemas in your data lake
@@ -361,7 +361,7 @@ Go to the **Upload & Ingest** tab to try this with a real CSV file.""",
             "num": "04",
             "title": "Querying Your Data Lake with SQL",
             "icon": "🔍",
-            "concept": """IcebergGPT uses **DuckDB** to query your Iceberg tables. DuckDB is an in-process SQL engine — think of it as SQLite but for analytical queries on Parquet files.
+            "concept": """LakeMind Iceberg uses **DuckDB** to query your Iceberg tables. DuckDB is an in-process SQL engine — think of it as SQLite but for analytical queries on Parquet files.
 
 **How querying works:**
 1. DuckDB reads the Iceberg snapshot manifest to find all Parquet files

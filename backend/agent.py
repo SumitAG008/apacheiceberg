@@ -66,7 +66,7 @@ def create_iceberg_agent():
 if __name__ == "__main__":
     from langchain_core.messages import HumanMessage, AIMessage
     
-    print("Welcome to the Apache Iceberg Data Lake Agent!")
+    print("Welcome to LakeMind Iceberg!")
     agent = create_iceberg_agent()
     
     chat_history = []
