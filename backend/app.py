@@ -27,6 +27,18 @@ if user_input:
         try:
             response = st.session_state.agent.invoke({"input": user_input})
             bot_response = response['output']
+            
+            # Handle cases where the response is a list of content blocks
+            if isinstance(bot_response, list):
+                extracted_texts = []
+                for block in bot_response:
+                    if isinstance(block, dict) and "text" in block:
+                        extracted_texts.append(block["text"])
+                    elif hasattr(block, "text"):
+                        extracted_texts.append(block.text)
+                    else:
+                        extracted_texts.append(str(block))
+                bot_response = "\n".join(extracted_texts)
         except Exception as e:
             bot_response = f"Error: {str(e)}"
         
