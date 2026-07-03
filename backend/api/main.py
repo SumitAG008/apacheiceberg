@@ -94,6 +94,11 @@ def log_audit(user_id: str, tier: str, action: str, details: str, status: str):
 @app.on_event("startup")
 def startup_event():
     init_auth_schema()
+    try:
+        from graph_db import init_graph_tables
+        init_graph_tables()
+    except Exception as e:
+        print(f"[api/main] Failed to initialize graph tables on startup: {e}")
 
 # ─────────────────────────────────────────
 # PYDANTIC SCHEMAS

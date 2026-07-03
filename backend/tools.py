@@ -230,14 +230,14 @@ def run_generic_graph_analysis(namespace: str, table_name: str, source_node_col:
 @tool
 def sync_iceberg_to_graph_db(namespace: str, table_name: str, source_node_col: str, target_node_col: str, graph_name: str, edge_label: Optional[str] = "related_to") -> str:
     """
-    Synchronizes records from an Iceberg table into a persistent Apache AGE graph.
+    Synchronizes records from an Iceberg table into a persistent Neo4j AuraDB graph.
     
     Args:
         namespace: The namespace of the Iceberg table.
         table_name: The name of the Iceberg table.
         source_node_col: The Iceberg column name representing the source node of relationships.
         target_node_col: The Iceberg column name representing the target node of relationships.
-        graph_name: The name of the Apache AGE graph to write to.
+        graph_name: The label prefix prefix namespace of the Neo4j graph.
         edge_label: Optional label for the relationship (default: 'related_to').
     """
     try:
@@ -252,7 +252,7 @@ def sync_iceberg_to_graph_db(namespace: str, table_name: str, source_node_col: s
         if source_node_col not in df.columns or target_node_col not in df.columns:
             return f"Error: Columns {source_node_col} and/or {target_node_col} do not exist in the table."
             
-        # Call graph_db helper to sync dataframe to AGE
+        # Call graph_db helper to sync dataframe to Neo4j
         result_message = sync_dataframe_to_age(graph_name, df, source_node_col, target_node_col, edge_label)
         return result_message
     except Exception as e:
@@ -261,13 +261,13 @@ def sync_iceberg_to_graph_db(namespace: str, table_name: str, source_node_col: s
 @tool
 def query_graph_db_cypher(graph_name: str, cypher_query: str) -> str:
     """
-    Executes a Cypher query against a persistent Apache AGE graph database and returns tabular results.
+    Executes a Cypher query against a persistent Neo4j AuraDB graph database and returns tabular results.
     
     Note: Do not wrap the query in SQL; pass the pure Cypher statement.
     Example: "MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10"
     
     Args:
-        graph_name: The name of the graph to query.
+        graph_name: The name of the graph label prefix prefix namespace to query.
         cypher_query: The pure Cypher query to execute.
     """
     try:

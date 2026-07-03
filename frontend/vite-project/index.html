@@ -19,11 +19,14 @@
         background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.18) 0%, transparent 60%),
                     radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.12) 0%, transparent 55%),
                     #080812;
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         padding: 1rem;
         transition: opacity 0.4s ease;
+      }
+      #auth-overlay.active {
+        display: flex;
       }
       #auth-overlay.hidden {
         opacity: 0;
@@ -181,13 +184,416 @@
         height: 100%; width: 0; border-radius: 2px;
         transition: width 0.3s, background 0.3s;
       }
+
+      /* ── LANDING PAGE ──────────────────────────────────────────────────── */
+      #landing-page {
+        position: fixed;
+        inset: 0;
+        z-index: 9990;
+        background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.15) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.08) 0%, transparent 60%),
+                    #080612;
+        overflow-y: auto;
+        color: #EDE9FE;
+        font-family: var(--font-sans);
+        display: flex;
+        flex-direction: column;
+      }
+      #landing-page.hidden {
+        display: none !important;
+      }
+      .landing-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.5rem 2rem;
+        max-width: 1200px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      .landing-nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .landing-logo-icon {
+        font-size: 1.5rem;
+      }
+      .landing-logo-text h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #C4B5FD, #8B5CF6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .landing-logo-text span {
+        font-size: 0.65rem;
+        color: #7C6FAE;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        display: block;
+      }
+      .landing-nav-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+      .landing-btn {
+        padding: 0.65rem 1.35rem;
+        border-radius: var(--radius-md);
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+      .landing-btn-secondary {
+        background: transparent;
+        border: 1px solid rgba(139,92,246,0.3);
+        color: #C4B5FD;
+      }
+      .landing-btn-secondary:hover {
+        background: rgba(139,92,246,0.1);
+        border-color: #8B5CF6;
+      }
+      .landing-btn-primary {
+        background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+        border: none;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+      }
+      .landing-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+      }
+      .landing-hero {
+        text-align: center;
+        padding: 6rem 1.5rem 3rem 1.5rem;
+        max-width: 880px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .landing-badge {
+        background: rgba(139,92,246,0.1);
+        border: 1px solid rgba(139,92,246,0.25);
+        color: #C4B5FD;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.4rem 1.1rem;
+        border-radius: 50px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .landing-hero h1 {
+        font-size: 3.4rem;
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -0.03em;
+        color: #fff;
+        background: linear-gradient(135deg, #fff 40%, #C4B5FD 75%, #8B5CF6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .landing-hero p {
+        font-size: 1.15rem;
+        color: #9F9EB8;
+        line-height: 1.6;
+        max-width: 720px;
+      }
+      .landing-ctas {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      .landing-features {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        max-width: 1200px;
+        width: 100%;
+        margin: 4rem auto;
+        padding: 0 2rem;
+      }
+      .landing-feature-card {
+        background: rgba(16,13,32,0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(139,92,246,0.12);
+        border-radius: 16px;
+        padding: 1.75rem;
+        transition: all 0.25s ease;
+      }
+      .landing-feature-card:hover {
+        border-color: rgba(139,92,246,0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(124,58,237,0.08);
+      }
+      .landing-feature-icon {
+        font-size: 1.5rem;
+        color: #8B5CF6;
+        margin-bottom: 1rem;
+        width: 44px;
+        height: 44px;
+        background: rgba(139,92,246,0.08);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .landing-feature-card h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #fff;
+      }
+      .landing-feature-card p {
+        font-size: 0.85rem;
+        color: #8B8BA7;
+        line-height: 1.5;
+        font-family: var(--font-body);
+      }
+      .landing-pricing {
+        max-width: 1200px;
+        width: 100%;
+        margin: 2rem auto 6rem auto;
+        padding: 0 2rem;
+        text-align: center;
+      }
+      .landing-pricing-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 2.5rem;
+      }
+      .landing-pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      .landing-price-card {
+        background: rgba(16,13,32,0.6);
+        border: 1px solid rgba(139,92,246,0.12);
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+      .landing-price-card.featured {
+        border-color: rgba(139,92,246,0.4);
+        box-shadow: 0 0 40px rgba(124,58,237,0.12);
+      }
+      .landing-price-card.featured::before {
+        content: 'POPULAR';
+        position: absolute;
+        top: 12px; right: -32px;
+        background: #8B5CF6;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 0.25rem 2rem;
+        transform: rotate(45deg);
+        letter-spacing: 1px;
+      }
+      .landing-price-card h4 {
+        font-size: 0.85rem;
+        color: #A78BFA;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+      }
+      .landing-price-amount {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 0.25rem;
+      }
+      .landing-price-amount span {
+        font-size: 0.9rem;
+        color: #7C6FAE;
+        font-weight: 400;
+      }
+      .landing-price-card p {
+        font-size: 0.8rem;
+        color: #8B8BA7;
+        margin-bottom: 1.5rem;
+        font-family: var(--font-body);
+      }
+      .landing-price-features {
+        list-style: none;
+        margin-bottom: 2rem;
+        font-size: 0.85rem;
+        color: #EDE9FE;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .landing-price-features li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .landing-price-features i {
+        color: #10B981;
+        font-size: 0.8rem;
+      }
+      .landing-price-card button {
+        margin-top: auto;
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .landing-footer {
+        border-top: 1px solid rgba(139,92,246,0.1);
+        padding: 2.5rem 0;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #6B6B8E;
+        background: #05030e;
+        margin-top: auto;
+      }
     </style>
   </head>
   <body>
 
+    <!-- ── LANDING PAGE ── -->
+    <div id="landing-page">
+      <!-- Navbar -->
+      <nav class="landing-nav">
+        <div class="landing-nav-logo">
+          <div class="auth-logo-icon">🌊</div>
+          <div class="landing-logo-text">
+            <h2>Meldra AI</h2>
+            <span>LakeMind Platform</span>
+          </div>
+        </div>
+        <div class="landing-nav-actions">
+          <button id="landing-btn-login" class="landing-btn landing-btn-secondary">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+          </button>
+          <button id="landing-btn-signup" class="landing-btn landing-btn-primary">
+            Get Started Free
+          </button>
+        </div>
+      </nav>
+
+      <!-- Hero Section -->
+      <header class="landing-hero">
+        <span class="landing-badge">🔥 Now Integrated with Neo4j AuraDB</span>
+        <h1>Serverless S3 Iceberg Lakes<br>Without the Spark Tax</h1>
+        <p>
+          Stop paying thousands of dollars for Databricks. Ingest CSVs to open Apache Iceberg format on your S3 buckets, query in plain English with Claude AI + DuckDB, and map relational tables to Neo4j graph schemas instantly.
+        </p>
+        <div class="landing-ctas">
+          <button id="landing-hero-signup" class="landing-btn landing-btn-primary" style="font-size: 1.05rem; padding: 0.8rem 1.75rem;">
+            Create Free Workspace (30 Days) <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Features Section -->
+      <section class="landing-features">
+        <!-- Feature 1 -->
+        <div class="landing-feature-card">
+          <div class="landing-feature-icon"><i class="fa-solid fa-comments"></i></div>
+          <h3>AI-Powered SQL</h3>
+          <p>Talk to your S3 data lake in plain English. Claude AI compiles queries to optimized DuckDB SQL in real-time.</p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="landing-feature-card">
+          <div class="landing-feature-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <h3>Zero-Lock Ingest</h3>
+          <p>Drag and drop CSV files. Instantly convert tabular rows to raw Apache Iceberg metadata snapshots directly on S3.</p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="landing-feature-card">
+          <div class="landing-feature-icon"><i class="fa-solid fa-circle-nodes"></i></div>
+          <h3>Neo4j Sync</h3>
+          <p>Export Iceberg tables to Neo4j AuraDB instances. Execute openCypher queries and discover deep hidden linkages.</p>
+        </div>
+        <!-- Feature 4 -->
+        <div class="landing-feature-card">
+          <div class="landing-feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3>Postgres Auditing</h3>
+          <p>A secure audit log tracks every table creation, metadata modification, and database config change automatically.</p>
+        </div>
+      </section>
+
+      <!-- Pricing Section -->
+      <section class="landing-pricing">
+        <h2 class="landing-pricing-title">Simple, Developer-First Pricing</h2>
+        <div class="landing-pricing-grid">
+          <!-- Card 1: Trial -->
+          <div class="landing-price-card">
+            <h4>Trial</h4>
+            <div class="landing-price-amount">Free<span> / 30 days</span></div>
+            <p>Perfect for testing and sandbox builds. Expired workspaces are automatically deleted after 30 days.</p>
+            <ul class="landing-price-features">
+              <li><i class="fa-solid fa-circle-check"></i> 1 Sandbox Workspace</li>
+              <li><i class="fa-solid fa-circle-check"></i> 5 GB S3 Storage Limit</li>
+              <li><i class="fa-solid fa-circle-check"></i> 100 AI Queries / month</li>
+              <li><i class="fa-solid fa-circle-check"></i> Neo4j AuraDB Free Sync</li>
+            </ul>
+            <button id="landing-price-trial" class="landing-btn landing-btn-secondary">Start Free Trial</button>
+          </div>
+          <!-- Card 2: Starter -->
+          <div class="landing-price-card featured">
+            <h4>Starter</h4>
+            <div class="landing-price-amount">$29<span> / month</span></div>
+            <p>For data engineers deploying real production pipelines on startups.</p>
+            <ul class="landing-price-features">
+              <li><i class="fa-solid fa-circle-check"></i> 1 Permanent Workspace</li>
+              <li><i class="fa-solid fa-circle-check"></i> 20 GB S3 Storage Limit</li>
+              <li><i class="fa-solid fa-circle-check"></i> 1,000 AI Queries / month</li>
+              <li><i class="fa-solid fa-circle-check"></i> 50 Managed Iceberg Tables</li>
+              <li><i class="fa-solid fa-circle-check"></i> Neo4j AuraDB Pro Sync</li>
+            </ul>
+            <button id="landing-price-starter" class="landing-btn landing-btn-primary">Get Started</button>
+          </div>
+          <!-- Card 3: Pro -->
+          <div class="landing-price-card">
+            <h4>Pro</h4>
+            <div class="landing-price-amount">$99<span> / month</span></div>
+            <p>For scaleups and small teams building unified metadata pipelines.</p>
+            <ul class="landing-price-features">
+              <li><i class="fa-solid fa-circle-check"></i> 5 Dedicated Workspaces</li>
+              <li><i class="fa-solid fa-circle-check"></i> 100 GB S3 Storage Limit</li>
+              <li><i class="fa-solid fa-circle-check"></i> Unlimited AI Queries</li>
+              <li><i class="fa-solid fa-circle-check"></i> Unlimited Tables</li>
+              <li><i class="fa-solid fa-circle-check"></i> Priority Email Support</li>
+            </ul>
+            <button id="landing-price-pro" class="landing-btn landing-btn-secondary">Go Pro</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="landing-footer">
+        <p>Copyright &copy; 2025 Meldra AI Ltd. All rights reserved. LakeMind and its source code are proprietary.</p>
+      </footer>
+    </div>
+    <!-- ── END LANDING PAGE ── -->
+
     <!-- ── AUTH OVERLAY ── -->
     <div id="auth-overlay">
       <div class="auth-card">
+
 
         <!-- Brand logo -->
         <div class="auth-logo">

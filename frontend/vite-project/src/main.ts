@@ -359,14 +359,14 @@ function initChat() {
   state.chatHistory = [];
   
   const welcomeText = `
-    <p>👋 Welcome to <strong>LakeMind</strong> — your intelligent Apache Iceberg data platform!</p>
+    <p>👋 Welcome to <strong>LakeMind</strong> — the serverless S3 Iceberg platform for startup data teams!</p>
     <p>I can help you:</p>
     <ul>
-      <li>🗂 <strong>Create tables</strong> with custom schemas in your S3 data lake</li>
-      <li>📥 <strong>Ingest CSV datasets</strong> into Iceberg table format on S3</li>
+      <li>🗂 <strong>Create Iceberg tables</strong> with custom schemas directly on your S3 bucket</li>
+      <li>📥 <strong>Ingest CSV datasets</strong> into open Apache Iceberg format in seconds</li>
       <li>🔍 <strong>Query your data lake</strong> using plain English (powered by DuckDB + Claude AI)</li>
-      <li>🔗 <strong>Build knowledge graphs</strong> — sync data to Apache AGE and query with Cypher</li>
-      <li>🔧 <strong>Schema evolution</strong> — add/rename/drop columns without rewriting data</li>
+      <li>🔗 <strong>Build knowledge graphs</strong> — sync Iceberg data to Neo4j AuraDB and query with Cypher</li>
+      <li>🔧 <strong>Schema evolution</strong> — add/rename/drop columns instantly without data rewrites</li>
     </ul>
     <p><strong>Try asking:</strong></p>
     <div class="prompt-box" style="background: rgba(139,92,246,0.08); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-glass); font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-primary); margin-top: 0.5rem; cursor: pointer;" id="welcome-sample-prompt">
@@ -1464,6 +1464,15 @@ async function checkBackendStatus() {
 function initAuthController() {
   const overlay = document.getElementById('auth-overlay')!;
   const mainApp = document.getElementById('main-app')!;
+  const landingPage = document.getElementById('landing-page')!;
+
+  // ─ Landing page buttons
+  const landingBtnLogin = document.getElementById('landing-btn-login')!;
+  const landingBtnSignup = document.getElementById('landing-btn-signup')!;
+  const landingHeroSignup = document.getElementById('landing-hero-signup')!;
+  const landingPriceTrial = document.getElementById('landing-price-trial')!;
+  const landingPriceStarter = document.getElementById('landing-price-starter')!;
+  const landingPricePro = document.getElementById('landing-price-pro')!;
 
   // ─ Screen references
   const screenLogin    = document.getElementById('auth-screen-login')!;
@@ -1517,6 +1526,7 @@ function initAuthController() {
     el.classList.add('show');
   }
 
+  // Clear errors
   function clearError(el: HTMLElement) {
     el.textContent = '';
     el.classList.remove('show');
@@ -1528,13 +1538,46 @@ function initAuthController() {
   }
 
   function showMainApp() {
+    landingPage.classList.add('hidden');
     overlay.classList.add('hidden');
-    setTimeout(() => { overlay.style.display = 'none'; }, 400);
+    overlay.classList.remove('active');
+    setTimeout(() => { 
+      overlay.style.display = 'none'; 
+      landingPage.style.display = 'none';
+    }, 400);
     mainApp.style.display = 'flex';
     const user = tokenStore.getUser();
     if (user) headerEmail.textContent = user.email;
     bootstrapApp();
   }
+
+  function openAuthModal(mode: 'login' | 'register') {
+    overlay.style.display = 'flex';
+    overlay.classList.remove('hidden');
+    overlay.classList.add('active');
+    if (mode === 'login') {
+      showScreen(screenLogin);
+    } else {
+      showScreen(screenRegister);
+    }
+  }
+
+  // Close modal if user clicks on the backdrop overlay
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('active');
+      overlay.classList.add('hidden');
+      setTimeout(() => { overlay.style.display = 'none'; }, 400);
+    }
+  });
+
+  // Bind landing page buttons to open auth card
+  landingBtnLogin.addEventListener('click', () => openAuthModal('login'));
+  landingBtnSignup.addEventListener('click', () => openAuthModal('register'));
+  landingHeroSignup.addEventListener('click', () => openAuthModal('register'));
+  landingPriceTrial.addEventListener('click', () => openAuthModal('register'));
+  landingPriceStarter.addEventListener('click', () => openAuthModal('register'));
+  landingPricePro.addEventListener('click', () => openAuthModal('register'));
 
   function startOtpTimer(seconds = 600) {
     if (otpCountdown) clearInterval(otpCountdown);
@@ -1743,7 +1786,10 @@ function initAuthController() {
   btnLogout.addEventListener('click', async () => {
     await api.auth.logout();
     mainApp.style.display = 'none';
-    overlay.style.display = 'flex';
+    landingPage.style.display = 'flex';
+    landingPage.classList.remove('hidden');
+    overlay.style.display = 'none';
+    overlay.classList.remove('active');
     overlay.classList.remove('hidden');
     loginEmailEl.value = '';
     loginPasswordEl.value = '';
@@ -1755,8 +1801,8 @@ function initAuthController() {
   if (tokenStore.isLoggedIn()) {
     showMainApp();
   }
-  // Otherwise overlay stays visible, user must log in
 }
+
 
 // ─────────────────────────────────────────
 // APP BOOTSTRAP
