@@ -1,6 +1,8 @@
 import os
 import streamlit as st
 from agent import create_iceberg_agent
+from graph_db import get_graph_stats, execute_cypher_query
+
 
 # ─────────────────────────────────────────
 # PAGE CONFIG
@@ -185,7 +187,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(["💬 Chat with Your Lake", "📚 Learn Iceberg", "📤 Upload & Ingest"])
+tab1, tab2, tab3, tab4 = st.tabs(["💬 Chat with Your Lake", "📚 Learn Iceberg", "📤 Upload & Ingest", "🔗 Apache AGE Graph"])
 
 
 # ══════════════════════════════════════════
@@ -602,3 +604,55 @@ Tell me when both steps are complete."""
                 mime="text/csv",
                 use_container_width=True
             )
+
+
+# ══════════════════════════════════════════
+# TAB 4 — APACHE AGE GRAPH
+# ══════════════════════════════════════════
+with tab4:
+    st.markdown("## 🔗 Apache AGE — Persistent Enterprise Graph DB")
+    st.markdown("Monitor your persistent graph database schema, relationship stats, and run raw openCypher queries directly.")
+    
+    # Check database connectivity
+    try:
+        # We use a default graph name representing the workspace
+        default_graph = "pharma_graph"
+        stats = get_graph_stats(default_graph)
+        
+        if "error" in stats:
+            st.error(f"⚠️ Could not connect to Apache AGE database: {stats['error']}")
+            st.info("💡 Ensure that the PostgreSQL / Apache AGE service is running (e.g. via docker compose up).")
+        else:
+            st.success("✅ Connected to Apache AGE Graph Database successfully!")
+            
+            col_g1, col_g2, col_g3 = st.columns(3)
+            with col_g1:
+                st.markdown(f'<div class="stat-card"><div class="number">{stats.get("nodes", 0)}</div><div class="label">Graph Nodes</div></div>', unsafe_allow_html=True)
+            with col_g2:
+                st.markdown(f'<div class="stat-card"><div class="number">{stats.get("edges", 0)}</div><div class="label">Graph Edges</div></div>', unsafe_allow_html=True)
+            with col_g3:
+                st.markdown(f'<div class="stat-card"><div class="number">{default_graph}</div><div class="label">Current Active Graph</div></div>', unsafe_allow_html=True)
+                
+            st.divider()
+            
+            st.markdown("### 🔍 Execute Cypher Query")
+            cypher_input = st.text_area(
+                "Write an openCypher query:",
+                value=f"MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10",
+                height=100
+            )
+            
+            if st.button("⚡ Run Cypher Query", type="primary"):
+                with st.spinner("Executing Cypher..."):
+                    try:
+                        result_df = execute_cypher_query(default_graph, cypher_input)
+                        if result_df.empty:
+                            st.info("Query returned 0 results.")
+                        else:
+                            st.dataframe(result_df, use_container_width=True)
+                    except Exception as ce:
+                        st.error(f"Error executing Cypher: {str(ce)}")
+                        
+    except Exception as e:
+        st.error(f"⚠️ Database connection failed: {str(e)}")
+

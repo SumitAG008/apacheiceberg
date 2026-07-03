@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Meldra AI — LakeMind: Talk to your Apache Iceberg data lake in plain English. Query, ingest, and explore your S3 lakehouse with AI.">
+    <meta name="copyright" content="Copyright (c) 2025 Meldra AI Ltd. All rights reserved.">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Meldra AI — LakeMind Intelligent Iceberg Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      /* ── AUTH OVERLAY ──────────────────────────────────────────────────── */
+      #auth-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.18) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.12) 0%, transparent 55%),
+                    #080812;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        transition: opacity 0.4s ease;
+      }
+      #auth-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .auth-card {
+        background: rgba(19,19,31,0.95);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(124,58,237,0.25);
+        border-radius: 20px;
+        padding: 2.5rem 2.75rem;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 0 80px rgba(124,58,237,0.15), 0 32px 64px rgba(0,0,0,0.6);
+        animation: authCardIn 0.4s cubic-bezier(0.16,1,0.3,1);
+      }
+      @keyframes authCardIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)  scale(1); }
+      }
+      .auth-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        justify-content: center;
+      }
+      .auth-logo-icon {
+        width: 40px; height: 40px;
+        background: linear-gradient(135deg, #7C3AED, #3B82F6);
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+      }
+      .auth-logo-text h1 {
+        font-size: 1.3rem; font-weight: 700; color: #fff;
+        margin: 0; line-height: 1.2;
+      }
+      .auth-logo-text span {
+        font-size: 0.65rem; color: #6366F1; font-family: monospace;
+        letter-spacing: 1px; text-transform: uppercase;
+      }
+      .auth-title {
+        font-size: 1.5rem; font-weight: 700;
+        color: #fff; margin: 0 0 0.4rem 0; text-align: center;
+      }
+      .auth-subtitle {
+        font-size: 0.87rem; color: #8B8BA7;
+        text-align: center; margin: 0 0 1.75rem 0; line-height: 1.5;
+      }
+      .auth-screen { display: none; }
+      .auth-screen.active { display: block; }
+      .auth-field {
+        margin-bottom: 1rem;
+      }
+      .auth-field label {
+        display: block; font-size: 0.8rem; font-weight: 500;
+        color: #A0A0C0; margin-bottom: 0.4rem;
+      }
+      .auth-input {
+        width: 100%; box-sizing: border-box;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        color: #fff; font-size: 0.95rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .auth-input:focus {
+        border-color: rgba(124,58,237,0.6);
+        box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+      }
+      .auth-input::placeholder { color: #4A4A6A; }
+      .auth-btn {
+        width: 100%; padding: 0.85rem;
+        background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        border: none; border-radius: 10px;
+        color: #fff; font-size: 0.97rem; font-weight: 600;
+        cursor: pointer; margin-top: 0.5rem;
+        transition: all 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      }
+      .auth-btn:hover { background: linear-gradient(135deg, #8B5CF6, #7C3AED); transform: translateY(-1px); }
+      .auth-btn:active { transform: translateY(0); }
+      .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+      .auth-switch {
+        text-align: center; margin-top: 1.25rem;
+        font-size: 0.85rem; color: #6B6B8E;
+      }
+      .auth-switch a {
+        color: #A78BFA; cursor: pointer; font-weight: 500;
+        text-decoration: none;
+      }
+      .auth-switch a:hover { color: #C4B5FD; text-decoration: underline; }
+      .auth-error {
+        background: rgba(239,68,68,0.1);
+        border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 8px; padding: 0.65rem 0.9rem;
+        color: #FCA5A5; font-size: 0.83rem;
+        margin-bottom: 1rem; display: none;
+        animation: fadeIn 0.2s ease;
+      }
+      .auth-error.show { display: block; }
+      .auth-success {
+        background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.3);
+        border-radius: 8px; padding: 0.65rem 0.9rem;
+        color: #6EE7B7; font-size: 0.83rem;
+        margin-bottom: 1rem; display: none;
+      }
+      .auth-success.show { display: block; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      /* OTP input boxes */
+      .otp-inputs {
+        display: flex; gap: 0.6rem; justify-content: center; margin: 1.5rem 0;
+      }
+      .otp-digit {
+        width: 52px; height: 64px;
+        background: rgba(255,255,255,0.04);
+        border: 1.5px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        text-align: center; font-size: 1.6rem; font-weight: 700; color: #fff;
+        outline: none; caret-color: #A78BFA;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .otp-digit:focus {
+        border-color: #7C3AED;
+        box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
+      }
+      .otp-digit.filled { border-color: rgba(124,58,237,0.5); }
+      .otp-countdown {
+        text-align: center; font-size: 0.82rem; color: #6B6B8E; margin: 0.5rem 0;
+      }
+      .otp-resend {
+        background: none; border: none; color: #A78BFA;
+        cursor: pointer; font-size: 0.82rem; font-weight: 500;
+        padding: 0; text-decoration: underline;
+      }
+      .otp-resend:disabled { opacity: 0.4; cursor: not-allowed; }
+      .otp-email-badge {
+        background: rgba(124,58,237,0.1);
+        border: 1px solid rgba(124,58,237,0.2);
+        border-radius: 6px; padding: 0.4rem 0.8rem;
+        font-size: 0.82rem; color: #A78BFA;
+        text-align: center; margin-bottom: 0.5rem;
+        word-break: break-all;
+      }
+      /* Password strength */
+      .pwd-strength {
+        height: 3px; border-radius: 2px; margin-top: 0.4rem;
+        background: rgba(255,255,255,0.08); overflow: hidden;
+      }
+      .pwd-strength-bar {
+        height: 100%; width: 0; border-radius: 2px;
+        transition: width 0.3s, background 0.3s;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- ── AUTH OVERLAY ── -->
+    <div id="auth-overlay">
+      <div class="auth-card">
+
+        <!-- Brand logo -->
+        <div class="auth-logo">
+          <div class="auth-logo-icon">🌊</div>
+          <div class="auth-logo-text">
+            <h1>Meldra AI</h1>
+            <span>LakeMind · Iceberg Platform</span>
+          </div>
+        </div>
+
+        <!-- Screen 1: LOGIN -->
+        <div id="auth-screen-login" class="auth-screen active">
+          <h2 class="auth-title">Welcome back</h2>
+          <p class="auth-subtitle">Sign in to access your data lakehouse</p>
+          <div id="login-error" class="auth-error"></div>
+          <div class="auth-field">
+            <label for="login-email">Email address</label>
+            <input type="email" id="login-email" class="auth-input" placeholder="you@company.com" autocomplete="email">
+          </div>
+          <div class="auth-field">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" class="auth-input" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <button id="btn-login" class="auth-btn">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Continue
+          </button>
+          <div class="auth-switch">
+            No account? <a id="goto-register">Create one</a>
+          </div>
+        </div>
+
+        <!-- Screen 2: REGISTER -->
+        <div id="auth-screen-register" class="auth-screen">
+          <h2 class="auth-title">Create account</h2>
+          <p class="auth-subtitle">Your data lake, powered by AI</p>
+          <div id="register-error" class="auth-error"></div>
+          <div class="auth-field">
+            <label for="register-email">Email address</label>
+            <input type="email" id="register-email" class="auth-input" placeholder="you@company.com" autocomplete="email">
+          </div>
+          <div class="auth-field">
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" class="auth-input" placeholder="Min 8 chars, 1 uppercase, 1 number" autocomplete="new-password">
+            <div class="pwd-strength"><div class="pwd-strength-bar" id="pwd-strength-bar"></div></div>
+          </div>
+          <div class="auth-field">
+            <label for="register-password2">Confirm password</label>
+            <input type="password" id="register-password2" class="auth-input" placeholder="Repeat password" autocomplete="new-password">
+          </div>
+          <button id="btn-register" class="auth-btn">
+            <i class="fa-solid fa-user-plus"></i> Create Account
+          </button>
+          <div class="auth-switch">
+            Already have an account? <a id="goto-login">Sign in</a>
+          </div>
+        </div>
+
+        <!-- Screen 3: MFA VERIFY -->
+        <div id="auth-screen-mfa" class="auth-screen">
+          <h2 class="auth-title">Check your email</h2>
+          <p class="auth-subtitle">We've sent a 6-digit code to</p>
+          <div class="otp-email-badge" id="otp-target-email">your@email.com</div>
+          <div id="mfa-error" class="auth-error"></div>
+          <div id="mfa-success" class="auth-success"></div>
+
+          <!-- 6 individual digit inputs -->
+          <div class="otp-inputs">
+            <input class="otp-digit" id="otp-0" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+            <input class="otp-digit" id="otp-1" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="otp-2" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="otp-3" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="otp-4" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="otp-5" type="text" inputmode="numeric" maxlength="1">
+          </div>
+
+          <div class="otp-countdown">
+            Code expires in <span id="otp-timer">10:00</span>
+          </div>
+          <div style="text-align:center; margin-bottom: 1rem;">
+            <button class="otp-resend" id="btn-resend-otp" disabled>Resend code</button>
+          </div>
+          <button id="btn-verify-otp" class="auth-btn">
+            <i class="fa-solid fa-shield-check"></i> Verify Code
+          </button>
+          <div class="auth-switch">
+            <a id="goto-login-from-mfa"><i class="fa-solid fa-arrow-left" style="font-size:0.7rem"></i> Back to login</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- ── END AUTH OVERLAY ── -->
+
+    <div class="app-container" id="main-app" style="display:none">
+
+      <!-- ─── SIDEBAR ─── -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-water-ladder" style="color: var(--color-primary); font-size: 1.4rem;"></i>
+          <div>
+            <h2>LakeMind</h2>
+            <div style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 1px;">v1.0.0 · Iceberg AI</div>
+          </div>
+        </div>
+
+        <div class="sidebar-content">
+
+          <!-- AWS Config -->
+          <div class="sidebar-section">
+            <h3 class="section-title"><i class="fa-brands fa-aws"></i> Data Lake Config</h3>
+            <div class="toggle-container">
+              <span class="toggle-label">Connect your S3 lake</span>
+              <label class="switch">
+                <input type="checkbox" id="custom-aws-toggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div id="aws-config-form" style="display: none; flex-direction: column; gap: 0.75rem;">
+              <div class="form-group">
+                <label for="aws-region">AWS Region</label>
+                <input type="text" id="aws-region" class="input-field" placeholder="eu-west-2">
+              </div>
+              <div class="form-group">
+                <label for="aws-s3-uri">S3 Warehouse URI</label>
+                <input type="text" id="aws-s3-uri" class="input-field" placeholder="s3://bucket/warehouse">
+              </div>
+              <div class="form-group">
+                <label for="aws-access-key">Access Key ID</label>
+                <input type="password" id="aws-access-key" class="input-field" placeholder="••••••••••••••••">
+              </div>
+              <div class="form-group">
+                <label for="aws-secret-key">Secret Access Key</label>
+                <input type="password" id="aws-secret-key" class="input-field" placeholder="••••••••••••••••">
+              </div>
+              <button id="btn-connect-aws" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-plug-circle-bolt"></i> Connect Lake
+              </button>
+            </div>
+
+            <div id="aws-demo-info" style="font-size: 0.79rem; color: var(--text-muted); background: rgba(139,92,246,0.05); padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border-subtle); line-height: 1.5;">
+              <i class="fa-solid fa-circle-info" style="color: var(--color-primary);"></i>
+              Demo mode — toggle to connect your own S3 warehouse.
+            </div>
+          </div>
+
+          <!-- Quick Prompts -->
+          <div class="sidebar-section">
+            <h3 class="section-title"><i class="fa-solid fa-bolt"></i> Quick Prompts</h3>
+            <div class="quick-prompts-list">
+              <button class="quick-prompt-btn" data-prompt="List all tables in my data lake">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> List all tables
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Create a sales table in namespace default with columns: id (integer), amount (float), order_date (string)">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Create a sales table
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Show me the first 10 rows of employees">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Show first 10 rows
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Count all records in employees table">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Count records
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Find all cyclic transaction rings in the banking_tx table using account_from and account_to columns">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Detect fraud rings
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Show snapshot history for the employees table">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> View snapshot history
+              </button>
+            </div>
+          </div>
+
+          <!-- Backend Status -->
+          <div class="sidebar-section" style="margin-top: auto;">
+            <h3 class="section-title"><i class="fa-solid fa-server"></i> Backend Status</h3>
+            <div id="backend-status" style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: var(--text-muted);">
+              <span class="status-dot pending" id="backend-status-dot"></span>
+              <span id="backend-status-text">Checking...</span>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ─── MAIN SHELL ─── -->
+      <main class="main-shell">
+        <header class="app-header">
+          <div class="app-header-title">
+            <h1>🌊 LakeMind</h1>
+            <p>Intelligent Apache Iceberg Data Platform · Powered by Claude AI</p>
+          </div>
+
+          <nav class="tab-headers">
+            <button class="tab-btn active" data-tab="chat-tab" id="nav-chat">
+              <i class="fa-solid fa-comments"></i> Chat
+            </button>
+            <button class="tab-btn" data-tab="tutorial-tab" id="nav-learn">
+              <i class="fa-solid fa-graduation-cap"></i> Learn
+            </button>
+            <button class="tab-btn" data-tab="ingest-tab" id="nav-ingest">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Ingest
+            </button>
+            <button class="tab-btn" data-tab="graph-tab" id="nav-graph">
+              <i class="fa-solid fa-circle-nodes"></i> Graph
+            </button>
+            <button class="tab-btn" data-tab="api-tab" id="nav-api">
+              <i class="fa-solid fa-book-open"></i> API Help
+            </button>
+            <button class="tab-btn" data-tab="test-tab" id="nav-test">
+              <i class="fa-solid fa-flask"></i> Test
+            </button>
+            <button class="tab-btn" data-tab="audit-tab" id="nav-audit">
+              <i class="fa-solid fa-shield-halved"></i> Audit
+            </button>
+            <!-- User pill + logout -->
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;padding:0 0.5rem;">
+              <span id="header-user-email" style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);"></span>
+              <button id="btn-logout" title="Sign out" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:8px;color:#F87171;padding:0.35rem 0.65rem;cursor:pointer;font-size:0.78rem;transition:all 0.2s;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+              </button>
+            </div>
+          </nav>
+        </header>
+
+        <section class="tab-view">
+
+          <!-- TAB 1: CHAT -->
+          <div id="chat-tab" class="tab-content active">
+            <div class="chat-tab-container">
+              <div class="chat-stat-grid">
+                <div class="stat-card">
+                  <div class="stat-card-number">∞</div>
+                  <div class="stat-card-label">Natural Queries</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-number">S3</div>
+                  <div class="stat-card-label">Serverless Storage</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-number">0</div>
+                  <div class="stat-card-label">Spark Nodes Needed</div>
+                </div>
+              </div>
+
+              <div class="chat-messages-box" id="chat-messages"></div>
+
+              <div class="chat-input-bar">
+                <input type="text" id="chat-input-text" class="chat-input-field" placeholder="Ask anything about your Iceberg data lake...">
+                <div class="chat-actions">
+                  <button id="btn-clear-chat" class="btn btn-secondary" title="Clear Chat">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                  <button id="btn-send-message" class="btn btn-primary">
+                    <i class="fa-solid fa-paper-plane"></i> Send
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: LEARN -->
+          <div id="tutorial-tab" class="tab-content">
+            <div class="tutorial-container">
+              <div class="tutorial-intro">
+                <h2>📚 Learn Apache Iceberg — Hands-On</h2>
+                <p>Master Iceberg concepts by doing. Each lesson has a concept explainer and a live query you can run.</p>
+                <div class="badge-row">
+                  <span class="badge badge-green">Beginner Friendly</span>
+                  <span class="badge badge-blue">Hands-on S3 Writes</span>
+                  <span class="badge badge-orange">ACID Transactions</span>
+                  <span class="badge badge-purple">Graph Analytics</span>
+                </div>
+              </div>
+              <div class="lesson-list" id="lessons-wrapper"></div>
+            </div>
+          </div>
+
+          <!-- TAB 3: INGEST -->
+          <div id="ingest-tab" class="tab-content">
+            <div class="ingest-container" style="position: relative;">
+              <!-- Column A -->
+              <div class="ingest-panel">
+                <div class="ingest-panel-header">
+                  <i class="fa-solid fa-file-csv" style="color: var(--color-primary);"></i>
+                  <h3>1️⃣ Upload CSV Dataset</h3>
+                </div>
+
+                <div class="drop-zone" id="drop-zone">
+                  <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
+                  <span class="drop-zone-text">Drag &amp; drop your CSV file here</span>
+                  <span class="drop-zone-sub">or click to browse (Max 50MB)</span>
+                  <input type="file" id="csv-file-input" accept=".csv">
+                </div>
+
+                <div id="upload-status" style="margin-top: 1rem; display: none;"></div>
+
+                <div id="preview-section" class="ingest-preview-container" style="display: none; margin-top: 1.25rem;">
+                  <div class="preview-title">
+                    <span>Data Preview (First 5 Rows)</span>
+                    <span id="preview-row-count" class="badge badge-purple">0 rows</span>
+                  </div>
+                  <div class="preview-table-wrapper">
+                    <table class="preview-table" id="csv-preview-table">
+                      <thead><tr id="preview-thead-tr"></tr></thead>
+                      <tbody id="preview-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="sample-csv-options" style="margin-top: 1.25rem;">
+                  <h4 style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.6rem;">💡 Need sample data?</h4>
+                  <div class="sample-csv-buttons">
+                    <button class="btn btn-secondary btn-sm" id="btn-sample-employees"><i class="fa-solid fa-users"></i> Employees</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-sample-orders"><i class="fa-solid fa-basket-shopping"></i> Orders</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-sample-traffic"><i class="fa-solid fa-chart-line"></i> Web Traffic</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column B -->
+              <div class="ingest-panel">
+                <div class="ingest-panel-header">
+                  <i class="fa-solid fa-gears" style="color: var(--color-primary);"></i>
+                  <h3>2️⃣ Configure Target Schema</h3>
+                </div>
+
+                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1.1rem;">
+                  <div class="form-group">
+                    <label for="ingest-namespace">Namespace (Database)</label>
+                    <input type="text" id="ingest-namespace" class="input-field" placeholder="default">
+                  </div>
+                  <div class="form-group">
+                    <label for="ingest-table-name">Target Table Name</label>
+                    <input type="text" id="ingest-table-name" class="input-field" placeholder="employees_data">
+                  </div>
+                  <div class="preview-title">Detected Columns &amp; Types</div>
+                  <div class="preview-table-wrapper" style="max-height: 240px;">
+                    <table class="schema-config-table">
+                      <thead>
+                        <tr>
+                          <th>Column</th>
+                          <th>Iceberg Type</th>
+                        </tr>
+                      </thead>
+                      <tbody id="schema-config-tbody">
+                        <tr>
+                          <td colspan="2" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Upload a CSV to view schema</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <button id="btn-do-ingest" class="btn btn-primary btn-block" style="margin-top: auto;" disabled>
+                    <i class="fa-solid fa-rocket"></i> Create Table &amp; Ingest Data
+                  </button>
+                </div>
+              </div>
+
+              <div id="ingest-loading-overlay" class="ingest-loading-overlay">
+                <div class="ingest-spinner"></div>
+                <h3 style="color: #fff;" id="ingest-loading-text">Writing files to S3...</h3>
+                <p style="color: var(--text-muted); font-size: 0.83rem;">Creating Iceberg metadata snapshots</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: GRAPH -->
+          <div id="graph-tab" class="tab-content">
+            <div class="graph-container">
+              <div class="chat-stat-grid" id="graph-status-cards">
+                <div class="stat-card">
+                  <div class="stat-card-number" id="graph-stat-nodes">-</div>
+                  <div class="stat-card-label">Nodes in Graph</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-number" id="graph-stat-edges">-</div>
+                  <div class="stat-card-label">Edges in Graph</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-number" id="graph-stat-active">-</div>
+                  <div class="stat-card-label">Active Database</div>
+                </div>
+              </div>
+
+              <div class="cypher-editor-panel">
+                <h3 class="section-title"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
+                <textarea id="cypher-query-input" class="cypher-textarea">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10</textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.79rem; color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-question"></i> Example: <code>MATCH (p:Person) RETURN p.name LIMIT 10</code>
+                  </span>
+                  <button id="btn-execute-cypher" class="btn btn-primary">
+                    <i class="fa-solid fa-play"></i> Execute Query
+                  </button>
+                </div>
+              </div>
+
+              <div class="graph-results-panel">
+                <h3 class="section-title"><i class="fa-solid fa-table-list"></i> Query Output</h3>
+                <div class="graph-results-table-wrapper">
+                  <table class="preview-table" id="graph-results-table">
+                    <thead><tr id="graph-results-thead-tr"></tr></thead>
+                    <tbody id="graph-results-tbody">
+                      <tr><td style="text-align: center; color: var(--text-muted); padding: 2rem;">Run a Cypher query above to see results</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: API HELP -->
+          <div id="api-tab" class="tab-content">
+            <div class="api-help-container">
+              <div class="api-help-header">
+                <h2>⚡ REST API Reference</h2>
+                <p>Complete documentation for the LakeMind backend API. All endpoints are available at your configured backend URL.</p>
+              </div>
+
+              <div class="api-base-url-bar">
+                <span class="label">Base URL</span>
+                <span class="url" id="api-base-url-display">http://localhost:8000</span>
+                <span class="badge badge-green">FastAPI</span>
+                <a href="#" id="api-docs-link" target="_blank" style="color: var(--color-primary); font-size: 0.78rem; text-decoration: none; font-family: var(--font-sans);">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> /docs
+                </a>
+              </div>
+
+              <div class="api-endpoints-list" id="api-endpoints-list">
+                <!-- Injected by main.ts -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 6: LIVE TESTING -->
+          <div id="test-tab" class="tab-content">
+            <div style="max-width: 960px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 1.5rem;">
+              <div style="text-align: center; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle);">
+                <h2 style="font-family: var(--font-sans); font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #A78BFA, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">🧪 Live API Test Suite</h2>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.4rem;">Run smoke tests against your LakeMind backend to verify all endpoints are healthy.</p>
+              </div>
+
+              <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button id="btn-run-all-tests" class="btn btn-primary">
+                  <i class="fa-solid fa-play"></i> Run All Tests
+                </button>
+                <button id="btn-clear-tests" class="btn btn-secondary">
+                  <i class="fa-solid fa-rotate"></i> Reset
+                </button>
+                <div style="flex-grow: 1;"></div>
+                <div id="test-summary" style="font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-mono);"></div>
+              </div>
+
+              <div id="test-results-list" style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <!-- Test rows injected by main.ts -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 7: AUDIT TRAIL -->
+          <div id="audit-tab" class="tab-content">
+            <div class="audit-container">
+              <div class="audit-header">
+                <div>
+                  <h2>📜 Security Audit Trails</h2>
+                  <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">Real-time execution log of all API interactions and data operations.</p>
+                </div>
+                <button id="btn-refresh-audit" class="btn btn-secondary">
+                  <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+              </div>
+              <div class="audit-timeline" id="audit-timeline"></div>
+            </div>
+          </div>
+
+        </section>
+      </main>
+    </div>  <!-- .app-container -->
+
+    <div id="toast-container" class="toast-container"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

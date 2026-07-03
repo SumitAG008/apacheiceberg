@@ -5,7 +5,7 @@ from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tools import (
     create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data,
-    run_generic_graph_analysis
+    run_generic_graph_analysis, sync_iceberg_to_graph_db, query_graph_db_cypher
 )
 
 # Load environment variables
@@ -23,7 +23,9 @@ def create_iceberg_agent():
         create_iceberg_table,
         ingest_csv_to_iceberg,
         query_iceberg_data,
-        run_generic_graph_analysis
+        run_generic_graph_analysis,
+        sync_iceberg_to_graph_db,
+        query_graph_db_cypher
     ]
     
     prompt = ChatPromptTemplate.from_messages([
@@ -39,12 +41,22 @@ def create_iceberg_agent():
         1. Use `query_iceberg_data` to run SQL against the table.
         2. Remember that in `query_iceberg_data`, the table is ALWAYS named 'iceberg_table' in the SQL FROM clause.
         
-        Advanced Graph Use Cases:
-        Instead of specialized tools, you now have a generic `run_generic_graph_analysis` tool.
-        - To answer a graph-related question, first determine the schema of the table.
-        - Identify the source and target node columns to form relationships (edges).
-        - Pass these columns to `run_generic_graph_analysis` along with the appropriate algorithm ('find_cycles' for fraud/layering, 'degree_centrality' for isolation/attrition, 'connected_components' for lineage).
-        - You can optionally pass a pandas query string (like "amount > 9000") to filter the graph.
+        Advanced Graph Use Cases (Local/In-Memory):
+        Instead of specialized tools, you have a generic `run_generic_graph_analysis` tool for on-the-fly network analysis.
+        - To answer a graph-related question using in-memory calculations, identify the source and target columns.
+        - Run `run_generic_graph_analysis` with algorithms like 'find_cycles', 'degree_centrality', or 'connected_components'.
+
+        Persistent Enterprise Graph Database (Apache AGE):
+        You have direct access to a persistent Apache AGE graph database.
+        - To synchronize an Iceberg table into the persistent graph database, use `sync_iceberg_to_graph_db`. You must specify:
+          - namespace and table_name
+          - source_node_col and target_node_col
+          - graph_name (use the table name or namespace as the graph_name)
+          - edge_label (a descriptive relationship string, e.g. 'treated_with', 'buys', 'lineage_to')
+        - To query the persistent graph database, use `query_graph_db_cypher`. You write Cypher query statements directly against the graph_name.
+          - Example Cypher query: MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10
+          - Always specify which graph_name to query.
+          - Make sure Cypher queries specify appropriate RETURN fields (like return properties or node IDs) to yield clean, structured tabular outputs.
         """),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}"),

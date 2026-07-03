@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: apache/age:latest
+    container_name: iceberg_graph_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: graphdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lakemind_web
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - GRAPH_DB_HOST=db
+      - GRAPH_DB_PORT=5432
+      - GRAPH_DB_USER=postgres
+      - GRAPH_DB_PASSWORD=password123
+      - GRAPH_DB_NAME=graphdb
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - S3_WAREHOUSE_URI=${S3_WAREHOUSE_URI}
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+
+volumes:
+  pgdata:

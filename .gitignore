@@ -1,10 +1,18 @@
-# Byte-compiled / optimized / DLL files
+# Copyright (c) 2025 Meldra AI Ltd. All rights reserved.
+
+# ── Python ────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
 
-# Environments
+# ── Environments & Secrets (NEVER COMMIT) ────────────
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -12,11 +20,21 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local data lake / Warehouse
-backend/warehouse/
+# ── Database files ────────────────────────────────────
 *.db
+*.sqlite
+*.sqlite3
+backend/api/audit_logs.db
 
-# OS generated files
+# ── Local data lake / Warehouse ───────────────────────
+backend/warehouse/
+backend/data/uploaded_*
+
+# ── Frontend build ────────────────────────────────────
+frontend/vite-project/dist/
+frontend/vite-project/node_modules/
+
+# ── OS generated files ────────────────────────────────
 .DS_Store
 .DS_Store?
 ._*
@@ -24,3 +42,13 @@ backend/warehouse/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# ── IDE / Editor ─────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────
+*.log
+logs/

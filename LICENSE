@@ -1,0 +1,73 @@
+PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2025 Meldra AI Ltd. All rights reserved.
+
+NOTICE TO ALL USERS: This software and its source code, including all associated
+documentation, algorithms, data models, API designs, user interfaces, and related
+intellectual property (collectively, the "Software"), are the exclusive proprietary
+and confidential property of Meldra AI Ltd.
+
+================================================================================
+                     ALL RIGHTS RESERVED — UNAUTHORISED USE PROHIBITED
+================================================================================
+
+1. GRANT OF RIGHTS
+   No rights are granted to any person or entity by this notice. The Software
+   may only be used, copied, modified, merged, published, distributed, sublicensed,
+   or sold with the express prior written permission of Meldra AI Ltd.
+
+2. RESTRICTIONS
+   Without limiting the foregoing, you may NOT:
+   a) Copy, reproduce, or duplicate the Software or any portion thereof;
+   b) Modify, adapt, translate, or create derivative works based upon the Software;
+   c) Reverse engineer, disassemble, decompile, or otherwise attempt to derive
+      the source code of any compiled portion of the Software;
+   d) Rent, lease, loan, sell, sublicense, or transfer the Software or any
+      rights therein to any third party;
+   e) Remove or alter any proprietary notices, labels, or marks on the Software;
+   f) Use the Software to build a competing product or service;
+   g) Deploy, host, or operate the Software for the benefit of any third party
+      without explicit written authorisation from Meldra AI Ltd.
+
+3. CONFIDENTIALITY
+   The Software constitutes confidential information of Meldra AI Ltd. You agree
+   to maintain the Software in strict confidence using at least the same degree
+   of care as you use to protect your own confidential information (but no less
+   than reasonable care), and not to disclose the Software to any third party
+   without the prior written consent of Meldra AI Ltd.
+
+4. INTELLECTUAL PROPERTY
+   All title, ownership rights, and intellectual property rights in and to the
+   Software shall remain exclusively with Meldra AI Ltd. This includes, without
+   limitation, all patents, copyrights, trade secrets, trademarks, and other
+   intellectual property rights.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED. MELDRA AI LTD DISCLAIMS ALL WARRANTIES, INCLUDING WITHOUT LIMITATION
+   ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+   AND NON-INFRINGEMENT.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL MELDRA AI LTD BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION
+   WITH THE SOFTWARE OR THIS LICENSE.
+
+7. TERMINATION
+   This License is effective until terminated. It will terminate automatically
+   if you fail to comply with any term or condition of this License. Upon
+   termination, you must destroy all copies of the Software in your possession.
+
+8. GOVERNING LAW
+   This License shall be governed by and construed in accordance with the laws
+   of England and Wales, without regard to its conflict of law provisions.
+
+9. CONTACT
+   For licensing inquiries, permissions, or other matters:
+   Meldra AI Ltd.
+   Email: legal@meldra-lakeshouse.ai
+   Website: https://meldra-lakeshouse.ai
+
+================================================================================
+           UNAUTHORISED COPYING OF THIS FILE IS STRICTLY PROHIBITED
+================================================================================

@@ -17,6 +17,7 @@ from pyiceberg.types import (
 )
 from catalog_setup import get_catalog, create_namespace_if_not_exists
 from langchain.tools import tool
+from graph_db import sync_dataframe_to_age, execute_cypher_query
 
 def get_pyiceberg_type(type_str: str):
     type_str = type_str.lower()
@@ -225,3 +226,54 @@ def run_generic_graph_analysis(namespace: str, table_name: str, source_node_col:
         return result_str
     except Exception as e:
         return f"Error in graph analysis: {str(e)}"
+
+@tool
+def sync_iceberg_to_graph_db(namespace: str, table_name: str, source_node_col: str, target_node_col: str, graph_name: str, edge_label: Optional[str] = "related_to") -> str:
+    """
+    Synchronizes records from an Iceberg table into a persistent Apache AGE graph.
+    
+    Args:
+        namespace: The namespace of the Iceberg table.
+        table_name: The name of the Iceberg table.
+        source_node_col: The Iceberg column name representing the source node of relationships.
+        target_node_col: The Iceberg column name representing the target node of relationships.
+        graph_name: The name of the Apache AGE graph to write to.
+        edge_label: Optional label for the relationship (default: 'related_to').
+    """
+    try:
+        catalog = get_catalog()
+        identifier = (namespace, table_name)
+        table = catalog.load_table(identifier)
+        df = table.scan().to_arrow().to_pandas()
+        
+        if df.empty:
+            return "No data in the Iceberg table to synchronize."
+            
+        if source_node_col not in df.columns or target_node_col not in df.columns:
+            return f"Error: Columns {source_node_col} and/or {target_node_col} do not exist in the table."
+            
+        # Call graph_db helper to sync dataframe to AGE
+        result_message = sync_dataframe_to_age(graph_name, df, source_node_col, target_node_col, edge_label)
+        return result_message
+    except Exception as e:
+        return f"Error executing sync: {str(e)}"
+
+@tool
+def query_graph_db_cypher(graph_name: str, cypher_query: str) -> str:
+    """
+    Executes a Cypher query against a persistent Apache AGE graph database and returns tabular results.
+    
+    Note: Do not wrap the query in SQL; pass the pure Cypher statement.
+    Example: "MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10"
+    
+    Args:
+        graph_name: The name of the graph to query.
+        cypher_query: The pure Cypher query to execute.
+    """
+    try:
+        df = execute_cypher_query(graph_name, cypher_query)
+        if df.empty:
+            return "Query executed successfully, but returned 0 results."
+        return df.to_string()
+    except Exception as e:
+        return f"Error executing Cypher query: {str(e)}"
