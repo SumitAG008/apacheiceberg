@@ -26,11 +26,11 @@ def _get_conn():
     if db_url:
         return psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
     return psycopg2.connect(
-        host=os.environ.get("GRAPH_DB_HOST", "localhost"),
-        port=int(os.environ.get("GRAPH_DB_PORT", 5432)),
-        user=os.environ.get("GRAPH_DB_USER", "postgres"),
-        password=os.environ.get("GRAPH_DB_PASSWORD", ""),
-        dbname=os.environ.get("GRAPH_DB_NAME", "graphdb"),
+        host=os.environ.get("GRAPH_DB_HOST") or "localhost",
+        port=int(os.environ.get("GRAPH_DB_PORT") or 5432),
+        user=os.environ.get("GRAPH_DB_USER") or "postgres",
+        password=os.environ.get("GRAPH_DB_PASSWORD") or "",
+        dbname=os.environ.get("GRAPH_DB_NAME") or "graphdb",
         cursor_factory=psycopg2.extras.RealDictCursor,
     )
 
