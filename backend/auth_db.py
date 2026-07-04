@@ -13,16 +13,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import bcrypt
-# Passlib bcrypt version parsing monkeypatch
-try:
-    if not hasattr(bcrypt, "__about__"):
-        bcrypt.__about__ = type('About', (object,), {'__version__': bcrypt.__version__})
-except Exception:
-    pass
-
 import psycopg2
 import psycopg2.extras
-from passlib.context import CryptContext
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -41,15 +33,20 @@ def _get_conn():
     )
 
 # ─────────────────────────────────────────
-# PASSWORD HASHING
+# PASSWORD HASHING (Direct bcrypt implementation)
 # ─────────────────────────────────────────
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def hash_password(plain: str) -> str:
-    return _pwd_ctx.hash(plain)
+    password_bytes = plain.encode('utf-8')
+    hashed_bytes = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed_bytes.decode('utf-8')
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_ctx.verify(plain, hashed)
+    try:
+        password_bytes = plain.encode('utf-8')
+        hashed_bytes = hashed.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 # ─────────────────────────────────────────
 # SCHEMA INIT
