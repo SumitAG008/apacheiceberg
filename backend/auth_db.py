@@ -12,6 +12,13 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import bcrypt
+# Passlib bcrypt version parsing monkeypatch
+try:
+    if not hasattr(bcrypt, "__about__"):
+        bcrypt.__about__ = type('About', (object,), {'__version__': bcrypt.__version__})
+except Exception:
+    pass
 
 import psycopg2
 import psycopg2.extras
