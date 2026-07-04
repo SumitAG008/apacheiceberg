@@ -223,13 +223,31 @@ def get_current_user(request: Request) -> Dict[str, Any]:
 # ─────────────────────────────────────────
 
 @app.post("/auth/register", tags=["Auth"])
-async def register(payload: RegisterRequest):
+async def register(payload: RegisterRequest, request: Request):
     """Step 1 of registration: create account + send email OTP."""
+    # Extract client IP address
+    reg_ip = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip")
+    if reg_ip:
+        reg_ip = reg_ip.split(",")[0].strip()
+    else:
+        reg_ip = request.client.host if request.client else "127.0.0.1"
+        
+    # Extract country geography
+    reg_country = (
+        request.headers.get("cf-ipcountry") or 
+        request.headers.get("x-vercel-ip-country") or 
+        request.headers.get("x-country-code") or 
+        "Unknown"
+    )
+
     try:
         user = create_user(
             email=payload.email,
             password=payload.password,
             mfa_method=payload.mfa_method,
+            tier="trial",
+            reg_ip=reg_ip,
+            reg_country=reg_country,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -244,7 +262,7 @@ async def register(payload: RegisterRequest):
         raise HTTPException(status_code=500, detail=f"Failed to send verification email: {e}")
 
     temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
-    log_audit(str(user["id"]), "free", "register", f"New registration for {payload.email}", "success")
+    log_audit(str(user["id"]), user["tier"], "register", f"New registration for {payload.email}", "success")
 
     return {
         "message": f"Verification code sent to {payload.email}. Enter it to complete registration.",
@@ -271,7 +289,7 @@ async def login(payload: LoginRequest):
         raise HTTPException(status_code=500, detail=f"Failed to send OTP: {e}")
 
     temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
-    log_audit(str(user["id"]), "free", "login_attempt", f"OTP sent to {payload.email}", "success")
+    log_audit(str(user["id"]), user["tier"], "login_attempt", f"OTP sent to {payload.email}", "success")
 
     return {
         "message": f"Verification code sent to {payload.email}.",
@@ -293,7 +311,7 @@ async def verify_mfa(payload: VerifyMFARequest):
     try:
         verify_mfa_token(user_id, payload.code.strip(), purpose=purpose)
     except ValueError as e:
-        log_audit(user_id, "free", "mfa_verify", f"Failed OTP: {e}", "error")
+        log_audit(user_id, user["tier"], "mfa_verify", f"Failed OTP: {e}", "error")
         raise HTTPException(status_code=401, detail=str(e))
 
     # Mark verified on first login
@@ -302,15 +320,17 @@ async def verify_mfa(payload: VerifyMFARequest):
     else:
         update_last_login(user_id)
 
-    # Issue tokens
+    # Issue tokens using user's database tier
     access_token = _create_access_token({
         "sub": user_id,
         "email": user["email"],
-        "tier": "free",
+        "tier": user["tier"],
     })
     refresh_token = create_session(user_id)
 
-    log_audit(user_id, "free", "mfa_verify", f"MFA verified for {user['email']}", "success")
+    log_audit(user_id, user["tier"], "mfa_verify", f"MFA verified for {user['email']}", "success")
+
+    expires_str = user["expires_at"].isoformat() if user.get("expires_at") else None
 
     return TokenResponse(
         access_token=access_token,
@@ -320,6 +340,11 @@ async def verify_mfa(payload: VerifyMFARequest):
             "email": user["email"],
             "mfa_method": user["mfa_method"],
             "is_verified": True,
+            "tier": user["tier"],
+            "expires_at": expires_str,
+            "reg_ip": user.get("reg_ip"),
+            "reg_country": user.get("reg_country"),
+            "subscription_status": user["subscription_status"],
         },
     )
 
@@ -403,7 +428,7 @@ async def chat_endpoint(payload: ChatRequest, user: Dict[str, Any] = Depends(get
     if create_iceberg_agent is None:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="chat_agent",
             details=f"Prompt: {payload.prompt} | Error: Agent runtime not available",
             status="error"
@@ -430,7 +455,7 @@ async def chat_endpoint(payload: ChatRequest, user: Dict[str, Any] = Depends(get
         
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="chat_agent",
             details=f"Prompt: {payload.prompt}",
             status="success"
@@ -438,7 +463,7 @@ async def chat_endpoint(payload: ChatRequest, user: Dict[str, Any] = Depends(get
     except Exception as err:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="chat_agent",
             details=f"Prompt: {payload.prompt} | Error: {err}",
             status="error"
@@ -490,7 +515,7 @@ async def upload_csv_endpoint(
         
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="upload_csv",
             details=f"Uploaded {file.filename} ({len(df)} rows)",
             status="success"
@@ -506,7 +531,7 @@ async def upload_csv_endpoint(
     except Exception as e:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="upload_csv",
             details=f"Failed upload for {file.filename}: {e}",
             status="error"
@@ -546,7 +571,7 @@ async def ingest_endpoint(
             
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="ingest_data",
             details=f"Ingested table {payload.namespace}.{payload.table_name} ({payload.file_path})",
             status="success"
@@ -557,7 +582,7 @@ async def ingest_endpoint(
     except Exception as e:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="ingest_data",
             details=f"Failed ingestion for {payload.namespace}.{payload.table_name}: {e}",
             status="error"
@@ -590,7 +615,7 @@ async def update_aws_config(
         
     log_audit(
         user_id=user.get("sub", "unknown"),
-        tier=user.get("custom:tenant_tier", "free"),
+        tier=user.get("tier", "trial"),
         action="update_aws_config",
         details=f"AWS config updated: region={payload.region}, warehouse={payload.s3_warehouse_uri}",
         status="success"
@@ -608,7 +633,7 @@ async def get_graph_stats_endpoint(
     if "error" in stats:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="get_graph_stats",
             details=f"Failed to fetch graph stats: {stats['error']}",
             status="error"
@@ -629,7 +654,7 @@ async def run_cypher_endpoint(
         
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="query_cypher",
             details=f"Graph: {payload.graph_name} | Query: {payload.query}",
             status="success"
@@ -650,7 +675,7 @@ async def run_cypher_endpoint(
     except Exception as e:
         log_audit(
             user_id=user.get("sub", "unknown"),
-            tier=user.get("custom:tenant_tier", "free"),
+            tier=user.get("tier", "trial"),
             action="query_cypher",
             details=f"Failed Cypher on {payload.graph_name}: {e}",
             status="error"

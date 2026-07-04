@@ -65,9 +65,21 @@ def init_auth_schema():
                 is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
                 is_active       BOOLEAN NOT NULL DEFAULT TRUE,
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                last_login_at   TIMESTAMPTZ
+                last_login_at   TIMESTAMPTZ,
+                tier            TEXT NOT NULL DEFAULT 'trial',  -- 'trial' | 'sole_user' | 'single_user' | 'enterprise'
+                expires_at      TIMESTAMPTZ,                   -- Expiration timestamp for trial accounts
+                reg_ip          TEXT,                          -- Registration IP address
+                reg_country     TEXT,                          -- Registration Geography / Country
+                subscription_status TEXT NOT NULL DEFAULT 'active' -- 'active' | 'expired' | 'canceled'
             );
         """)
+
+        # Run database migrations for existing tables in Neon automatically
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'trial';")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS reg_ip TEXT;")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS reg_country TEXT;")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active';")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS auth.mfa_tokens (
@@ -113,7 +125,7 @@ def init_auth_schema():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON auth.audit_logs(timestamp DESC);")
 
         conn.commit()
-        print("[auth_db] Auth schema initialised successfully.")
+        print("[auth_db] Auth schema initialised successfully with geo, membership and expiration parameters.")
     except Exception as e:
         conn.rollback()
         print(f"[auth_db] Schema init error: {e}")
@@ -125,18 +137,32 @@ def init_auth_schema():
 # ─────────────────────────────────────────
 # USER OPERATIONS
 # ─────────────────────────────────────────
-def create_user(email: str, password: str, mfa_method: str = "email", phone: Optional[str] = None) -> Dict[str, Any]:
+def create_user(
+    email: str, 
+    password: str, 
+    mfa_method: str = "email", 
+    phone: Optional[str] = None,
+    tier: str = "trial",
+    reg_ip: Optional[str] = None,
+    reg_country: Optional[str] = None
+) -> Dict[str, Any]:
     conn = _get_conn()
     try:
         cur = conn.cursor()
         pwd_hash = hash_password(password)
+        
+        # Calculate 30-day expiration for trial memberships
+        expires_at = None
+        if tier == "trial":
+            expires_at = datetime.utcnow() + timedelta(days=30)
+            
         cur.execute(
             """
-            INSERT INTO auth.users (email, password_hash, mfa_method, phone)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id, email, mfa_method, phone, is_verified, created_at
+            INSERT INTO auth.users (email, password_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, email, mfa_method, phone, is_verified, created_at, tier, expires_at, reg_ip, reg_country, subscription_status
             """,
-            (email.lower().strip(), pwd_hash, mfa_method, phone),
+            (email.lower().strip(), pwd_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country),
         )
         user = dict(cur.fetchone())
         conn.commit()
