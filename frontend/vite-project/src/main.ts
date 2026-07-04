@@ -10,7 +10,7 @@
  */
 import './style.css';
 import { api, tokenStore } from './api';
-import type { ChatMessage, AWSConfig, CSVUploadResponse } from './api';
+import type { ChatMessage, CSVUploadResponse } from './api';
 
 
 // ─────────────────────────────────────────
@@ -57,10 +57,8 @@ const btnClearChat = document.getElementById('btn-clear-chat') as HTMLButtonElem
 // Ingest DOM
 const dropZone = document.getElementById('drop-zone') as HTMLDivElement;
 const csvFileInput = document.getElementById('csv-file-input') as HTMLInputElement;
-const uploadStatus = document.getElementById('upload-status') as HTMLDivElement;
 const previewSection = document.getElementById('preview-section') as HTMLDivElement;
 const previewRowCount = document.getElementById('preview-row-count') as HTMLSpanElement;
-const csvPreviewTable = document.getElementById('csv-preview-table') as HTMLTableElement;
 const previewTheadTr = document.getElementById('preview-thead-tr') as HTMLTableRowElement;
 const previewTbody = document.getElementById('preview-tbody') as HTMLTableSectionElement;
 const schemaConfigTbody = document.getElementById('schema-config-tbody') as HTMLTableSectionElement;
@@ -81,7 +79,6 @@ const graphStatEdges = document.getElementById('graph-stat-edges') as HTMLDivEle
 const graphStatActive = document.getElementById('graph-stat-active') as HTMLDivElement;
 const cypherQueryInput = document.getElementById('cypher-query-input') as HTMLTextAreaElement;
 const btnExecuteCypher = document.getElementById('btn-execute-cypher') as HTMLButtonElement;
-const graphResultsTable = document.getElementById('graph-results-table') as HTMLTableElement;
 const graphResultsTheadTr = document.getElementById('graph-results-thead-tr') as HTMLTableRowElement;
 const graphResultsTbody = document.getElementById('graph-results-tbody') as HTMLTableSectionElement;
 
@@ -142,6 +139,28 @@ tabButtons.forEach(button => {
     } else if (targetTab === 'audit-tab') {
       loadAuditLogs();
     }
+  });
+});
+
+// ─────────────────────────────────────────
+// BLOG ARTICLE SWITCHING (Architecture Tab)
+// ─────────────────────────────────────────
+const blogItems = document.querySelectorAll('.blog-nav-item');
+const blogArticles = document.querySelectorAll('.blog-article-content');
+
+blogItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const targetArticle = item.getAttribute('data-article');
+    if (!targetArticle) return;
+
+    // Update active nav items
+    blogItems.forEach(btn => btn.classList.remove('active'));
+    item.classList.add('active');
+
+    // Update active article content
+    blogArticles.forEach(art => art.classList.remove('active'));
+    const activeArt = document.getElementById(`art-${targetArticle}`);
+    if (activeArt) activeArt.classList.add('active');
   });
 });
 
@@ -258,6 +277,10 @@ function parseMarkdown(text: string): string {
 async function loadAWSConfig() {
   try {
     const config = await api.getAWSConfig();
+    const wsS3 = document.getElementById('workspace-s3-display');
+    const wsRegion = document.getElementById('workspace-region-display');
+    const wsStatus = document.getElementById('workspace-status-badge');
+
     if (config.s3_warehouse_uri) {
       awsRegionInput.value = config.region;
       awsS3UriInput.value = config.s3_warehouse_uri;
@@ -275,15 +298,39 @@ async function loadAWSConfig() {
       
       // Pre-fill target namespace default in ingestion tab
       ingestNamespace.value = 'default';
+
+      // Update Workspace Details Panel
+      if (wsS3) wsS3.textContent = config.s3_warehouse_uri;
+      if (wsRegion) wsRegion.textContent = config.region;
+      if (wsStatus) {
+        wsStatus.textContent = 'CONNECTED';
+        wsStatus.className = 'badge badge-green';
+      }
     } else {
       customAwsToggle.checked = false;
       awsConfigForm.style.display = 'none';
       awsDemoInfo.style.display = 'block';
+
+      // Update Workspace Details Panel for Demo mode
+      if (wsS3) wsS3.textContent = 'Local sandbox (SQLite fallback)';
+      if (wsRegion) wsRegion.textContent = 'local';
+      if (wsStatus) {
+        wsStatus.textContent = 'DEMO MODE';
+        wsStatus.className = 'badge badge-blue';
+      }
     }
   } catch (error) {
     console.error('Failed to load AWS configuration:', error);
   }
 }
+
+// Bind scrolling click handlers for integration guides
+document.getElementById('btn-goto-databricks')?.addEventListener('click', () => {
+  document.getElementById('guide-databricks')?.scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('btn-goto-snowflake')?.addEventListener('click', () => {
+  document.getElementById('guide-snowflake')?.scrollIntoView({ behavior: 'smooth' });
+});
 
 customAwsToggle.addEventListener('change', () => {
   if (customAwsToggle.checked) {
@@ -345,7 +392,7 @@ function appendMessageBubble(role: 'user' | 'assistant', contentHtml: string, is
       <i class="fa-solid ${avatarIcon}"></i>
     </div>
     <div class="message-content-wrapper">
-      <div class="message-sender">${role === 'user' ? 'You' : 'LakeMind AI'}</div>
+      <div class="message-sender">${role === 'user' ? 'You' : 'meldra.ai assistant'}</div>
       <div class="message-text">${contentHtml}</div>
     </div>
   `;
@@ -359,7 +406,7 @@ function initChat() {
   state.chatHistory = [];
   
   const welcomeText = `
-    <p>👋 Welcome to <strong>LakeMind</strong> — the serverless S3 Iceberg platform for startup data teams!</p>
+    <p>👋 Welcome to <strong>meldra.ai</strong> — the serverless S3 Iceberg platform for startup data teams!</p>
     <p>I can help you:</p>
     <ul>
       <li>🗂 <strong>Create Iceberg tables</strong> with custom schemas directly on your S3 bucket</li>
@@ -472,71 +519,47 @@ interface Lesson {
 const lessonsList: Lesson[] = [
   {
     num: "01",
-    title: "What is Apache Iceberg?",
-    icon: "fa-snowflake",
+    title: "Ingesting SAP ERP Financial Ledgers",
+    icon: "fa-file-invoice-dollar",
     level: "Beginner",
     concept: `
-      <p>Apache Iceberg is a high-performance open table format for massive analytical datasets. It acts as a transactional interface on top of object stores like Amazon S3, Azure ADLS, or Google Cloud Storage.</p>
-      <p><strong>Why do we need it?</strong> Traditional object-based file structures (like directories of Parquet/CSV files) lack transaction support, schema history, and isolation. Iceberg brings ACID properties to files in S3.</p>
-      <ul>
-        <li><strong>Metadata files:</strong> JSON schemas tracking table states and snapshots.</li>
-        <li><strong>Manifest lists:</strong> Log sheets tracking data files in each commit.</li>
-        <li><strong>Data files:</strong> Raw storage files containing information (e.g. Parquet).</li>
-      </ul>
+      <p>Enterprise ERP databases (like SAP or Oracle) generate massive tables such as <strong>BSEG</strong> (Accounting Document Segment) and <strong>BKPF</strong> (Accounting Document Header).</p>
+      <p>meldra.ai allows data teams to ingest these legacy relational tables directly into partitioned, high-performance S3 Apache Iceberg formats. This bypasses expensive continuous Spark clusters while retaining transactional consistency (ACID).</p>
     `,
-    tryPrompt: "List all schemas and tables in my default namespace"
+    tryPrompt: "Show the first 5 records of the financial ledger table default.sap_bseg"
   },
   {
     num: "02",
-    title: "Creating Your First Iceberg Table",
-    icon: "fa-table",
-    level: "Beginner",
+    title: "General Ledger Transaction Path Reconciliation",
+    icon: "fa-scale-balanced",
+    level: "Intermediate",
     concept: `
-      <p>Creating an Iceberg table defines its columns and types, registering the definition inside AWS Glue/REST Catalogs. Physical storage files are written into S3.</p>
-      <p><strong>Supported data types:</strong> <code>string</code>, <code>integer</code>, <code>float</code>, <code>double</code>, <code>boolean</code>, <code>date</code>, <code>timestamp</code>.</p>
+      <p>Reconciling entries across multiple accounts is a classic enterprise accounting challenge. meldra.ai syncs Iceberg ledger transactions directly into your relational graph layer.</p>
+      <p>By mapping accounts to graph nodes and transaction flows to edges, you can run path-finding queries to detect double-entry mismatches, circular payment loops, or audit anomalies instantly.</p>
     `,
-    tryPrompt: "Create a table called customers in namespace default with columns: customer_id (integer), name (string), email (string), signup_date (string)"
+    tryPrompt: "Find all transaction loop paths in the default.sap_bseg table"
   },
   {
     num: "03",
-    title: "Ingesting Data into Your Lake",
-    icon: "fa-cloud-arrow-down",
+    title: "Supply Chain & Order-to-Cash Lineage",
+    icon: "fa-truck-ramp-box",
     level: "Intermediate",
     concept: `
-      <p>Iceberg structures ingestion into atomic commits. When appending rows, Iceberg writes new Parquet data, creates a manifest files snapshot, and points the catalog to the new metadata location.</p>
-      <p>To try ingestion visually, use the <strong>Ingest</strong> tab on the header to drag-and-drop your local files.</p>
+      <p>Tracking purchase orders, inventory movements, shipping logs, and customer invoicing is notoriously difficult across fragmented ERP systems.</p>
+      <p>Using meldra.ai's unified S3 Iceberg datasets, you can query supply chain snapshots across historical times, mapping ordering status straight to delivery times to find inventory bottlenecks.</p>
     `,
-    tryPrompt: "Show the structure and columns of the customers table"
+    tryPrompt: "Track supply chain order lifecycle paths for order id 8502"
   },
   {
     num: "04",
-    title: "Querying Your Data Lake with SQL",
-    icon: "fa-magnifying-glass",
-    level: "Intermediate",
-    concept: `
-      <p>The backend integrates <strong>DuckDB</strong>, a fast analytical engine that fetches Iceberg data directly from S3 using intelligent filters (predicate pushdown), skipping unnecessary columns/files.</p>
-    `,
-    tryPrompt: "Show me the first 5 records of the customers table"
-  },
-  {
-    num: "05",
-    title: "Schema Evolution — Safe & Instant",
-    icon: "fa-arrows-spin",
+    title: "Schema Evolution in Enterprise ERP Data Lakes",
+    icon: "fa-sliders",
     level: "Advanced",
     concept: `
-      <p>Iceberg supports schema evolution as <strong>metadata-only changes</strong>. Adding, renaming, dropping, or reordering columns does not require rewriting any data files, unlike classic Hive structures.</p>
+      <p>Legacy ERP configurations frequently undergo database migrations (e.g. adding columns for tax changes, reordering fields, or modifying segment codes).</p>
+      <p>meldra.ai leverages Apache Iceberg's metadata-driven architecture to perform schema modifications (Add, Drop, Rename) as instant zero-copy metadata updates. Older Parquet data is read dynamically without requiring costly table migrations.</p>
     `,
-    tryPrompt: "Add a column phone_number (string) to customers"
-  },
-  {
-    num: "06",
-    title: "Time Travel — Recovering Snapshots",
-    icon: "fa-clock-rotate-left",
-    level: "Advanced",
-    concept: `
-      <p>Each transaction creates a new historical snapshot. Users can query tables as they looked at specific times, helping troubleshoot data corruption or rollback audits.</p>
-    `,
-    tryPrompt: "Show the snapshot history for the table customers"
+    tryPrompt: "Show schema history and table evolution stats for default.sap_bseg"
   }
 ];
 
@@ -1436,6 +1459,306 @@ function resetTests() {
   });
 }
 
+// ── MCP GATEWAY PLAYGROUND ──────────────────────────────────────────────
+interface MCPToolDef {
+  name: string;
+  description: string;
+  sampleArgs: Record<string, any>;
+}
+
+interface MCPServerDef {
+  name: string;
+  description: string;
+  tools: MCPToolDef[];
+}
+
+const MCP_REGISTRY: MCPServerDef[] = [
+  {
+    name: "Iceberg Catalog MCP Server",
+    description: "Interact with the Apache Iceberg Glue Catalog to list, create, and query data tables.",
+    tools: [
+      {
+        name: "list_iceberg_tables",
+        description: "List all Iceberg tables in a namespace from the Glue Catalog",
+        sampleArgs: { "namespace": "default" }
+      },
+      {
+        name: "create_iceberg_table",
+        description: "Create a new Apache Iceberg table on S3 with a given schema",
+        sampleArgs: {
+          "namespace": "default",
+          "table_name": "sap_bseg",
+          "schema_json": [
+            { "name": "MANDT", "type": "string" },
+            { "name": "BUKRS", "type": "string" },
+            { "name": "BELNR", "type": "string" },
+            { "name": "GJAHR", "type": "long" },
+            { "name": "BUZEI", "type": "string" },
+            { "name": "DMBTR", "type": "double" }
+          ]
+        }
+      },
+      {
+        name: "query_iceberg_data",
+        description: "Run a SQL SELECT query on an existing Iceberg table via DuckDB",
+        sampleArgs: {
+          "namespace": "default",
+          "table_name": "sap_bseg",
+          "sql_query": "SELECT * FROM iceberg_table WHERE DMBTR > 10000 LIMIT 5"
+        }
+      },
+      {
+        name: "ingest_csv_to_iceberg",
+        description: "Parse and ingest a CSV file into an Iceberg table on S3",
+        sampleArgs: {
+          "csv_path": "c:/Users/sumit/Documents/icebergAgent/sample_data.csv",
+          "namespace": "default",
+          "table_name": "sap_bseg"
+        }
+      }
+    ]
+  },
+  {
+    name: "SAP BAPI & RFC MCP Agent",
+    description: "RFC gateway mapping natural language parameters to secure SAP BAPIs on host SAP-ECC-PRD.",
+    tools: [
+      {
+        name: "approve_purchase_requisition",
+        description: "Release a SAP Purchase Requisition (PR) for procurement approval",
+        sampleArgs: { "pr_number": "4500012345", "release_code": "A1" }
+      },
+      {
+        name: "release_billing_block",
+        description: "Remove a billing block from a SAP sales order",
+        sampleArgs: { "sales_order": "1000293", "billing_block": "01" }
+      },
+      {
+        name: "update_vendor_payment_term",
+        description: "Update the payment term for a SAP vendor in FI-AP",
+        sampleArgs: { "vendor_id": "V10001", "payment_term": "NT30", "company_code": "1000" }
+      }
+    ]
+  },
+  {
+    name: "Snowflake Zero-Copy MCP",
+    description: "Zero-copy data lakehouse connectivity tool facilitating warehouse analytics.",
+    tools: [
+      {
+        name: "revenue_trend_by_period",
+        description: "Get monthly revenue totals grouped by cost centre",
+        sampleArgs: { "period_from": "2026-01", "period_to": "2026-06", "cost_centre": "CC-100" }
+      },
+      {
+        name: "variance_analysis",
+        description: "Compare actual vs planned spend for a department",
+        sampleArgs: { "department_id": "DEP-100", "fiscal_year": 2026 }
+      },
+      {
+        name: "top_vendors_by_spend",
+        description: "Rank vendors by total AP invoice spend in a fiscal period",
+        sampleArgs: { "top_n": 5, "fiscal_quarter": "Q2-2026" }
+      }
+    ]
+  },
+  {
+    name: "Real-Time Audit Trail MCP",
+    description: "Automated SOX/SOC2 audit logger that signs and stores immutable audit entries on S3.",
+    tools: [
+      {
+        name: "log_audit_event",
+        description: "Log an append-only audit event directly into the S3 compliance ledger",
+        sampleArgs: { "action": "DATA_ACCESS", "user": "finance-analyst@company.com", "details": "Read table default.sap_bseg" }
+      }
+    ]
+  },
+  {
+    name: "Autonomous Procurement MCP",
+    description: "Triggers procurement lifecycle loops in response to safety stock breaches.",
+    tools: [
+      {
+        name: "trigger_procurement_flow",
+        description: "Trigger the autonomous procurement flow for an under-stocked material",
+        sampleArgs: { "sku": "PCB-44A", "trigger_reason": "SAFETY_BREACH" }
+      }
+    ]
+  },
+  {
+    name: "Zero-Trust IAM Provisioning MCP",
+    description: "Automated employee onboarding/offboarding workflow mediating Okta, AD, and AWS.",
+    tools: [
+      {
+        name: "sync_employee_termination",
+        description: "Trigger instant zero-trust revocation of credentials for a terminated employee",
+        sampleArgs: { "employee_id": "EMP-9023", "email": "johndoe@company.com" }
+      }
+    ]
+  },
+  {
+    name: "Fraud Ring Detection MCP",
+    description: "AGE Graph database recursive Cypher loop traversal for anti-collusion protection.",
+    tools: [
+      {
+        name: "detect_payment_rings",
+        description: "Detect circular payment rings above a transaction velocity threshold",
+        sampleArgs: { "min_hops": 3, "max_hops": 8, "threshold_usd": 10000.00 }
+      }
+    ]
+  },
+  {
+    name: "Multi-Agent A2A Orchestration",
+    description: "Month-end closing mediator orchestrating complex sub-agent task dependencies.",
+    tools: [
+      {
+        name: "run_month_end_close",
+        description: "Execute the autonomous multi-agent month-end financial close orchestration chain",
+        sampleArgs: { "fiscal_period": "2026-06", "reconciliation_mode": "strict" }
+      }
+    ]
+  }
+];
+
+function buildMcpTab() {
+  const sidebarContainer = document.querySelector('.mcp-server-list') as HTMLDivElement;
+  const nameEl = document.getElementById('mcp-selected-server-name') as HTMLElement;
+  const descEl = document.getElementById('mcp-selected-server-desc') as HTMLElement;
+  const selectEl = document.getElementById('mcp-tool-select') as HTMLSelectElement;
+  const toolDescEl = document.getElementById('mcp-tool-desc') as HTMLElement;
+  const argsEl = document.getElementById('mcp-tool-arguments') as HTMLTextAreaElement;
+  const btnExecute = document.getElementById('btn-execute-mcp-tool') as HTMLButtonElement;
+  const durationBadge = document.getElementById('mcp-duration-badge') as HTMLElement;
+  const consoleEl = document.getElementById('mcp-execution-logs') as HTMLElement;
+  const resultEl = document.getElementById('mcp-execution-result') as HTMLElement;
+
+  if (!sidebarContainer || !nameEl || !descEl || !selectEl || !toolDescEl || !argsEl || !btnExecute || !durationBadge || !consoleEl || !resultEl) {
+    console.warn("MCP Gateway elements not fully loaded in DOM.");
+    return;
+  }
+
+  let selectedServerIdx = 0;
+
+  // Render Sidebar Items
+  sidebarContainer.innerHTML = '';
+  MCP_REGISTRY.forEach((srv, srvIdx) => {
+    const item = document.createElement('div');
+    item.className = `mcp-server-item blog-nav-item ${srvIdx === 0 ? 'active' : ''}`;
+    item.setAttribute('data-server', srv.name);
+    item.setAttribute('data-desc', srv.description);
+    
+    item.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+        <span class="blog-nav-domain" style="color: var(--color-primary); margin: 0; font-size: 0.65rem;">Port ${8001 + srvIdx}</span>
+        <span class="status-dot online" style="margin-left: auto;"></span>
+      </div>
+      <h4>${srv.name.split(' MCP')[0]}</h4>
+      <span>${srv.tools.length} active tools</span>
+    `;
+
+    item.addEventListener('click', () => {
+      // Toggle active states
+      sidebarContainer.querySelectorAll('.mcp-server-item').forEach(el => {
+        el.classList.remove('active');
+      });
+      item.classList.add('active');
+
+      selectedServerIdx = srvIdx;
+      updateServerPanel();
+    });
+
+    sidebarContainer.appendChild(item);
+  });
+
+  function updateServerPanel() {
+    const srv = MCP_REGISTRY[selectedServerIdx];
+    nameEl.textContent = srv.name;
+    descEl.textContent = srv.description;
+
+    // Populate tools dropdown
+    selectEl.innerHTML = '';
+    srv.tools.forEach((t, tIdx) => {
+      const opt = document.createElement('option');
+      opt.value = String(tIdx);
+      opt.textContent = t.name;
+      selectEl.appendChild(opt);
+    });
+
+    updateToolFields();
+  }
+
+  function updateToolFields() {
+    const srv = MCP_REGISTRY[selectedServerIdx];
+    const toolIdx = Number(selectEl.value);
+    const tool = srv.tools[toolIdx];
+    if (!tool) return;
+
+    toolDescEl.textContent = tool.description;
+    argsEl.value = JSON.stringify(tool.sampleArgs, null, 2);
+  }
+
+  selectEl.addEventListener('change', updateToolFields);
+
+  // Initialize first view
+  updateServerPanel();
+
+  // Button Execute Click Handler
+  btnExecute.addEventListener('click', async () => {
+    const srv = MCP_REGISTRY[selectedServerIdx];
+    const toolIdx = Number(selectEl.value);
+    const tool = srv.tools[toolIdx];
+    if (!tool) return;
+
+    let parsedArgs = {};
+    try {
+      parsedArgs = JSON.parse(argsEl.value);
+    } catch (e: any) {
+      alert(`Invalid JSON in Arguments field: ${e.message}`);
+      return;
+    }
+
+    // UI Feedback
+    btnExecute.disabled = true;
+    btnExecute.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invoking...';
+    durationBadge.style.display = 'none';
+    consoleEl.innerHTML = '<span style="color: #64748b;">[~] Executing...</span>';
+    resultEl.textContent = '{}';
+
+    try {
+      const res = await api.executeMcpTool(srv.name, tool.name, parsedArgs);
+      
+      // Update logs
+      consoleEl.innerHTML = '';
+      res.logs.forEach(line => {
+        const span = document.createElement('span');
+        if (line.startsWith('[*]')) {
+          span.style.color = '#38bdf8';
+        } else if (line.startsWith('[+]')) {
+          span.style.color = '#34d399';
+        } else if (line.startsWith('[error]') || line.startsWith('[-]')) {
+          span.style.color = '#f87171';
+        } else if (line.startsWith('[info]')) {
+          span.style.color = '#cbd5e1';
+        } else if (line.startsWith('[sql]') || line.startsWith('[sap]') || line.startsWith('[snowflake]') || line.startsWith('[compliance]') || line.startsWith('[agent]') || line.startsWith('[iam]') || line.startsWith('[fraud]') || line.startsWith('[orchestrator]')) {
+          span.style.color = '#fb923c';
+        } else {
+          span.style.color = '#94a3b8';
+        }
+        span.textContent = line;
+        consoleEl.appendChild(span);
+      });
+
+      // Update Result and Duration
+      resultEl.textContent = JSON.stringify(res.result, null, 2);
+      durationBadge.textContent = `${res.duration_ms}ms`;
+      durationBadge.style.display = 'inline-block';
+    } catch (e: any) {
+      consoleEl.innerHTML = `<span style="color: #f87171;">[-] API Execution failed: ${e.message || e}</span>`;
+      resultEl.textContent = JSON.stringify({ error: e.message || e }, null, 2);
+    } finally {
+      btnExecute.disabled = false;
+      btnExecute.innerHTML = '<i class="fa-solid fa-play"></i> Execute Tool Call';
+    }
+  });
+}
+
 // ─────────────────────────────────────────
 // BACKEND HEALTH STATUS
 // ─────────────────────────────────────────
@@ -1470,9 +1793,6 @@ function initAuthController() {
   const landingBtnLogin = document.getElementById('landing-btn-login')!;
   const landingBtnSignup = document.getElementById('landing-btn-signup')!;
   const landingHeroSignup = document.getElementById('landing-hero-signup')!;
-  const landingPriceTrial = document.getElementById('landing-price-trial')!;
-  const landingPriceStarter = document.getElementById('landing-price-starter')!;
-  const landingPricePro = document.getElementById('landing-price-pro')!;
 
   // ─ Screen references
   const screenLogin    = document.getElementById('auth-screen-login')!;
@@ -1510,8 +1830,7 @@ function initAuthController() {
   const btnLogout   = document.getElementById('btn-logout') as HTMLButtonElement;
 
   // ─ State
-  let currentTempToken = '';
-  let currentEmail = '';
+  let currentTempToken = sessionStorage.getItem('meldra_temp_token') || '';
   let otpCountdown: ReturnType<typeof setInterval> | null = null;
   let resendCountdown: ReturnType<typeof setInterval> | null = null;
 
@@ -1575,9 +1894,6 @@ function initAuthController() {
   landingBtnLogin.addEventListener('click', () => openAuthModal('login'));
   landingBtnSignup.addEventListener('click', () => openAuthModal('register'));
   landingHeroSignup.addEventListener('click', () => openAuthModal('register'));
-  landingPriceTrial.addEventListener('click', () => openAuthModal('register'));
-  landingPriceStarter.addEventListener('click', () => openAuthModal('register'));
-  landingPricePro.addEventListener('click', () => openAuthModal('register'));
 
   function startOtpTimer(seconds = 600) {
     if (otpCountdown) clearInterval(otpCountdown);
@@ -1674,6 +1990,9 @@ function initAuthController() {
   gotoLoginFromMfa.addEventListener('click', () => {
     if (otpCountdown) clearInterval(otpCountdown);
     if (resendCountdown) clearInterval(resendCountdown);
+    currentTempToken = '';
+    sessionStorage.removeItem('meldra_temp_token');
+    sessionStorage.removeItem('meldra_mfa_email');
     clearOtpInputs();
     clearError(mfaErrorEl);
     showScreen(screenLogin);
@@ -1691,7 +2010,8 @@ function initAuthController() {
     try {
       const res = await api.auth.login(email, password);
       currentTempToken = res.temp_token;
-      currentEmail = email;
+      sessionStorage.setItem('meldra_temp_token', res.temp_token);
+      sessionStorage.setItem('meldra_mfa_email', email);
       otpEmailBadge.textContent = email;
       clearOtpInputs();
       clearError(mfaErrorEl);
@@ -1725,7 +2045,8 @@ function initAuthController() {
     try {
       const res = await api.auth.register(email, password);
       currentTempToken = res.temp_token;
-      currentEmail = email;
+      sessionStorage.setItem('meldra_temp_token', res.temp_token);
+      sessionStorage.setItem('meldra_mfa_email', email);
       otpEmailBadge.textContent = email;
       clearOtpInputs();
       clearError(mfaErrorEl);
@@ -1753,11 +2074,20 @@ function initAuthController() {
     btnVerify.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
     try {
       await api.auth.verifyMfa(currentTempToken, code);
+      currentTempToken = '';
+      sessionStorage.removeItem('meldra_temp_token');
+      sessionStorage.removeItem('meldra_mfa_email');
       if (otpCountdown) clearInterval(otpCountdown);
       if (resendCountdown) clearInterval(resendCountdown);
       showMainApp();
     } catch(e: any) {
       setError(mfaErrorEl, e.message || 'Invalid code. Please try again.');
+      if (e.message && e.message.includes('Please log in again')) {
+        currentTempToken = '';
+        sessionStorage.removeItem('meldra_temp_token');
+        sessionStorage.removeItem('meldra_mfa_email');
+        showScreen(screenLogin);
+      }
       otpDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
       otpDigits[0]?.focus();
     } finally {
@@ -1800,6 +2130,12 @@ function initAuthController() {
   // ── INIT: check if already logged in ────────────────────────
   if (tokenStore.isLoggedIn()) {
     showMainApp();
+  } else if (currentTempToken) {
+    otpEmailBadge.textContent = sessionStorage.getItem('meldra_mfa_email') || 'your email';
+    showScreen(screenMfa);
+    startOtpTimer(600);
+    startResendCooldown(60);
+    setTimeout(() => otpDigits[0]?.focus(), 100);
   }
 }
 
@@ -1808,16 +2144,21 @@ function initAuthController() {
 // APP BOOTSTRAP
 // ─────────────────────────────────────────
 function bootstrapApp() {
-  loadAWSConfig();
-  initChat();
-  buildLessonsDeck();
-  buildApiHelpTab();
-  buildTestTab();
-  checkBackendStatus();
+  try { loadAWSConfig(); } catch (e) { console.error("Error loading AWS config:", e); }
+  try { initChat(); } catch (e) { console.error("Error initializing chat:", e); }
+  try { buildLessonsDeck(); } catch (e) { console.error("Error building lessons deck:", e); }
+  try { buildApiHelpTab(); } catch (e) { console.error("Error building API help tab:", e); }
+  try { buildTestTab(); } catch (e) { console.error("Error building test tab:", e); }
+  try { buildMcpTab(); } catch (e) { console.error("Error building MCP tab:", e); }
+  try { checkBackendStatus(); } catch (e) { console.error("Error checking backend status:", e); }
   setInterval(checkBackendStatus, 30_000);
 
-  document.getElementById('btn-run-all-tests')!.addEventListener('click', runAllTests);
-  document.getElementById('btn-clear-tests')!.addEventListener('click', resetTests);
+  try {
+    const runBtn = document.getElementById('btn-run-all-tests');
+    const clearBtn = document.getElementById('btn-clear-tests');
+    if (runBtn) runBtn.addEventListener('click', runAllTests);
+    if (clearBtn) clearBtn.addEventListener('click', resetTests);
+  } catch (e) { console.error("Error binding test handlers:", e); }
 }
 
 if (document.readyState === 'loading') {

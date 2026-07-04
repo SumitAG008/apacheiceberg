@@ -17,7 +17,7 @@ def create_iceberg_agent():
         print("Warning: ANTHROPIC_API_KEY environment variable not found. The agent will not run without it.")
         print("You can create a .env file with ANTHROPIC_API_KEY=your_key")
         
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
+    llm = ChatAnthropic(model="claude-sonnet-5")
     
     tools = [
         create_iceberg_table,

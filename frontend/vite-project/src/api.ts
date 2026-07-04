@@ -38,7 +38,6 @@ export const tokenStore = {
   isLoggedIn: (): boolean => !!sessionStorage.getItem(TOKEN_KEY),
 };
 
-// ─── Authenticated Fetch ─────────────────────────────────────────────────────
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = tokenStore.getAccessToken();
   const headers: Record<string, string> = {
@@ -47,7 +46,12 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  return fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    tokenStore.clear();
+    window.location.reload();
+  }
+  return res;
 }
 
 // ─── Auth Types ──────────────────────────────────────────────────────────────
@@ -287,10 +291,24 @@ export const api = {
     return res.json();
   },
 
-  // ── Audit trail logs ───────────────────────────────────────────────────
+  // ── Audit trail logs ─────────────────────────────────────────────────
   async getAuditLogs(): Promise<AuditLog[]> {
     const res = await authFetch(`${BASE_URL}/v1/audit`);
     if (!res.ok) throw new Error('Failed to fetch audit logs');
+    return res.json();
+  },
+
+  // ── MCP execution ────────────────────────────────────────────────────
+  async executeMcpTool(serverName: string, toolName: string, argumentsObj: Record<string, any>): Promise<{ logs: string[]; result: any; duration_ms: number }> {
+    const res = await authFetch(`${BASE_URL}/v1/mcp/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server_name: serverName, tool_name: toolName, arguments: argumentsObj }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || err.detail || 'Failed to execute MCP tool call');
+    }
     return res.json();
   },
 };

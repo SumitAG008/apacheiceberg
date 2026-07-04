@@ -104,10 +104,11 @@ def send_email_otp(to_email: str, code: str, purpose: str = "login") -> bool:
     Returns True on success, raises RuntimeError on failure.
     """
     if not RESEND_API_KEY:
-        raise RuntimeError(
-            "RESEND_API_KEY environment variable is not set. "
-            "Get a free key at https://resend.com"
-        )
+        print("\n" + "=" * 60)
+        print(f"🔑 [DEV MODE] MFA OTP Code for {to_email}: {code}")
+        print(f"Purpose: {purpose.upper()}")
+        print("=" * 60 + "\n")
+        return True
 
     subject_map = {
         "login": f"Your Meldra AI sign-in code: {code}",
