@@ -1,4 +1,4 @@
-pyiceberg[pyarrow,duckdb,ray,glue]==0.8.1
+pyiceberg[pyarrow,duckdb,glue]==0.8.1
 langchain==0.3.7
 langchain-anthropic==0.2.4
 langchain-experimental==0.3.3
