@@ -22,6 +22,9 @@ import networkx as nx
 
 def _get_conn():
     """Returns a connection to the PostgreSQL (Neon) database."""
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        return psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
     return psycopg2.connect(
         host=os.environ.get("GRAPH_DB_HOST", "localhost"),
         port=int(os.environ.get("GRAPH_DB_PORT", 5432)),
