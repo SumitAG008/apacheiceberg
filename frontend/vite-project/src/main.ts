@@ -2392,7 +2392,6 @@ const videoLibrary: VideoEntry[] = [
     title: 'What is meldra.ai & the Zero-Copy Lakehouse?',
     desc: 'A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without ever replicating or moving your raw data.',
     ytId: '8yL0bI-PmqU',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     tags: [
       { label: 'Introduction',    cls: 'vmt-green'  },
       { label: 'Architecture',    cls: 'vmt-blue'   },
@@ -2403,7 +2402,6 @@ const videoLibrary: VideoEntry[] = [
     title: 'Why Zero-Copy? The Business Problems We Solve',
     desc: 'Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your existing stack.',
     ytId: 'hK8YlXp-g1E',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     tags: [
       { label: 'Business Case',   cls: 'vmt-orange' },
       { label: 'Enterprise',      cls: 'vmt-blue'   },
@@ -2414,7 +2412,6 @@ const videoLibrary: VideoEntry[] = [
     title: 'Build Your First Pipeline: SAP → Iceberg → AI',
     desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
     ytId: '91q8-W7z-bY',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     tags: [
       { label: 'Hands-On',        cls: 'vmt-green'  },
       { label: 'Pipeline',        cls: 'vmt-blue'   },
