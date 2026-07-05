@@ -2890,13 +2890,48 @@ CREATE OR REPLACE ICEBERG TABLE my_snowflake_table
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
-        <div class="video-player-area" style="position:relative; background:#000;">
-          <div class="video-placeholder" id="video-placeholder">
+        <div class="video-player-area" style="position:relative; background:#020617;">
+          <div class="video-placeholder" id="video-placeholder" style="display:none;">
             <i class="fa-brands fa-youtube"></i>
-            <p id="video-placeholder-text">This video will be embedded here once uploaded to YouTube.<br>Replace the <code>data-yt-id</code> attribute on each video card with your YouTube video ID.</p>
+            <p id="video-placeholder-text">This video will be embedded here once uploaded.</p>
           </div>
           <video id="video-player-native" style="display:none; width:100%; height:100%; object-fit:contain;" controls autoplay></video>
           <iframe id="video-iframe" style="display:none; border:none;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+          
+          <!-- Interactive HTML5 Presentation Player -->
+          <div class="video-interactive-demo" id="video-interactive-demo" style="display:none; position:absolute; inset:0; background:#0b1329; color:#f8fafc; padding:1.5rem; display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box; z-index:5;">
+            <!-- Top Progress tracker -->
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; font-size:0.75rem; color:#94a3b8;">
+              <span id="demo-slide-step">Slide 1 of 3</span>
+              <div style="flex:1; margin:0 1rem; background:rgba(255,255,255,0.1); height:4px; border-radius:2px; overflow:hidden;">
+                <div id="demo-slide-progress" style="background:#16a34a; width:33.3%; height:100%; transition:width 0.3s ease;"></div>
+              </div>
+              <span style="font-weight:700; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;"><i class="fa-solid fa-play"></i> Training Simulation</span>
+            </div>
+            
+            <!-- Main Content Area: Left graphic/diagram, Right explanation -->
+            <div style="flex:1; display:grid; grid-template-columns:1.1fr 1fr; gap:1.5rem; align-items:center; margin:1rem 0; overflow:hidden; min-height: 0;">
+              <!-- Left Graphic -->
+              <div id="demo-slide-graphic" style="height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.04); border-radius:8px; overflow:hidden; padding:1rem; box-sizing:border-box;">
+                <!-- HTML Graphic gets injected here -->
+              </div>
+              <!-- Right explanation -->
+              <div style="display:flex; flex-direction:column; gap:0.75rem; text-align:left; overflow-y:auto; height:100%; box-sizing:border-box; padding-right:0.5rem;">
+                <h3 id="demo-slide-title" style="margin:0; font-size:1.1rem; font-weight:800; color:#fff; font-family:var(--font-sans);">Slide Title</h3>
+                <h4 id="demo-slide-subtitle" style="margin:0; font-size:0.8rem; color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Subtitle</h4>
+                <div id="demo-slide-content" style="font-size:0.82rem; line-height:1.5; color:#cbd5e1; font-family:var(--font-sans);">
+                  Explanation content...
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bottom Navigation Controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.6rem;">
+              <button id="btn-demo-prev" onclick="handleDemoPrev()" class="btn btn-secondary btn-sm" style="padding:0.4rem 0.8rem; font-size:0.75rem;"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+              <button id="btn-demo-next" onclick="handleDemoNext()" class="btn btn-primary btn-sm" style="padding:0.4rem 0.8rem; font-size:0.75rem;">Next <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+          </div>
+
         </div>
         <div class="video-modal-footer">
           <div>

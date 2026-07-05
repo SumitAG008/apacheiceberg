@@ -2420,59 +2420,308 @@ const videoLibrary: VideoEntry[] = [
   }
 ];
 
+interface Slide {
+  title: string;
+  subtitle: string;
+  graphicHtml: string;
+  contentHtml: string;
+}
+
+const trainingSimulations: Record<number, Slide[]> = {
+  1: [
+    {
+      title: "The Zero-Copy Architecture Concept",
+      subtitle: "Lesson 1: Eliminating Data Replication",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.75rem; width:100%; align-items:center; box-sizing:border-box;">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div style="background:#1e293b; border:1px solid #3b82f6; padding:0.6rem; border-radius:8px; text-align:center;">
+              <i class="fa-solid fa-database" style="color:#3b82f6; font-size:1.2rem;"></i>
+              <div style="font-size:0.6rem; color:#fff; font-weight:700; margin-top:0.25rem;">SAP / ERP DB</div>
+            </div>
+            <i class="fa-solid fa-arrow-right-long" style="color:#64748b; font-size:1rem;"></i>
+            <div style="background:#14532d; border:1px solid #22c55e; padding:0.6rem; border-radius:8px; text-align:center; position:relative; box-shadow:0 0 12px rgba(34,197,94,0.25);">
+              <i class="fa-solid fa-cloud" style="color:#22c55e; font-size:1.2rem;"></i>
+              <div style="font-size:0.6rem; color:#fff; font-weight:700; margin-top:0.25rem;">AWS S3 (Iceberg)</div>
+              <span class="badge badge-green" style="position:absolute; top:-0.4rem; right:-0.4rem; font-size:0.45rem; padding:0.15rem 0.35rem;">Secure Pointers</span>
+            </div>
+          </div>
+          <div style="font-size:0.65rem; color:#94a3b8; text-align:center; max-width:220px; line-height:1.4;">
+            meldra.ai reads metadata directories directly from your own S3 bucket. There are no intermediate copies.
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Traditional data analytics platforms require you to <strong>replicate, copy, and ingest</strong> your enterprise data into their proprietary data warehouses before you can query it.</p>
+        <p style="margin:0 0 0.5rem 0;">This creates security vulnerabilities, incurs high egress fees, and duplicates storage costs.</p>
+        <p style="margin:0;"><strong>meldra.ai</strong> solves this with a <strong>Zero-Copy Lakehouse</strong>. Your data remains in your own S3 bucket, structured in the open **Apache Iceberg** format. Our query agent reads S3 metadata directly, avoiding any duplication.</p>
+      `
+    },
+    {
+      title: "DuckDB Serverless Column Pushdowns",
+      subtitle: "Lesson 2: Bypassing Spark Clusters",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; box-sizing:border-box;">
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:0.6rem; font-family:monospace; font-size:0.65rem; color:#a7f3d0; text-align:left; line-height:1.4;">
+            <span style="color:#64748b;">-- Pushdown Filters to S3</span><br>
+            <span style="color:#f472b6;">SELECT</span> company_code, <span style="color:#f472b6;">SUM</span>(amount)<br>
+            <span style="color:#f472b6;">FROM</span> s3.finance_ledger<br>
+            <span style="color:#f472b6;">WHERE</span> year = 2025<br>
+            <span style="color:#f472b6;">GROUP BY</span> company_code;
+          </div>
+          <div style="background:rgba(22,163,74,0.1); border:1px solid rgba(22,163,74,0.3); border-radius:6px; padding:0.4rem; font-size:0.65rem; color:#86efac; text-align:center; font-weight:700;">
+            ⚡ DuckDB scanned 12.4M rows in 0.08s
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Instead of spinning up heavy virtual machine clusters (like Databricks Spark clusters) that sit idle and cost money, meldra.ai compiles natural language queries into optimized **DuckDB SQL**.</p>
+        <p style="margin:0;">By leveraging Apache Iceberg columns and metadata files, our serverless engine runs directly over S3, scanning only the relevant bytes. This delivers sub-second query speeds with **$0 idle cluster compute costs**.</p>
+      `
+    },
+    {
+      title: "Context-Grounded Querying",
+      subtitle: "Lesson 3: Zero-Hallucination SQL",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.6rem; width:100%; text-align:left; box-sizing:border-box;">
+          <div style="border-left:2px solid #a855f7; padding-left:0.5rem; font-size:0.65rem;">
+            <strong style="color:#a855f7; display:block; font-weight:700;">1. USER ASKED:</strong>
+            <span style="color:#e2e8f0;">"Show SAP ledger matches"</span>
+          </div>
+          <div style="border-left:2px solid #3b82f6; padding-left:0.5rem; font-size:0.65rem;">
+            <strong style="color:#3b82f6; display:block; font-weight:700;">2. CONTEXT ROUTER:</strong>
+            <span style="color:#cbd5e1;">Maps SAP BSEG graph path</span>
+          </div>
+          <div style="border-left:2px solid #22c55e; padding-left:0.5rem; font-size:0.65rem;">
+            <strong style="color:#22c55e; display:block; font-weight:700;">3. EXECUTION:</strong>
+            <span style="color:#86efac;">Runs DuckDB Iceberg query</span>
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Standard AI systems fail on databases because they are blind to the underlying schemas, transaction rules, and relationships. They hallucinate table names and columns.</p>
+        <p style="margin:0;">meldra.ai uses a **Context-Grounded Router** that queries a local graph representation of your database catalog first. The AI agent immediately identifies the correct columns, tables, and partitions to execute, guaranteeing 100% SQL accuracy.</p>
+      `
+    }
+  ],
+  2: [
+    {
+      title: "Stopping the Spark Cluster Tax",
+      subtitle: "Problem 1: Idle Server Waste",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.75rem; width:100%; align-items:center; box-sizing:border-box;">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <div style="text-align:center; opacity:0.4;">
+              <div style="font-size:1.2rem;">💸</div>
+              <div style="font-size:0.6rem; color:#f87171; font-weight:700;">Idle Spark Cluster</div>
+            </div>
+            <i class="fa-solid fa-xmark" style="color:#f87171; font-size:1rem;"></i>
+            <div style="text-align:center; background:#14532d; border:1px solid #22c55e; padding:0.4rem 0.6rem; border-radius:8px;">
+              <div style="font-size:1.2rem;">⚡</div>
+              <div style="font-size:0.6rem; color:#86efac; font-weight:700;">meldra.ai Serverless</div>
+            </div>
+          </div>
+          <span class="badge badge-green" style="font-size:0.65rem; padding:0.25rem 0.5rem;">Saves up to $5,000 / month</span>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Traditional data warehouses require you to maintain active compute clusters (Spark instances) just to wait for occasional queries or daily pipelines. This results in paying thousands of dollars every month for servers that sit idle 90% of the time.</p>
+        <p style="margin:0;">meldra.ai relies on a serverless executor that scales down to exactly **$0 compute cost** when no queries are active. You pay only for storage and active query execution milliseconds.</p>
+      `
+    },
+    {
+      title: "Data Replication Security Risk",
+      subtitle: "Problem 2: GDPR & HIPAA Compliance",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; font-size:0.65rem; color:#cbd5e1; text-align:left; box-sizing:border-box;">
+          <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:0.4rem; border-radius:6px;">
+            <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444; font-size:0.8rem;"></i>
+            <span>Replication creates duplicate audit trails</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.2); padding:0.4rem; border-radius:6px;">
+            <i class="fa-solid fa-shield-halved" style="color:#22c55e; font-size:0.8rem;"></i>
+            <span>Zero-Copy: Pointers stay in S3</span>
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Copying general ledger records or customer databases across analytical environments violates strict data sovereignty rules (GDPR, HIPAA, SOC2).</p>
+        <p style="margin:0;">Because duplicate copies are difficult to track, trace, and audit, each copy represents a massive liability risk. With meldra.ai, **no data replication takes place**. Pointers to S3 parquet blocks remain strictly under your own AWS IAM policies, with every action logged in our **Audit Trail**.</p>
+      `
+    },
+    {
+      title: "Lock-in to Closed Formats",
+      subtitle: "Problem 3: Duplicate Storage Fees",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.6rem; width:100%; align-items:center; box-sizing:border-box;">
+          <div style="display:flex; gap:0.5rem; font-size:0.6rem;">
+            <div style="background:#1e293b; padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #64748b; color:#fff;">Snowflake Table</div>
+            <div style="background:#1e293b; padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #64748b; color:#fff;">Databricks Spark</div>
+          </div>
+          <i class="fa-solid fa-link" style="color:#16a34a; font-size:1rem;"></i>
+          <div style="background:#14532d; padding:0.4rem 0.6rem; border-radius:6px; border:1px solid #22c55e; font-weight:700; color:#fff; font-size:0.65rem; text-align:center;">
+            Shared S3 Apache Iceberg Catalog
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Proprietary databases store your tables in encrypted, closed formats that force you to buy their expensive egress adapters if other software needs access.</p>
+        <p style="margin:0;">meldra.ai uses the **Apache Iceberg** format. This means your tables can be queried simultaneously by Snowflake, Databricks, Spark, or DuckDB without ever copying the data or paying duplicate storage fees.</p>
+      `
+    }
+  ],
+  3: [
+    {
+      title: "Step 1: Connecting S3 & Uploading",
+      subtitle: "Hands-on Step 1: Configuration",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; text-align:left; font-size:0.65rem; box-sizing:border-box;">
+          <div style="background:#1e293b; border:1px solid #3b82f6; border-radius:6px; padding:0.4rem 0.6rem;">
+            <span style="color:#94a3b8; display:block; font-size:0.55rem; font-weight:700; text-transform:uppercase;">S3 BUCKET URI:</span>
+            <strong style="color:#fff; font-family:monospace; font-size:0.6rem;">s3://meldra-lake/warehouse</strong>
+          </div>
+          <div style="background:#1e293b; border:1px solid #3b82f6; border-radius:6px; padding:0.4rem 0.6rem;">
+            <span style="color:#94a3b8; display:block; font-size:0.55rem; font-weight:700; text-transform:uppercase;">AWS ROLE ARN:</span>
+            <strong style="color:#fff; font-family:monospace; font-size:0.55rem; word-break:break-all;">arn:aws:iam::12345:role/meldra-s3</strong>
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">To begin, navigate to the **Data Lake Config** tab. Input your S3 Bucket URI where your tables will be kept, and enter your AWS Role ARN credentials.</p>
+        <p style="margin:0;">This securely delegates permission to the meldra.ai query engine to execute DuckDB read/write pushdowns on your behalf, without storing any persistent access keys.</p>
+      `
+    },
+    {
+      title: "Step 2: Table Schema Mapping",
+      subtitle: "Hands-on Step 2: Mapping",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; font-size:0.65rem; color:#cbd5e1; box-sizing:border-box;">
+          <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:0.5rem; text-align:left; font-family:monospace; font-size:0.6rem; line-height:1.4;">
+            <span style="color:#f472b6;">CREATE TABLE</span> default.sap_bseg (<br>
+            &nbsp;&nbsp;belnr <span style="color:#38bdf8;">VARCHAR</span>,<br>
+            &nbsp;&nbsp;dmbtr <span style="color:#38bdf8;">DECIMAL</span>(15,2)<br>
+            ) <span style="color:#f472b6;">USING</span> ICEBERG;
+          </div>
+          <div style="font-size:0.6rem; color:#94a3b8; text-align:center;">
+            meldra creates metadata partition files automatically.
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">In the **Ingest** tab, upload a CSV dataset or link your SAP/ERP database source. our catalog sweeps the schema and registers the columns.</p>
+        <p style="margin:0;">This automatically partitions the data in Apache Iceberg layout on S3, mapping it so it can be queried by external tools instantly.</p>
+      `
+    },
+    {
+      title: "Step 3: AI-Driven S3 Querying",
+      subtitle: "Hands-on Step 3: Run Queries",
+      graphicHtml: `
+        <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; text-align:left; font-size:0.65rem; box-sizing:border-box;">
+          <div style="background:#1e293b; border:1px solid #a855f7; border-radius:6px; padding:0.4rem 0.6rem; color:#e2e8f0;">
+            <i class="fa-solid fa-robot" style="color:#a855f7; margin-right:0.3rem;"></i>
+            <span>"What is the sum of ledger amounts in SAP BSEG by company code?"</span>
+          </div>
+          <div style="background:#0b0f19; border:1px solid #22c55e; border-radius:6px; padding:0.4rem 0.6rem; color:#86efac; font-family:monospace; font-size:0.6rem;">
+            SUM(dmbtr) = $240,500,124.00
+          </div>
+        </div>
+      `,
+      contentHtml: `
+        <p style="margin:0 0 0.5rem 0;">Navigate to the **Chat** tab. Enter any natural language question about your tables, such as asking to sum transactional values or find record matches.</p>
+        <p style="margin:0;">The AI agent ground-checks the query against the schema graph, translates it into optimized SQL, executes DuckDB over S3, and renders the result in real-time.</p>
+      `
+    }
+  ]
+};
+
+let currentSimulationIdx = 1;
+let currentSlideIdx = 0;
+
+function loadSimulationSlide(videoIndex: number, slideIndex: number) {
+  const slides = trainingSimulations[videoIndex];
+  if (!slides || !slides[slideIndex]) return;
+  
+  currentSimulationIdx = videoIndex;
+  currentSlideIdx = slideIndex;
+  
+  const stepEl = document.getElementById('demo-slide-step')!;
+  const progressEl = document.getElementById('demo-slide-progress')!;
+  const graphicEl = document.getElementById('demo-slide-graphic')!;
+  const titleEl = document.getElementById('demo-slide-title')!;
+  const subtitleEl = document.getElementById('demo-slide-subtitle')!;
+  const contentEl = document.getElementById('demo-slide-content')!;
+  
+  const slide = slides[slideIndex];
+  
+  stepEl.textContent = `Slide ${slideIndex + 1} of ${slides.length}`;
+  progressEl.style.width = `${((slideIndex + 1) / slides.length) * 100}%`;
+  
+  graphicEl.innerHTML = slide.graphicHtml;
+  titleEl.textContent = slide.title;
+  subtitleEl.textContent = slide.subtitle;
+  contentEl.innerHTML = slide.contentHtml;
+  
+  const btnPrev = document.getElementById('btn-demo-prev') as HTMLButtonElement;
+  const btnNext = document.getElementById('btn-demo-next') as HTMLButtonElement;
+  
+  if (btnPrev) btnPrev.disabled = (slideIndex === 0);
+  if (btnNext) {
+    if (slideIndex === slides.length - 1) {
+      btnNext.innerHTML = 'Finish Training <i class="fa-solid fa-circle-check"></i>';
+    } else {
+      btnNext.innerHTML = 'Next <i class="fa-solid fa-arrow-right"></i>';
+    }
+  }
+}
+
+function handleDemoNext() {
+  const slides = trainingSimulations[currentSimulationIdx];
+  if (!slides) return;
+  
+  if (currentSlideIdx < slides.length - 1) {
+    loadSimulationSlide(currentSimulationIdx, currentSlideIdx + 1);
+  } else {
+    closeVideoModal();
+    showToast("Training Simulation completed successfully!", "success");
+  }
+}
+
+function handleDemoPrev() {
+  if (currentSlideIdx > 0) {
+    loadSimulationSlide(currentSimulationIdx, currentSlideIdx - 1);
+  }
+}
+
 function openVideoModal(videoIndex: number) {
   const overlay   = document.getElementById('video-modal-overlay')!;
   const titleEl   = document.getElementById('video-modal-title')!;
   const descEl    = document.getElementById('video-modal-desc')!;
   const tagsEl    = document.getElementById('video-modal-tags')!;
+  
   const iframeEl  = document.getElementById('video-iframe') as HTMLIFrameElement;
   const nativeEl  = document.getElementById('video-player-native') as HTMLVideoElement;
   const placeholderEl = document.getElementById('video-placeholder')!;
+  const demoEl    = document.getElementById('video-interactive-demo')!;
 
   const entry = videoLibrary[videoIndex - 1];
   if (!entry) return;
 
   // Set title
-  titleEl.innerHTML = `<i class="fa-solid fa-circle-play" style="color:#22c55e;"></i> ${entry.title}`;
-
-  // Set description
+  titleEl.innerHTML = `<i class="fa-solid fa-graduation-cap" style="color:#16a34a;"></i> ${entry.title}`;
   descEl.textContent = entry.desc;
-
-  // Set tags
   tagsEl.innerHTML = entry.tags
     .map(t => `<span class="video-modal-tag ${t.cls}">${t.label}</span>`)
     .join('');
 
-  // Show video or placeholder
-  if (entry.videoUrl) {
-    iframeEl.style.display = 'none';
-    iframeEl.src = '';
-    placeholderEl.style.display = 'none';
-    
-    nativeEl.src = entry.videoUrl;
-    nativeEl.style.display = 'block';
-    nativeEl.load();
-    nativeEl.play().catch(err => console.log('Autoplay blocked:', err));
-  } else if (entry.ytId) {
-    nativeEl.style.display = 'none';
-    nativeEl.src = '';
-    
-    iframeEl.src = `https://www.youtube.com/embed/${entry.ytId}?autoplay=1&rel=0&modestbranding=1`;
-    iframeEl.style.display = 'block';
-    placeholderEl.style.display = 'none';
-  } else {
-    nativeEl.style.display = 'none';
-    nativeEl.src = '';
-    iframeEl.style.display = 'none';
-    iframeEl.src = '';
-    placeholderEl.style.display = 'flex';
-    const placeholderTextEl = document.getElementById('video-placeholder-text')!;
-    placeholderTextEl.innerHTML = `
-      <i class="fa-solid fa-clapperboard" style="font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
-      <strong style="font-size: 1.1rem; color: #fff; display: block; margin-bottom: 0.5rem;">Product Video Coming Soon</strong>
-      <span style="color: #64748b; font-size: 0.85rem; max-width: 320px; display: block; line-height: 1.5;">We are currently recording the video walkthrough for "${entry.title}". It will be available shortly.</span>
-    `;
-  }
+  // Hide media elements, show interactive presentation simulation!
+  iframeEl.style.display = 'none';
+  iframeEl.src = '';
+  nativeEl.style.display = 'none';
+  nativeEl.src = '';
+  placeholderEl.style.display = 'none';
+  
+  demoEl.style.display = 'flex';
+  loadSimulationSlide(videoIndex, 0);
 
   overlay.classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -2482,6 +2731,7 @@ function closeVideoModal() {
   const overlay  = document.getElementById('video-modal-overlay')!;
   const iframeEl = document.getElementById('video-iframe') as HTMLIFrameElement;
   const nativeEl = document.getElementById('video-player-native') as HTMLVideoElement;
+  const demoEl   = document.getElementById('video-interactive-demo')!;
   overlay.classList.remove('active');
   
   // Pause and reset players
@@ -2491,6 +2741,8 @@ function closeVideoModal() {
   
   iframeEl.src = '';   // Stop playback
   iframeEl.style.display = 'none';
+  
+  demoEl.style.display = 'none';
   
   document.body.style.overflow = '';
 }
@@ -2508,6 +2760,8 @@ function closeAuthModal() {
 (window as any).openVideoModal  = openVideoModal;
 (window as any).closeVideoModal = closeVideoModal;
 (window as any).closeAuthModal  = closeAuthModal;
+(window as any).handleDemoNext   = handleDemoNext;
+(window as any).handleDemoPrev   = handleDemoPrev;
 
 // Close video modal when clicking backdrop
 document.getElementById('video-modal-overlay')?.addEventListener('click', (e) => {
