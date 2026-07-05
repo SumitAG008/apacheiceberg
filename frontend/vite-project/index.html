@@ -1914,6 +1914,12 @@
             <button class="tab-btn" data-tab="workspace-tab" id="nav-workspace">
               <i class="fa-solid fa-layer-group"></i> Workspace
             </button>
+            <button class="tab-btn" data-tab="studio-tab" id="nav-studio">
+              <i class="fa-solid fa-code-branch"></i> Data Studio
+            </button>
+            <button class="tab-btn" data-tab="traffic-tab" id="nav-traffic">
+              <i class="fa-solid fa-chart-line"></i> Traffic
+            </button>
             <button class="tab-btn" data-tab="audit-tab" id="nav-audit">
               <i class="fa-solid fa-shield-halved"></i> Audit
             </button>
@@ -2765,6 +2771,20 @@ Orchestrator:
                     <label for="ingest-table-name">Target Table Name</label>
                     <input type="text" id="ingest-table-name" class="input-field" placeholder="employees_data">
                   </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div class="form-group">
+                      <label for="ingest-write-mode">Write Mode</label>
+                      <select id="ingest-write-mode" class="input-field" style="padding:0.4rem;">
+                        <option value="append">Append Rows</option>
+                        <option value="overwrite">Overwrite Table</option>
+                        <option value="upsert">Upsert (Merge)</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="ingest-merge-key">Merge Key (Upsert)</label>
+                      <input type="text" id="ingest-merge-key" class="input-field" placeholder="e.g. emp_id" style="padding:0.4rem;">
+                    </div>
+                  </div>
                   <div class="preview-title">Detected Columns &amp; Types</div>
                   <div class="preview-table-wrapper" style="max-height: 240px;">
                     <table class="schema-config-table">
@@ -2987,6 +3007,335 @@ print(result)</pre>
                   </div>
                 </div>
 
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 7: AUDIT TRAIL -->
+          <div id="audit-tab" class="tab-content">
+            <div class="audit-container">
+              <div class="audit-header">
+                <div>
+                  <h2>📜 Security Audit Trails</h2>
+                  <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">Real-time execution log of all API interactions and data operations.</p>
+                </div>
+                <button id="btn-refresh-audit" class="btn btn-secondary">
+                  <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+              </div>
+              <div class="audit-timeline" id="audit-timeline"></div>
+            </div>
+          </div>
+
+          <!-- TAB 8: DATA STUDIO & ENTERPRISE CONSOLE -->
+          <div id="studio-tab" class="tab-content">
+            <div style="display: grid; grid-template-columns: 260px 1fr; gap: 1.5rem; height: calc(100vh - 140px); min-height: 550px;">
+              
+              <!-- Left Sidebar: Namespaces & Tables -->
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; overflow-y: auto;">
+                <div>
+                  <h4 style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem;">Environment Namespace</h4>
+                  <div style="display: flex; gap: 0.4rem;">
+                    <select id="studio-namespace-select" class="input-field" style="padding: 0.4rem; font-size: 0.85rem; flex: 1;">
+                      <option value="default">default</option>
+                    </select>
+                    <button id="btn-create-ns" class="btn btn-primary btn-sm" title="Create Namespace" style="padding: 0.4rem 0.6rem;"><i class="fa-solid fa-plus"></i></button>
+                    <button id="btn-delete-ns" class="btn btn-secondary btn-sm" title="Delete Namespace" style="padding: 0.4rem 0.6rem; color: #ef4444;"><i class="fa-solid fa-trash-can"></i></button>
+                  </div>
+                </div>
+                
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <h4 style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0;">Iceberg Tables</h4>
+                    <button id="btn-create-table-studio" class="btn btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;"><i class="fa-solid fa-plus"></i> Table</button>
+                  </div>
+                  <div id="studio-table-list" style="display: flex; flex-direction: column; gap: 0.35rem; overflow-y: auto; flex: 1;">
+                    <!-- Table buttons render here -->
+                    <div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic; padding: 1rem 0;">No tables found.</div>
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-subtle); padding-top: 0.75rem;">
+                  <span style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem; font-weight: 600; text-transform: uppercase;">Standards Compliance</span>
+                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <span style="font-size: 0.72rem; color: #22c55e;"><i class="fa-solid fa-shield-halved"></i> GDPR Resident</span>
+                    <span style="font-size: 0.72rem; color: #0ea5e9;"><i class="fa-solid fa-lock"></i> HIPAA Certified</span>
+                    <span style="font-size: 0.72rem; color: #eab308;"><i class="fa-solid fa-file-contract"></i> CCPA/CPRA Audit</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Panel: Workspace Tabs -->
+              <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+                <!-- Internal tab headers -->
+                <div style="display: flex; gap: 0.35rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn active" data-subtab="studio-tab-sql"><i class="fa-solid fa-terminal"></i> SQL Console</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-schema"><i class="fa-solid fa-table-list"></i> Schema Evolution</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-travel"><i class="fa-solid fa-clock-rotate-left"></i> Time Travel</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-contracts"><i class="fa-solid fa-file-shield"></i> Data Quality</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-dag"><i class="fa-solid fa-diagram-project"></i> Orchestrator DAG</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-maintenance"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</button>
+                </div>
+
+                <!-- Sub-tab contents -->
+                <div style="flex: 1; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem; position: relative;">
+                  
+                  <!-- SUB-TAB 1: SQL CONSOLE -->
+                  <div id="studio-tab-sql" class="studio-sub-tab-content active" style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Interactive SQL Console (DuckDB Engine)</h3>
+                      <button id="btn-run-sql" class="btn btn-primary btn-sm"><i class="fa-solid fa-play"></i> Run Query</button>
+                    </div>
+                    <textarea id="studio-sql-editor" class="input-field" style="font-family: var(--font-mono); font-size: 0.85rem; height: 120px; resize: none; background: #020c06; border-color: rgba(34,197,94,0.3); color: #bef264; padding: 0.75rem; box-sizing: border-box;" placeholder="-- Type your SQL here&#10;SELECT * FROM employees_sample LIMIT 10;"></textarea>
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: rgba(0,0,0,0.2);">
+                      <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1rem; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle);">
+                        <span>QUERY RESULTS</span>
+                        <span id="studio-sql-stats">0 rows returned in 0ms</span>
+                      </div>
+                      <div style="flex: 1; overflow: auto; padding: 0.5rem;">
+                        <table class="preview-table" id="studio-sql-results-table" style="width: 100%; font-size: 0.8rem;">
+                          <thead><tr id="studio-sql-thead"><th>No active query</th></tr></thead>
+                          <tbody id="studio-sql-tbody"><tr><td style="color: var(--text-muted); font-style: italic;">Run a query to populate results.</td></tr></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB 2: SCHEMA EVOLUTION -->
+                  <div id="studio-tab-schema" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Schema Evolution (Zero-Downtime Metadata Updates)</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Add, rename, or drop columns as metadata-only actions. Old S3 Parquet files are read dynamically without needing complete table rewrites.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem;">
+                      <div>
+                        <h4 style="font-size: 0.8rem; font-weight: 700; color: #fff; margin-bottom: 0.6rem;">Current Schema Columns</h4>
+                        <table class="preview-table" style="width: 100%; font-size: 0.8rem;">
+                          <thead><tr><th>ID</th><th>Column Name</th><th>Type</th><th>Required</th><th>Actions</th></tr></thead>
+                          <tbody id="studio-schema-tbody">
+                            <!-- Populated dynamically -->
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">Add New Column</h4>
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                          <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Column Name</label>
+                            <input type="text" id="schema-add-name" class="input-field" placeholder="e.g. bonus_pct" style="padding: 0.5rem;">
+                          </div>
+                          <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Data Type</label>
+                            <select id="schema-add-type" class="input-field" style="padding: 0.5rem;">
+                              <option value="string">string</option>
+                              <option value="integer">integer (32-bit)</option>
+                              <option value="long">long (64-bit)</option>
+                              <option value="double">double (float64)</option>
+                              <option value="boolean">boolean</option>
+                              <option value="date">date</option>
+                              <option value="timestamp">timestamp</option>
+                            </select>
+                          </div>
+                          <button id="btn-schema-add-col" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;"><i class="fa-solid fa-plus"></i> Add Column</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB 3: TIME TRAVEL -->
+                  <div id="studio-tab-travel" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Time Travel Query Engine</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Query the database state exactly as it was in the past. Select a previous transaction snapshot to inspect historical datasets.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem;">
+                      <div>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem;">Transaction Snapshot History</h4>
+                        <div id="studio-travel-timeline" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto;">
+                          <!-- Timelines render here -->
+                        </div>
+                      </div>
+                      
+                      <div style="display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: rgba(0,0,0,0.2);">
+                        <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1rem; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle);">
+                          <span style="font-weight: 600;">HISTORICAL PREVIEW</span>
+                          <span id="studio-travel-active-snap">Current State</span>
+                        </div>
+                        <div style="flex: 1; overflow: auto; padding: 0.5rem;">
+                          <table class="preview-table" id="studio-travel-preview-table" style="width: 100%; font-size: 0.78rem;">
+                            <thead><tr id="studio-travel-thead"><th>No active table</th></tr></thead>
+                            <tbody id="studio-travel-tbody"></tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB 4: DATA QUALITY CONTRACTS -->
+                  <div id="studio-tab-contracts" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Automated Data Contracts &amp; Quality Checks</h3>
+                      <button id="btn-save-contracts" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Save Rules</button>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Establish contracts to validate incoming data. Operations verify data schemas and check rules dynamically before appending.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 2rem;">
+                      <div>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem;">Quality Constraint Rules</h4>
+                        <div id="contracts-rules-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                          <!-- Dynamic rule items -->
+                        </div>
+                        <button id="btn-add-contract-rule" class="btn btn-secondary btn-sm" style="width: 100%;"><i class="fa-solid fa-plus"></i> Add Validation Constraint</button>
+                      </div>
+                      
+                      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: flex; justify-content: space-between; align-items: center;">
+                          <span>Data Observability Status</span>
+                          <span style="font-size: 0.72rem; color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; padding: 0.15rem 0.4rem;">HEALTHY</span>
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+                          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 800; color: #22c55e;">100%</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Pass Rate</div>
+                          </div>
+                          <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 800; color: #fff;">0</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Violations Logged</div>
+                          </div>
+                        </div>
+                        <h5 style="font-size: 0.75rem; font-weight: 700; color: #fff; margin: 0.75rem 0 0.25rem 0;">Real-time Verification Log</h5>
+                        <div id="contracts-validation-log" style="font-family: var(--font-mono); font-size: 0.7rem; color: #bef264; background: #020c06; padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(34,197,94,0.2); height: 100px; overflow-y: auto;">
+                          [observability] Ingest validation: Passed schema checks.<br>
+                          [observability] Ingest validation: emp_id not-null contract met.<br>
+                          [observability] Ingest validation: salary range constraints verified.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB 5: PIPELINE ORCHESTRATOR DAG -->
+                  <div id="studio-tab-dag" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Medallion Pipeline Orchestrator (Bronze → Silver → Gold)</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Visual representation of the ETL pipeline. Tracks ingestion tasks from raw files through consolidations to business tables.</p>
+                    
+                    <!-- DAG Grid visual representation -->
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 2.5rem 1rem; margin-top: 1rem; position: relative;">
+                      
+                      <!-- Node 1: CSV Ingest -->
+                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">BRONZE (RAW)</span>
+                        <h4 style="font-size: 0.8rem; color: #fff; margin: 0;">Ingest BSEG</h4>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                      </div>
+                      
+                      <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
+
+                      <!-- Node 2: Deduplication -->
+                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">SILVER (CLEAN)</span>
+                        <h4 style="font-size: 0.8rem; color: #fff; margin: 0;">Clean Ledgers</h4>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                      </div>
+
+                      <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
+
+                      <!-- Node 3: Aggregate -->
+                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #a855f7; background: rgba(168,85,247,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">GOLD (BI)</span>
+                        <h4 style="font-size: 0.8rem; color: #fff; margin: 0;">Ledger Summary</h4>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB 6: MAINTENANCE -->
+                  <div id="studio-tab-maintenance" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Apache Iceberg Metadata Maintenance</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Optimize table files and manage storage to ensure consistent query performance over massive S3 objects.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 0.5rem;">
+                      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.5rem;">
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;"><i class="fa-solid fa-compress" style="color: #22c55e; margin-right: 0.35rem;"></i> File Compaction (Optimize)</h4>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.25rem;">Merges small Parquet files into standard file size chunks to reduce storage lookups and optimize analytical query speeds.</p>
+                        <button id="btn-maintenance-optimize" class="btn btn-secondary btn-sm" style="color: #22c55e;"><i class="fa-solid fa-circle-check"></i> Run Compaction</button>
+                      </div>
+                      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.5rem;">
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;"><i class="fa-solid fa-trash-arrow-up" style="color: #ef4444; margin-right: 0.35rem;"></i> Expire Snapshots</h4>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.25rem;">Expires historical metadata snapshots older than retention periods. Frees storage space by dropping unneeded files.</p>
+                        <button id="btn-maintenance-expire" class="btn btn-secondary btn-sm" style="color: #ef4444;"><i class="fa-solid fa-circle-check"></i> Expire Old Snapshots</button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 9: LIVE TRAFFIC MONITOR -->
+          <div id="traffic-tab" class="tab-content" style="display: none;">
+            <div style="display: flex; flex-direction: column; gap: 1rem; height: calc(100vh - 140px); min-height: 550px;">
+              
+              <!-- Traffic Top Toolbar -->
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <h3 style="font-size: 1rem; color: #fff; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-network-wired" style="color: #22c55e;"></i> API Traffic Monitor
+                  </h3>
+                  <span id="traffic-stream-status" style="font-size: 0.7rem; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; padding: 0.15rem 0.5rem; display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%;"></span> CONNECTED
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <input type="text" id="traffic-search" class="input-field" placeholder="Search endpoint/tool..." style="padding: 0.35rem 0.75rem; font-size: 0.8rem; width: 180px;">
+                  <select id="traffic-filter" class="input-field" style="padding: 0.35rem 0.5rem; font-size: 0.8rem; width: 100px;">
+                    <option value="all">All Traffic</option>
+                    <option value="http">HTTP Only</option>
+                    <option value="tool">Tools Only</option>
+                    <option value="error">Errors Only</option>
+                  </select>
+                  <button id="btn-traffic-pause" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem;"><i class="fa-solid fa-pause"></i> Pause</button>
+                  <button id="btn-traffic-clear" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem;"><i class="fa-solid fa-trash-can"></i> Clear</button>
+                </div>
+              </div>
+
+              <!-- Traffic Timeline & Inspector Split -->
+              <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 1.25rem; flex: 1; overflow: hidden;">
+                
+                <!-- Left: Request list timeline -->
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden;">
+                  <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 50px 70px 1fr 60px 70px; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                    <span>#</span>
+                    <span>Method</span>
+                    <span>Endpoint / Tool Name</span>
+                    <span>Status</span>
+                    <span style="text-align: right;">Latency</span>
+                  </div>
+                  <div id="traffic-timeline-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; background: #020804;">
+                    <!-- Traffic items render here -->
+                    <div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic; padding: 2rem; text-align: center;">Waiting for API traffic events...</div>
+                  </div>
+                </div>
+
+                <!-- Right: Payload inspector panel -->
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden;">
+                  <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1.25rem; border-bottom: 1px solid var(--border-subtle); font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                    🔍 Request &amp; Response Payload Inspector
+                  </div>
+                  <div id="traffic-inspector-content" style="flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; background: #010602; font-family: var(--font-mono); font-size: 0.78rem;">
+                    <div style="color: var(--text-muted); font-style: italic; text-align: center; padding-top: 5rem;">Select an event row from the timeline to inspect payloads.</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Status footer metrics -->
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.5rem 1.25rem; display: flex; gap: 2rem; font-size: 0.75rem; color: var(--text-muted);">
+                <span>Total Events: <strong id="traffic-stat-total" style="color:#fff;">0</strong></span>
+                <span>HTTP: <strong id="traffic-stat-http" style="color:#38bdf8;">0</strong></span>
+                <span>AI Tools: <strong id="traffic-stat-tools" style="color:#22c55e;">0</strong></span>
+                <span>Errors: <strong id="traffic-stat-errors" style="color:#ef4444;">0</strong></span>
               </div>
 
             </div>

@@ -102,6 +102,8 @@ export interface IngestPayload {
   table_name: string;
   file_path: string;
   schema_json: { name: string; type: string }[];
+  write_mode?: string;
+  merge_key?: string;
 }
 
 export interface CSVUploadResponse {
@@ -346,4 +348,86 @@ export const api = {
     }
     return res.json();
   },
+
+  // ── Catalog & Data Studio ───────────────────────────────────────────────
+  catalog: {
+    async listNamespaces(): Promise<{ namespaces: string[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces`);
+      if (!res.ok) throw new Error('Failed to list namespaces');
+      return res.json();
+    },
+    async createNamespace(namespace: string): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ namespace }),
+      });
+      if (!res.ok) throw new Error('Failed to create namespace');
+      return res.json();
+    },
+    async deleteNamespace(namespace: string): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete namespace');
+      return res.json();
+    },
+    async listTables(namespace: string): Promise<{ tables: string[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables`);
+      if (!res.ok) throw new Error('Failed to list tables');
+      return res.json();
+    },
+    async getTableDetails(namespace: string, tableName: string): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}`);
+      if (!res.ok) throw new Error('Failed to get table details');
+      return res.json();
+    },
+    async evolveSchema(namespace: string, tableName: string, actions: any[]): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}/schema`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actions }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to evolve schema');
+      }
+      return res.json();
+    },
+    async runQuery(sql: string, namespace: string = 'default', snapshotId?: number): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql, namespace, snapshot_id: snapshotId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to run SQL query');
+      }
+      return res.json();
+    },
+    async runMaintenance(namespace: string, tableName: string, action: 'optimize' | 'expire_snapshots'): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}/maintenance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) throw new Error('Failed to run maintenance task');
+      return res.json();
+    },
+    async getContracts(namespace: string, tableName: string): Promise<{ rules: any[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}/contracts`);
+      if (!res.ok) throw new Error('Failed to get data contracts');
+      return res.json();
+    },
+    async saveContracts(namespace: string, tableName: string, rules: any[]): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}/contracts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules }),
+      });
+      if (!res.ok) throw new Error('Failed to save data contracts');
+      return res.json();
+    }
+  }
 };

@@ -18,13 +18,16 @@ from __future__ import annotations
 import os
 import json
 import shutil
+import time
+import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 import pandas as pd
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File, Cookie
+from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File, Cookie, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from jose import jwt as jose_jwt, JWTError
 from pydantic import BaseModel, EmailStr, field_validator
 from dotenv import load_dotenv
@@ -86,6 +89,72 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Tenant-Tier", "X-Tenant-ID"],
 )
 
+# ── Live Traffic Monitoring Middleware ───────────────────────────────────────
+class TrafficMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path.startswith("/ws") or path.startswith("/docs") or path.startswith("/openapi") or request.method == "OPTIONS":
+            return await call_next(request)
+
+        import uuid
+        from traffic_bus import traffic_bus, TrafficEvent
+        from agent import current_request_id
+
+        req_id = str(uuid.uuid4())
+        token_context = current_request_id.set(req_id)
+        start_time = time.time()
+
+        # Capture request body safely
+        request_body = ""
+        content_type = request.headers.get("content-type", "")
+        if "multipart/form-data" not in content_type:
+            try:
+                body_bytes = await request.body()
+                request_body = body_bytes.decode("utf-8", errors="ignore")
+                # Restore body for endpoint readers
+                async def receive():
+                    return {"type": "http.request", "body": body_bytes, "more_body": False}
+                request._receive = receive
+            except Exception:
+                pass
+
+        try:
+            response = await call_next(request)
+            latency_ms = (time.time() - start_time) * 1000
+            
+            event = TrafficEvent(
+                id=req_id,
+                timestamp=datetime.utcnow().isoformat() + "Z",
+                type="http_request",
+                method=request.method,
+                path=path,
+                status=str(response.status_code),
+                latency_ms=latency_ms,
+                request_body=request_body[:2000] if request_body else None,
+                response_body=None
+            )
+            asyncio.create_task(traffic_bus.publish(event))
+            return response
+        except Exception as e:
+            latency_ms = (time.time() - start_time) * 1000
+            event = TrafficEvent(
+                id=req_id,
+                timestamp=datetime.utcnow().isoformat() + "Z",
+                type="http_request",
+                method=request.method,
+                path=path,
+                status="500",
+                latency_ms=latency_ms,
+                request_body=request_body[:2000] if request_body else None,
+                response_body=str(e)[:2000]
+            )
+            asyncio.create_task(traffic_bus.publish(event))
+            raise e
+        finally:
+            current_request_id.reset(token_context)
+
+app.add_middleware(TrafficMiddleware)
+
 # ─────────────────────────────────────────
 # AUDIT LOG (delegates to PostgreSQL via auth_db)
 # ─────────────────────────────────────────
@@ -122,6 +191,8 @@ class IngestRequest(BaseModel):
     table_name: str
     file_path: str
     schema_json: List[Dict[str, str]]
+    write_mode: Optional[str] = "append" # "append", "overwrite", "upsert"
+    merge_key: Optional[str] = None
 
 class CypherRequest(BaseModel):
     graph_name: str
@@ -664,12 +735,15 @@ async def ingest_endpoint(
     payload: IngestRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ):
-    from tools import create_iceberg_table, ingest_csv_to_iceberg
+    from catalog_setup import get_catalog
+    from tools import create_iceberg_table
+    import pyarrow as pa
+    import pyarrow.csv as pv
     
     schema_str = json.dumps(payload.schema_json)
     
     try:
-        # 1. Create table
+        # 1. Create table if not exists
         create_res = create_iceberg_table.invoke({
             "namespace": payload.namespace,
             "table_name": payload.table_name,
@@ -679,21 +753,90 @@ async def ingest_endpoint(
         if "error" in create_res.lower():
             raise Exception(f"Table creation error: {create_res}")
             
-        # 2. Ingest CSV
-        ingest_res = ingest_csv_to_iceberg.invoke({
-            "namespace": payload.namespace,
-            "table_name": payload.table_name,
-            "csv_path": payload.file_path
-        })
+        # 2. Read CSV file into PyArrow
+        if not os.path.exists(payload.file_path):
+            raise Exception(f"CSV file path does not exist: {payload.file_path}")
+            
+        arrow_table = pv.read_csv(payload.file_path)
         
-        if "error" in ingest_res.lower():
-            raise Exception(f"Ingestion error: {ingest_res}")
+        # Load Iceberg Table & Schema
+        catalog = get_catalog()
+        identifier = (payload.namespace, payload.table_name)
+        table = catalog.load_table(identifier)
+        
+        # --- Data Quality Contract Validation ---
+        rules_str = table.properties.get("data_contracts", "[]")
+        rules = json.loads(rules_str)
+        if rules:
+            from meldra import MeldraValidator
+            df = arrow_table.to_pandas()
+            is_valid, validation_logs = MeldraValidator.validate_dataframe(df, rules)
+            if not is_valid:
+                log_audit(
+                    user_id=user.get("sub", "unknown"),
+                    tier=user.get("tier", "trial"),
+                    action="ingest_validation",
+                    details=f"Data contract checks failed for {payload.namespace}.{payload.table_name}: {validation_logs}",
+                    status="error"
+                )
+                raise HTTPException(
+                    status_code=400, 
+                    detail={"error": "Data Contract Validation Failed", "logs": validation_logs}
+                )
+
+        pyarrow_schema = table.schema().as_arrow()
+        
+        # Cast columns to match Iceberg schema
+        cast_arrays = []
+        cast_fields = []
+        for field in pyarrow_schema:
+            if field.name in arrow_table.schema.names:
+                col = arrow_table.column(field.name)
+                cast_arrays.append(col.cast(field.type))
+                cast_fields.append(field)
+                
+        arrow_table = pa.table(
+            {field.name: arr for field, arr in zip(cast_fields, cast_arrays)},
+            schema=pa.schema(cast_fields)
+        )
+        
+        # 3. Ingest based on write_mode
+        if payload.write_mode == "overwrite":
+            table.overwrite(arrow_table)
+        elif payload.write_mode == "upsert" and payload.merge_key:
+            existing_arrow = table.scan().to_arrow()
+            if len(existing_arrow) > 0:
+                existing_df = existing_arrow.to_pandas()
+                new_df = arrow_table.to_pandas()
+                
+                # Keep new records, drop old duplicates on key
+                merged_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=[payload.merge_key], keep='last')
+                
+                merged_arrow = pa.Table.from_pandas(merged_df)
+                cast_arrays_m = []
+                cast_fields_m = []
+                for field in pyarrow_schema:
+                    if field.name in merged_arrow.schema.names:
+                        col = merged_arrow.column(field.name)
+                        cast_arrays_m.append(col.cast(field.type))
+                        cast_fields_m.append(field)
+                
+                merged_arrow = pa.table(
+                    {field.name: arr for field, arr in zip(cast_fields_m, cast_arrays_m)},
+                    schema=pa.schema(cast_fields_m)
+                )
+                table.overwrite(merged_arrow)
+            else:
+                table.append(arrow_table)
+        else:
+            # Default append
+            table.append(arrow_table)
             
         log_audit(
             user_id=user.get("sub", "unknown"),
             tier=user.get("tier", "trial"),
             action="ingest_data",
-            details=f"Ingested table {payload.namespace}.{payload.table_name} ({payload.file_path})",
+            details=f"Ingested table {payload.namespace}.{payload.table_name} ({payload.file_path}, write_mode={payload.write_mode})",
             status="success"
         )
         
@@ -1049,6 +1192,412 @@ async def execute_mcp_tool_endpoint(
         "result": result,
         "duration_ms": duration
     }
+
+
+# ── Live Traffic WebSocket & REST Fallback ──────────────────────────────────
+@app.websocket("/ws/traffic")
+async def websocket_traffic(websocket: WebSocket, token: Optional[str] = None):
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    try:
+        jose_jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+    from traffic_bus import traffic_bus
+    q = asyncio.Queue()
+    traffic_bus.register(q)
+    try:
+        recent_events = await traffic_bus.get_recent()
+        for event in recent_events:
+            await websocket.send_json(event.dict())
+        while True:
+            event_dict = await q.get()
+            await websocket.send_json(event_dict)
+            q.task_done()
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
+        traffic_bus.unregister(q)
+
+@app.get("/v1/traffic/recent", tags=["Traffic"])
+async def get_recent_traffic(user: Dict[str, Any] = Depends(get_current_user)):
+    from traffic_bus import traffic_bus
+    events = await traffic_bus.get_recent()
+    return [e.dict() for e in events]
+
+
+# ── Data Engineering Studio Schema Schemas ───────────────────────────────────
+class CreateNamespaceRequest(BaseModel):
+    namespace: str
+
+class SchemaEvolutionAction(BaseModel):
+    op: str  # "add", "drop", "rename"
+    name: str
+    type: Optional[str] = None
+    new_name: Optional[str] = None
+
+class SchemaEvolutionRequest(BaseModel):
+    actions: List[SchemaEvolutionAction]
+
+class RawIngestRequest(BaseModel):
+    namespace: str
+    table_name: str
+    data: List[Dict[str, Any]]
+    schema_json: Optional[List[Dict[str, str]]] = None
+    write_mode: str = "append"  # "append", "overwrite", "upsert"
+    merge_key: Optional[str] = None
+
+class QueryRequest(BaseModel):
+    sql: str
+    namespace: Optional[str] = "default"
+    snapshot_id: Optional[int] = None
+
+class MaintenanceRequest(BaseModel):
+    action: str  # "optimize", "expire_snapshots"
+
+class DataContractRequest(BaseModel):
+    rules: List[Dict[str, Any]]
+
+
+# ── Data Engineering Studio Endpoints ────────────────────────────────────────
+@app.get("/v1/catalog/namespaces", tags=["Catalog"])
+async def list_namespaces(user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        namespaces = m_catalog.list_namespaces()
+        return {"namespaces": namespaces}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/catalog/namespaces", tags=["Catalog"])
+async def create_namespace(payload: CreateNamespaceRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        m_catalog.create_namespace(payload.namespace)
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="create_namespace",
+            details=f"Created namespace {payload.namespace}",
+            status="success"
+        )
+        return {"status": "success", "message": f"Namespace {payload.namespace} created."}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="create_namespace",
+            details=f"Failed to create namespace {payload.namespace}: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/v1/catalog/namespaces/{namespace}", tags=["Catalog"])
+async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        m_catalog.delete_namespace(namespace)
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="delete_namespace",
+            details=f"Deleted namespace {namespace}",
+            status="success"
+        )
+        return {"status": "success", "message": f"Namespace {namespace} dropped."}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="delete_namespace",
+            details=f"Failed to delete namespace {namespace}: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/catalog/namespaces/{namespace}/tables", tags=["Catalog"])
+async def list_tables(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        tables = m_catalog.list_tables(namespace)
+        return {"tables": tables}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/catalog/namespaces/{namespace}/tables/{table_name}", tags=["Catalog"])
+async def get_table_details(namespace: str, table_name: str, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        details = m_catalog.get_table_details(namespace, table_name)
+        return details
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/schema", tags=["Catalog"])
+async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutionRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        actions_list = [act.dict() for act in payload.actions]
+        m_catalog.evolve_schema(namespace, table_name, actions_list)
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="evolve_schema",
+            details=f"Evolved schema for {namespace}.{table_name}: {payload.actions}",
+            status="success"
+        )
+        return {"status": "success", "message": f"Successfully updated schema for {namespace}.{table_name}."}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="evolve_schema",
+            details=f"Failed schema evolution for {namespace}.{table_name}: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/ingest/raw", tags=["Ingestion"])
+async def ingest_raw_endpoint(payload: RawIngestRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog, MeldraValidator
+    import pyarrow as pa
+    
+    m_catalog = MeldraCatalog()
+    catalog = m_catalog.catalog
+    identifier = (payload.namespace, payload.table_name)
+    
+    table_exists = False
+    try:
+        catalog.load_table(identifier)
+        table_exists = True
+    except Exception:
+        pass
+        
+    if not table_exists:
+        if not payload.schema_json:
+            raise HTTPException(status_code=400, detail="Table does not exist and no schema_json provided to create it.")
+        from tools import create_iceberg_table
+        create_res = create_iceberg_table.invoke({
+            "namespace": payload.namespace,
+            "table_name": payload.table_name,
+            "schema_json": json.dumps(payload.schema_json)
+        })
+        if "error" in create_res.lower():
+            raise HTTPException(status_code=500, detail=f"Failed to create table: {create_res}")
+            
+    table = catalog.load_table(identifier)
+    df = pd.DataFrame(payload.data)
+    if df.empty:
+        raise HTTPException(status_code=400, detail="No data rows provided.")
+        
+    # --- Data Quality Contract Validation ---
+    rules_str = table.properties.get("data_contracts", "[]")
+    rules = json.loads(rules_str)
+    if rules:
+        is_valid, validation_logs = MeldraValidator.validate_dataframe(df, rules)
+        if not is_valid:
+            log_audit(
+                user_id=user.get("sub", "unknown"),
+                tier=user.get("tier", "trial"),
+                action="ingest_raw_validation",
+                details=f"Data contract checks failed for {payload.namespace}.{payload.table_name}: {validation_logs}",
+                status="error"
+            )
+            raise HTTPException(
+                status_code=400, 
+                detail={"error": "Data Contract Validation Failed", "logs": validation_logs}
+            )
+
+    try:
+        arrow_table = pa.Table.from_pandas(df)
+        iceberg_schema = table.schema()
+        pyarrow_schema = iceberg_schema.as_arrow()
+        
+        cast_arrays = []
+        cast_fields = []
+        for field in pyarrow_schema:
+            if field.name in arrow_table.schema.names:
+                col = arrow_table.column(field.name)
+                cast_arrays.append(col.cast(field.type))
+                cast_fields.append(field)
+                
+        arrow_table = pa.table(
+            {field.name: arr for field, arr in zip(cast_fields, cast_arrays)},
+            schema=pa.schema(cast_fields)
+        )
+        
+        if payload.write_mode == "overwrite":
+            table.overwrite(arrow_table)
+        elif payload.write_mode == "upsert" and payload.merge_key:
+            existing_arrow = table.scan().to_arrow()
+            if len(existing_arrow) > 0:
+                existing_df = existing_arrow.to_pandas()
+                new_df = arrow_table.to_pandas()
+                
+                # Merge logic - updates matching keys and appends new keys
+                merged_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=[payload.merge_key], keep='last')
+                
+                merged_arrow = pa.Table.from_pandas(merged_df)
+                cast_arrays_m = []
+                cast_fields_m = []
+                for field in pyarrow_schema:
+                    if field.name in merged_arrow.schema.names:
+                        col = merged_arrow.column(field.name)
+                        cast_arrays_m.append(col.cast(field.type))
+                        cast_fields_m.append(field)
+                
+                merged_arrow = pa.table(
+                    {field.name: arr for field, arr in zip(cast_fields_m, cast_arrays_m)},
+                    schema=pa.schema(cast_fields_m)
+                )
+                table.overwrite(merged_arrow)
+            else:
+                table.append(arrow_table)
+        else:
+            table.append(arrow_table)
+            
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="ingest_raw",
+            details=f"Programmatic ingestion into {payload.namespace}.{payload.table_name} ({len(df)} rows, write_mode={payload.write_mode})",
+            status="success"
+        )
+        return {"status": "success", "message": f"Successfully ingested {len(df)} rows into {payload.namespace}.{payload.table_name}."}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="ingest_raw",
+            details=f"Failed programmatic ingestion into {payload.namespace}.{payload.table_name}: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/catalog/query", tags=["Catalog"])
+async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    import duckdb
+    try:
+        m_catalog = MeldraCatalog()
+        tables = m_catalog.list_tables(payload.namespace)
+        
+        con = duckdb.connect(database=':memory:')
+        
+        for tbl_name in tables:
+            try:
+                # Time travel scan
+                arrow_tbl = m_catalog.run_time_travel_scan(payload.namespace, tbl_name, payload.snapshot_id)
+                con.register(tbl_name, arrow_tbl)
+            except Exception:
+                pass
+                
+        start_time = time.time()
+        result_df = con.execute(payload.sql).fetchdf()
+        duration_ms = (time.time() - start_time) * 1000
+        
+        preview_rows = result_df.head(100).to_dict(orient="records")
+        for row in preview_rows:
+            for k, v in row.items():
+                if pd.isna(v):
+                    row[k] = None
+                elif not isinstance(v, (str, int, float, bool, type(None))):
+                    row[k] = str(v)
+                    
+        columns = list(result_df.columns)
+        
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="execute_query",
+            details=f"Executed SQL: {payload.sql[:100]}...",
+            status="success"
+        )
+        
+        return {
+            "columns": columns,
+            "rows": preview_rows,
+            "duration_ms": duration_ms,
+            "row_count": len(result_df)
+        }
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="execute_query",
+            details=f"Failed SQL: {payload.sql[:100]}... | Error: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/maintenance", tags=["Catalog"])
+async def table_maintenance(namespace: str, table_name: str, payload: MaintenanceRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    try:
+        m_catalog = MeldraCatalog()
+        if payload.action == "optimize":
+            msg = m_catalog.optimize_table(namespace, table_name)
+        elif payload.action == "expire_snapshots":
+            msg = m_catalog.expire_snapshots(namespace, table_name)
+        else:
+            raise Exception("Invalid maintenance action.")
+            
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="maintenance",
+            details=f"Run {payload.action} on {namespace}.{table_name}",
+            status="success"
+        )
+        return {"status": "success", "message": msg}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="maintenance",
+            details=f"Failed maintenance {payload.action} on {namespace}.{table_name}: {e}",
+            status="error"
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/contracts", tags=["Catalog"])
+async def save_data_contracts(namespace: str, table_name: str, payload: DataContractRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    import json
+    try:
+        m_catalog = MeldraCatalog()
+        catalog = m_catalog.catalog
+        identifier = (namespace, table_name)
+        table = catalog.load_table(identifier)
+        contract_json = json.dumps(payload.rules)
+        table.transaction().set_properties({"data_contracts": contract_json}).commit()
+        return {"status": "success", "message": "Data contracts updated."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/catalog/namespaces/{namespace}/tables/{table_name}/contracts", tags=["Catalog"])
+async def get_data_contracts(namespace: str, table_name: str, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    import json
+    try:
+        m_catalog = MeldraCatalog()
+        catalog = m_catalog.catalog
+        identifier = (namespace, table_name)
+        table = catalog.load_table(identifier)
+        rules_str = table.properties.get("data_contracts", "[]")
+        return {"rules": json.loads(rules_str)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.exception_handler(HTTPException)

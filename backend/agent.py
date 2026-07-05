@@ -1,15 +1,93 @@
 import os
+import uuid
+import time
+import asyncio
+import datetime
+from typing import Dict, Any
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.callbacks import BaseCallbackHandler
 from tools import (
     create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data,
     run_generic_graph_analysis, sync_iceberg_to_graph_db, query_graph_db_cypher
 )
+from contextvars import ContextVar
+from traffic_bus import traffic_bus, TrafficEvent
 
 # Load environment variables
 load_dotenv()
+
+# ContextVar to track the parent request ID for tool logs correlation
+current_request_id: ContextVar[str] = ContextVar("current_request_id", default="")
+
+class TrafficCallbackHandler(BaseCallbackHandler):
+    def __init__(self):
+        super().__init__()
+        self.tool_starts = {}
+
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
+        tool_name = serialized.get("name")
+        run_id = str(kwargs.get("run_id") or uuid.uuid4())
+        self.tool_starts[run_id] = {
+            "name": tool_name,
+            "args": input_str,
+            "start_time": time.time()
+        }
+
+    def on_tool_end(self, output: Any, **kwargs: Any) -> None:
+        run_id = str(kwargs.get("run_id"))
+        start_info = self.tool_starts.pop(run_id, None)
+        if start_info:
+            latency_ms = (time.time() - start_info["start_time"]) * 1000
+            parent_id = current_request_id.get()
+            event = TrafficEvent(
+                id=str(uuid.uuid4()),
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                type="tool_call",
+                status="success",
+                latency_ms=latency_ms,
+                tool_name=start_info["name"],
+                tool_args=str(start_info["args"]),
+                tool_result=str(output),
+                parent_id=parent_id
+            )
+            # Run async publish inside loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(traffic_bus.publish(event))
+                else:
+                    loop.run_until_complete(traffic_bus.publish(event))
+            except Exception:
+                pass
+
+    def on_tool_error(self, error: BaseException, **kwargs: Any) -> None:
+        run_id = str(kwargs.get("run_id"))
+        start_info = self.tool_starts.pop(run_id, None)
+        if start_info:
+            latency_ms = (time.time() - start_info["start_time"]) * 1000
+            parent_id = current_request_id.get()
+            event = TrafficEvent(
+                id=str(uuid.uuid4()),
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                type="tool_call",
+                status="error",
+                latency_ms=latency_ms,
+                tool_name=start_info["name"],
+                tool_args=str(start_info["args"]),
+                tool_result=str(error),
+                parent_id=parent_id
+            )
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(traffic_bus.publish(event))
+                else:
+                    loop.run_until_complete(traffic_bus.publish(event))
+            except Exception:
+                pass
 
 def create_iceberg_agent():
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -70,7 +148,8 @@ def create_iceberg_agent():
         tools=tools,
         verbose=True,
         max_iterations=20,
-        max_execution_time=120
+        max_execution_time=120,
+        callbacks=[TrafficCallbackHandler()]
     )
     
     return agent_executor

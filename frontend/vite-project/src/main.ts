@@ -64,6 +64,8 @@ const previewTbody = document.getElementById('preview-tbody') as HTMLTableSectio
 const schemaConfigTbody = document.getElementById('schema-config-tbody') as HTMLTableSectionElement;
 const ingestNamespace = document.getElementById('ingest-namespace') as HTMLInputElement;
 const ingestTableName = document.getElementById('ingest-table-name') as HTMLInputElement;
+const ingestWriteMode = document.getElementById('ingest-write-mode') as HTMLSelectElement;
+const ingestMergeKey = document.getElementById('ingest-merge-key') as HTMLInputElement;
 const btnDoIngest = document.getElementById('btn-do-ingest') as HTMLButtonElement;
 const ingestLoadingOverlay = document.getElementById('ingest-loading-overlay') as HTMLDivElement;
 const ingestLoadingText = document.getElementById('ingest-loading-text') as HTMLHeadingElement;
@@ -138,6 +140,10 @@ tabButtons.forEach(button => {
       loadGraphStats();
     } else if (targetTab === 'audit-tab') {
       loadAuditLogs();
+    } else if (targetTab === 'studio-tab') {
+      initDataStudio();
+    } else if (targetTab === 'traffic-tab') {
+      initTrafficMonitor();
     }
   });
 });
@@ -812,7 +818,9 @@ btnDoIngest.addEventListener('click', async () => {
       namespace,
       table_name,
       file_path: state.uploadedFilePath,
-      schema_json
+      schema_json,
+      write_mode: ingestWriteMode.value,
+      merge_key: ingestMergeKey.value.trim() || undefined
     });
     
     showToast(res.message || 'Table created and data ingested successfully!', 'success');
@@ -3123,6 +3131,751 @@ function toggleLandingMobileMenu(btn: HTMLElement) {
   }
 }
 
+// ─────────────────────────────────────────
+// LIVE TRAFFIC MONITOR CONTROLLER
+// ─────────────────────────────────────────
+let trafficWebSocket: WebSocket | null = null;
+let trafficEvents: any[] = [];
+let trafficPaused = false;
+let selectedTrafficEventId: string | null = null;
+
+function initTrafficMonitor() {
+  // Bind buttons
+  const btnPause = document.getElementById('btn-traffic-pause') as HTMLButtonElement;
+  const btnClear = document.getElementById('btn-traffic-clear') as HTMLButtonElement;
+  const searchInput = document.getElementById('traffic-search') as HTMLInputElement;
+  const filterSelect = document.getElementById('traffic-filter') as HTMLSelectElement;
+
+  if (btnPause) {
+    btnPause.onclick = () => {
+      trafficPaused = !trafficPaused;
+      btnPause.innerHTML = trafficPaused ? '<i class="fa-solid fa-play"></i> Resume' : '<i class="fa-solid fa-pause"></i> Pause';
+      showToast(trafficPaused ? 'Traffic streaming paused.' : 'Traffic streaming resumed.', 'info');
+    };
+  }
+
+  if (btnClear) {
+    btnClear.onclick = () => {
+      trafficEvents = [];
+      selectedTrafficEventId = null;
+      renderTrafficTimeline();
+      renderTrafficInspector();
+      updateTrafficStats();
+      showToast('Traffic logs cleared.', 'info');
+    };
+  }
+
+  if (searchInput) {
+    searchInput.oninput = () => renderTrafficTimeline();
+  }
+
+  if (filterSelect) {
+    filterSelect.onchange = () => renderTrafficTimeline();
+  }
+
+  // Connect WebSocket
+  if (!trafficWebSocket || trafficWebSocket.readyState !== WebSocket.OPEN) {
+    connectTrafficWS();
+  }
+}
+
+function connectTrafficWS() {
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8000';
+  const wsHost = apiBase.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const token = tokenStore.getAccessToken();
+  const wsUrl = `${wsProto}//${wsHost}/ws/traffic?token=${token}`;
+
+  const statusBadge = document.getElementById('traffic-stream-status')!;
+  
+  try {
+    trafficWebSocket = new WebSocket(wsUrl);
+
+    trafficWebSocket.onopen = () => {
+      if (statusBadge) {
+        statusBadge.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; background: #22c55e; border-radius: 50%;"></span> CONNECTED';
+        statusBadge.style.color = '#22c55e';
+      }
+    };
+
+    trafficWebSocket.onmessage = (event) => {
+      if (trafficPaused) return;
+      try {
+        const data = JSON.parse(event.data);
+        // Deduplicate
+        if (!trafficEvents.some(e => e.id === data.id)) {
+          trafficEvents.unshift(data); // Newest at the top
+          if (trafficEvents.length > 500) {
+            trafficEvents.pop();
+          }
+          renderTrafficTimeline();
+          updateTrafficStats();
+        }
+      } catch (e) {
+        console.error('Error parsing traffic event:', e);
+      }
+    };
+
+    trafficWebSocket.onclose = () => {
+      if (statusBadge) {
+        statusBadge.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; background: #ef4444; border-radius: 50%;"></span> DISCONNECTED';
+        statusBadge.style.color = '#ef4444';
+      }
+      // Reconnect after 3 seconds if active tab is still traffic
+      setTimeout(() => {
+        if (state.activeTab === 'traffic-tab') {
+          connectTrafficWS();
+        }
+      }, 3000);
+    };
+
+    trafficWebSocket.onerror = () => {
+      if (statusBadge) {
+        statusBadge.innerHTML = '<span style="display: inline-block; width: 6px; height: 6px; background: #ef4444; border-radius: 50%;"></span> ERROR';
+        statusBadge.style.color = '#ef4444';
+      }
+    };
+  } catch (err) {
+    console.error('WebSocket connection error:', err);
+  }
+}
+
+function renderTrafficTimeline() {
+  const container = document.getElementById('traffic-timeline-list')!;
+  if (!container) return;
+
+  const searchVal = (document.getElementById('traffic-search') as HTMLInputElement)?.value.toLowerCase() || '';
+  const filterVal = (document.getElementById('traffic-filter') as HTMLSelectElement)?.value || 'all';
+
+  // Filter events
+  let filtered = trafficEvents.filter(event => {
+    // Search
+    const matchesSearch = 
+      (event.path && event.path.toLowerCase().includes(searchVal)) ||
+      (event.tool_name && event.tool_name.toLowerCase().includes(searchVal)) ||
+      (event.method && event.method.toLowerCase().includes(searchVal));
+
+    // Filter type
+    let matchesFilter = true;
+    if (filterVal === 'http') matchesFilter = event.type === 'http_request';
+    if (filterVal === 'tool') matchesFilter = event.type === 'tool_call';
+    if (filterVal === 'error') {
+      matchesFilter = event.status === 'error' || (event.status && parseInt(event.status) >= 400);
+    }
+
+    return matchesSearch && matchesFilter;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic; padding: 2rem; text-align: center;">No matching traffic events.</div>';
+    return;
+  }
+
+  // Render rows
+  let idx = filtered.length;
+  container.innerHTML = filtered.map(event => {
+    const isHttp = event.type === 'http_request';
+    const num = idx--;
+    const methodText = isHttp ? event.method : '🤖 AI';
+    const pathText = isHttp ? event.path : `└─ Tool: ${event.tool_name}`;
+    const statusText = event.status || 'success';
+    const isError = statusText === 'error' || parseInt(statusText) >= 400;
+    const statusColor = isError ? '#ef4444' : (isHttp ? '#38bdf8' : '#22c55e');
+    const latencyVal = event.latency_ms ? (event.latency_ms / 1000).toFixed(2) + 's' : '0.00s';
+    
+    const isActiveClass = event.id === selectedTrafficEventId ? 'background: rgba(255,255,255,0.06);' : '';
+    const leftPadding = isHttp ? '0.75rem' : '1.75rem';
+    
+    return `
+      <div class="traffic-row" data-id="${event.id}" style="display: grid; grid-template-columns: 50px 70px 1fr 60px 70px; padding: 0.6rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.78rem; cursor: pointer; align-items: center; ${isActiveClass} padding-left: ${leftPadding};" onclick="selectTrafficEvent('${event.id}')">
+        <span style="color: var(--text-muted);">${num}</span>
+        <span style="font-weight: 700; color: ${isHttp ? '#e2e8f0' : '#86efac'};">${methodText}</span>
+        <span style="color: ${isHttp ? '#f8fafc' : '#cbd5e1'}; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${pathText}</span>
+        <span style="color: ${statusColor}; font-weight: 700;">${statusText}</span>
+        <span style="text-align: right; color: var(--text-muted); font-family: var(--font-mono);">${latencyVal}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectTrafficEvent(eventId: string) {
+  selectedTrafficEventId = eventId;
+  renderTrafficTimeline();
+  renderTrafficInspector();
+}
+(window as any).selectTrafficEvent = selectTrafficEvent;
+
+function renderTrafficInspector() {
+  const container = document.getElementById('traffic-inspector-content')!;
+  if (!container) return;
+
+  const event = trafficEvents.find(e => e.id === selectedTrafficEventId);
+  if (!event) {
+    container.innerHTML = '<div style="color: var(--text-muted); font-style: italic; text-align: center; padding-top: 5rem;">Select an event row from the timeline to inspect payloads.</div>';
+    return;
+  }
+
+  const isHttp = event.type === 'http_request';
+  const headerTitle = isHttp ? `${event.method} ${event.path}` : `AI Agent Tool Call: ${event.tool_name}`;
+  const requestLabel = isHttp ? 'HTTP Request Body' : 'Input Arguments';
+  const responseLabel = isHttp ? 'HTTP Response Payload' : 'Output Result';
+
+  // Format request/response body safely
+  let reqPayload = 'No payload';
+  if (event.request_body || event.tool_args) {
+    try {
+      const parsed = JSON.parse(event.request_body || event.tool_args);
+      reqPayload = JSON.stringify(parsed, null, 2);
+    } catch {
+      reqPayload = event.request_body || event.tool_args;
+    }
+  }
+
+  let resPayload = 'No response payload';
+  if (event.response_body || event.tool_result) {
+    try {
+      const parsed = JSON.parse(event.response_body || event.tool_result);
+      resPayload = JSON.stringify(parsed, null, 2);
+    } catch {
+      resPayload = event.response_body || event.tool_result;
+    }
+  }
+
+  container.innerHTML = `
+    <div>
+      <h4 style="color:#fff; margin:0 0 0.5rem 0; font-size:0.85rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.35rem;">${headerTitle}</h4>
+      <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        <span>Timestamp: ${new Date(event.timestamp).toLocaleTimeString()}</span>
+        <span>Latency: ${event.latency_ms ? event.latency_ms.toFixed(0) + 'ms' : 'N/A'}</span>
+      </div>
+    </div>
+    
+    <div>
+      <h5 style="color:#bef264; margin:0 0 0.4rem 0; font-size:0.75rem;">${requestLabel}</h5>
+      <pre style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.75rem; border-radius:6px; overflow-x:auto; max-height:160px; color:#cbd5e1; font-size:0.72rem; margin:0;">${reqPayload}</pre>
+    </div>
+
+    <div>
+      <h5 style="color:#38bdf8; margin:0 0 0.4rem 0; font-size:0.75rem;">${responseLabel}</h5>
+      <pre style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.75rem; border-radius:6px; overflow-x:auto; max-height:220px; color:#cbd5e1; font-size:0.72rem; margin:0;">${resPayload}</pre>
+    </div>
+  `;
+}
+
+function updateTrafficStats() {
+  const total = trafficEvents.length;
+  const http = trafficEvents.filter(e => e.type === 'http_request').length;
+  const tools = trafficEvents.filter(e => e.type === 'tool_call').length;
+  const errors = trafficEvents.filter(e => e.status === 'error' || (e.status && parseInt(e.status) >= 400)).length;
+
+  document.getElementById('traffic-stat-total')!.textContent = total.toString();
+  document.getElementById('traffic-stat-http')!.textContent = http.toString();
+  document.getElementById('traffic-stat-tools')!.textContent = tools.toString();
+  document.getElementById('traffic-stat-errors')!.textContent = errors.toString();
+}
+
+
+// ─────────────────────────────────────────
+// DATA ENGINEERING STUDIO CONTROLLER
+// ─────────────────────────────────────────
+let activeNamespace = 'default';
+let activeTableName = '';
+let studioSubTab = 'studio-tab-sql';
+let currentTableSchema: any[] = [];
+let contractRules: any[] = [];
+
+async function initDataStudio() {
+  // Bind sub-tabs
+  const subTabButtons = document.querySelectorAll('.studio-sub-tab-btn') as NodeListOf<HTMLElement>;
+  subTabButtons.forEach(btn => {
+    btn.onclick = () => {
+      subTabButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.getAttribute('data-subtab')!;
+      
+      const contents = document.querySelectorAll('.studio-sub-tab-content');
+      contents.forEach(c => (c as HTMLElement).style.display = 'none');
+      
+      const targetEl = document.getElementById(target);
+      if (targetEl) {
+        if (target === 'studio-tab-sql') targetEl.style.display = 'flex';
+        else targetEl.style.display = 'block';
+      }
+      
+      studioSubTab = target;
+      if (target === 'studio-tab-schema') renderSchemaTab();
+      if (target === 'studio-tab-travel') loadTableHistory();
+      if (target === 'studio-tab-contracts') loadTableContracts();
+    };
+  });
+
+  // Namespace selector changes
+  const nsSelect = document.getElementById('studio-namespace-select') as HTMLSelectElement;
+  if (nsSelect) {
+    nsSelect.onchange = () => {
+      activeNamespace = nsSelect.value;
+      loadStudioTables();
+    };
+  }
+
+  // Create/Delete Namespace buttons
+  const btnCreateNs = document.getElementById('btn-create-ns') as HTMLButtonElement;
+  if (btnCreateNs) {
+    btnCreateNs.onclick = async () => {
+      const newNs = prompt('Enter name of new namespace (e.g. production, staging, dev):');
+      if (!newNs) return;
+      try {
+        await api.catalog.createNamespace(newNs.trim());
+        showToast(`Namespace '${newNs}' created successfully.`);
+        await loadStudioNamespaces();
+      } catch (e: any) {
+        showToast(e.message, 'error');
+      }
+    };
+  }
+
+  const btnDeleteNs = document.getElementById('btn-delete-ns') as HTMLButtonElement;
+  if (btnDeleteNs) {
+    btnDeleteNs.onclick = async () => {
+      const confirmDelete = confirm(`Are you sure you want to drop namespace '${activeNamespace}'? This fails if tables exist.`);
+      if (!confirmDelete) return;
+      try {
+        await api.catalog.deleteNamespace(activeNamespace);
+        showToast(`Namespace '${activeNamespace}' dropped.`);
+        await loadStudioNamespaces();
+      } catch (e: any) {
+        showToast(e.message, 'error');
+      }
+    };
+  }
+
+  // Create Table button
+  const btnCreateTable = document.getElementById('btn-create-table-studio') as HTMLButtonElement;
+  if (btnCreateTable) {
+    btnCreateTable.onclick = () => {
+      switchTab('ingest-tab');
+      showToast('Upload a CSV file to define and create your Iceberg table.', 'info');
+    };
+  }
+
+  // Run SQL button
+  const btnRunSql = document.getElementById('btn-run-sql') as HTMLButtonElement;
+  if (btnRunSql) {
+    btnRunSql.onclick = executeStudioSQL;
+  }
+
+  // Add column button
+  const btnAddCol = document.getElementById('btn-schema-add-col') as HTMLButtonElement;
+  if (btnAddCol) {
+    btnAddCol.onclick = executeAddColumn;
+  }
+
+  // Maintenance buttons
+  const btnCompaction = document.getElementById('btn-maintenance-optimize') as HTMLButtonElement;
+  if (btnCompaction) {
+    btnCompaction.onclick = () => runMaintenanceTask('optimize');
+  }
+
+  const btnExpireSnapshots = document.getElementById('btn-maintenance-expire') as HTMLButtonElement;
+  if (btnExpireSnapshots) {
+    btnExpireSnapshots.onclick = () => runMaintenanceTask('expire_snapshots');
+  }
+
+  // Contract rules buttons
+  const btnAddRule = document.getElementById('btn-add-contract-rule') as HTMLButtonElement;
+  if (btnAddRule) {
+    btnAddRule.onclick = addContractRuleItem;
+  }
+
+  const btnSaveContracts = document.getElementById('btn-save-contracts') as HTMLButtonElement;
+  if (btnSaveContracts) {
+    btnSaveContracts.onclick = saveTableContracts;
+  }
+
+  // Initialize data
+  await loadStudioNamespaces();
+}
+
+async function loadStudioNamespaces() {
+  try {
+    const res = await api.catalog.listNamespaces();
+    const select = document.getElementById('studio-namespace-select') as HTMLSelectElement;
+    if (select) {
+      select.innerHTML = res.namespaces.map(ns => `<option value="${ns}">${ns}</option>`).join('');
+      // Select the active one
+      if (res.namespaces.includes(activeNamespace)) {
+        select.value = activeNamespace;
+      } else if (res.namespaces.length > 0) {
+        activeNamespace = res.namespaces[0];
+        select.value = activeNamespace;
+      }
+    }
+    await loadStudioTables();
+  } catch (e: any) {
+    showToast('Failed to load namespaces catalog.', 'error');
+  }
+}
+
+async function loadStudioTables() {
+  const container = document.getElementById('studio-table-list')!;
+  if (!container) return;
+
+  try {
+    const res = await api.catalog.listTables(activeNamespace);
+    if (res.tables.length === 0) {
+      container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic; padding: 1rem 0;">No tables found.</div>';
+      activeTableName = '';
+      return;
+    }
+
+    container.innerHTML = res.tables.map(tbl => {
+      // Color coded badge by layers
+      let badgeColor = '#bef264'; // Bronze
+      let layerTag = 'Bronze';
+      if (tbl.includes('silver') || tbl.includes('clean')) {
+        badgeColor = '#38bdf8';
+        layerTag = 'Silver';
+      } else if (tbl.includes('gold') || tbl.includes('analytics') || tbl.includes('summary')) {
+        badgeColor = '#c084fc';
+        layerTag = 'Gold';
+      }
+
+      const activeStyle = tbl === activeTableName ? 'background: rgba(255,255,255,0.06); border-color: var(--border-glass);' : '';
+      return `
+        <button class="btn btn-secondary btn-sm" style="display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; font-family:var(--font-mono); font-size:0.78rem; padding:0.5rem 0.75rem; margin:0; ${activeStyle}" onclick="selectStudioTable('${tbl}')">
+          <span><i class="fa-solid fa-table" style="margin-right:0.35rem; color:var(--text-muted);"></i> ${tbl}</span>
+          <span style="font-size:0.6rem; font-weight:700; color:${badgeColor}; border:1px solid ${badgeColor}40; background:${badgeColor}10; padding:0.1rem 0.3rem; border-radius:3px;">${layerTag}</span>
+        </button>
+      `;
+    }).join('');
+
+    // Select the first table by default if none selected
+    if (!activeTableName || !res.tables.includes(activeTableName)) {
+      selectStudioTable(res.tables[0]);
+    }
+  } catch (e: any) {
+    showToast('Failed to list tables in namespace.', 'error');
+  }
+}
+
+async function selectStudioTable(tableName: string) {
+  activeTableName = tableName;
+  // Reload sidebar highlights
+  await loadStudioTables();
+  
+  // Fetch details
+  try {
+    const details = await api.catalog.getTableDetails(activeNamespace, tableName);
+    currentTableSchema = details.schema || [];
+    
+    // Auto populate SQL Console query
+    const sqlEditor = document.getElementById('studio-sql-editor') as HTMLTextAreaElement;
+    if (sqlEditor && sqlEditor.value.trim().startsWith('-- Type your SQL') || sqlEditor.value.trim().includes('FROM')) {
+      sqlEditor.value = `SELECT * FROM ${tableName} LIMIT 10;`;
+    }
+
+    // Refresh active subtab
+    if (studioSubTab === 'studio-tab-schema') renderSchemaTab();
+    if (studioSubTab === 'studio-tab-travel') loadTableHistory();
+    if (studioSubTab === 'studio-tab-contracts') loadTableContracts();
+  } catch (e: any) {
+    showToast('Failed to fetch table details.', 'error');
+  }
+}
+(window as any).selectStudioTable = selectStudioTable;
+
+// SUB-TAB 1: SQL Console query runner
+async function executeStudioSQL() {
+  const sql = (document.getElementById('studio-sql-editor') as HTMLTextAreaElement).value.trim();
+  if (!sql) return;
+
+  const btn = document.getElementById('btn-run-sql') as HTMLButtonElement;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+
+  try {
+    const res = await api.catalog.runQuery(sql, activeNamespace);
+    
+    // Stats
+    const statsEl = document.getElementById('studio-sql-stats')!;
+    statsEl.textContent = `${res.row_count} rows returned in ${res.duration_ms.toFixed(0)}ms`;
+
+    // Render table headers
+    const thead = document.getElementById('studio-sql-thead')!;
+    thead.innerHTML = `<tr>${res.columns.map((c: string) => `<th>${c}</th>`).join('')}</tr>`;
+
+    // Render table rows
+    const tbody = document.getElementById('studio-sql-tbody')!;
+    if (res.rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="${res.columns.length}" style="text-align:center; color:var(--text-muted); font-style:italic;">Query executed successfully. Empty dataset returned.</td></tr>`;
+    } else {
+      tbody.innerHTML = res.rows.map((row: any) => {
+        return `<tr>${res.columns.map((col: string) => `<td>${row[col] !== null ? row[col] : '<span style="color:var(--text-muted); font-style:italic;">NULL</span>'}</td>`).join('')}</tr>`;
+      }).join('');
+    }
+    showToast('SQL query completed.');
+  } catch (e: any) {
+    showToast(e.message, 'error');
+    // Display error message directly in table
+    const tbody = document.getElementById('studio-sql-tbody')!;
+    tbody.innerHTML = `<tr><td style="color:#ef4444; font-family:var(--font-mono); font-size:0.75rem; text-align:left;">Error executing SQL:<br>${e.message}</td></tr>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-play"></i> Run Query';
+  }
+}
+
+// SUB-TAB 2: Schema evolution renderer & commands
+function renderSchemaTab() {
+  const tbody = document.getElementById('studio-schema-tbody')!;
+  if (!tbody) return;
+
+  if (currentTableSchema.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); font-style:italic;">No columns found. Select a table.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = currentTableSchema.map(col => {
+    return `
+      <tr>
+        <td style="font-family:var(--font-mono);">${col.id}</td>
+        <td style="font-weight:600; color:#fff;">${col.name}</td>
+        <td style="font-family:var(--font-mono); color:#bef264;">${col.type}</td>
+        <td>${col.required ? '✅ Required' : 'Optional'}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" style="color:#ef4444; padding:0.2rem 0.4rem; margin:0;" onclick="executeDropColumn('${col.name}')"><i class="fa-solid fa-trash"></i> Drop</button>
+          <button class="btn btn-secondary btn-sm" style="padding:0.2rem 0.4rem; margin:0 0 0 0.25rem;" onclick="promptRenameColumn('${col.name}')"><i class="fa-solid fa-pen-to-square"></i> Rename</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function executeAddColumn() {
+  if (!activeTableName) {
+    showToast('Select a table first.', 'error');
+    return;
+  }
+  const nameInput = document.getElementById('schema-add-name') as HTMLInputElement;
+  const typeSelect = document.getElementById('schema-add-type') as HTMLSelectElement;
+  const name = nameInput.value.trim();
+  const type = typeSelect.value;
+
+  if (!name) {
+    showToast('Please specify column name.', 'error');
+    return;
+  }
+
+  try {
+    await api.catalog.evolveSchema(activeNamespace, activeTableName, [{ op: 'add', name, type }]);
+    showToast(`Successfully added column '${name}' to ${activeTableName}.`);
+    nameInput.value = '';
+    await selectStudioTable(activeTableName);
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function executeDropColumn(colName: string) {
+  const confirmDrop = confirm(`Are you sure you want to drop column '${colName}'? Historical data will be preserved but inaccessible.`);
+  if (!confirmDrop) return;
+
+  try {
+    await api.catalog.evolveSchema(activeNamespace, activeTableName, [{ op: 'drop', name: colName }]);
+    showToast(`Successfully dropped column '${colName}'.`);
+    await selectStudioTable(activeTableName);
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
+}
+(window as any).executeDropColumn = executeDropColumn;
+
+async function promptRenameColumn(oldName: string) {
+  const newName = prompt(`Enter new name for column '${oldName}':`);
+  if (!newName || newName.trim() === oldName) return;
+
+  try {
+    await api.catalog.evolveSchema(activeNamespace, activeTableName, [{ op: 'rename', name: oldName, new_name: newName.trim() }]);
+    showToast(`Column '${oldName}' renamed to '${newName.trim()}'.`);
+    await selectStudioTable(activeTableName);
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
+}
+(window as any).promptRenameColumn = promptRenameColumn;
+
+// SUB-TAB 3: Time Travel historical loader
+async function loadTableHistory() {
+  const container = document.getElementById('studio-travel-timeline')!;
+  if (!container) return;
+
+  if (!activeTableName) {
+    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No table selected.</div>';
+    return;
+  }
+
+  try {
+    const details = await api.catalog.getTableDetails(activeNamespace, activeTableName);
+    const history = details.history || [];
+
+    if (history.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No historical snapshots recorded yet.</div>';
+      return;
+    }
+
+    // Sort historical snapshots newest first
+    const sorted = [...history].reverse();
+    container.innerHTML = sorted.map((snap: any) => {
+      const commitDate = new Date(snap.timestamp_ms);
+      return `
+        <button class="btn btn-secondary btn-sm" style="display:flex; flex-direction:column; text-align:left; width:100%; padding:0.6rem 0.8rem; gap:0.25rem; font-size:0.75rem;" onclick="loadTimeTravelPreview(${snap.snapshot_id})">
+          <div style="font-weight:700; color:#38bdf8; display:flex; justify-content:space-between; width:100%;">
+            <span>Snapshot #${snap.snapshot_id.toString().substring(0, 8)}...</span>
+            <span style="font-size:0.65rem; color:var(--text-muted);">${commitDate.toLocaleTimeString()}</span>
+          </div>
+          <div style="font-size:0.68rem; color:var(--text-muted); font-family:var(--font-mono);">${commitDate.toLocaleDateString()}</div>
+        </button>
+      `;
+    }).join('');
+
+    // Load default query preview on current snapshot
+    loadTimeTravelPreview(0); // 0 translates to current/latest
+  } catch (e: any) {
+    container.innerHTML = '<div style="color:#ef4444; font-size:0.75rem;">Failed to load history list.</div>';
+  }
+}
+
+async function loadTimeTravelPreview(snapshotId: number) {
+  const thead = document.getElementById('studio-travel-thead')!;
+  const tbody = document.getElementById('studio-travel-tbody')!;
+  const activeSnapBadge = document.getElementById('studio-travel-active-snap')!;
+
+  if (!activeTableName) return;
+
+  activeSnapBadge.textContent = snapshotId === 0 ? 'Current State' : `Snapshot: ${snapshotId.toString().substring(0, 10)}...`;
+
+  try {
+    // Execute a simple limit query at that snapshot state
+    const res = await api.catalog.runQuery(`SELECT * FROM ${activeTableName} LIMIT 10;`, activeNamespace, snapshotId || undefined);
+    
+    // Render
+    thead.innerHTML = `<tr>${res.columns.map((c: string) => `<th>${c}</th>`).join('')}</tr>`;
+    tbody.innerHTML = res.rows.map((row: any) => {
+      return `<tr>${res.columns.map((col: string) => `<td>${row[col] !== null ? row[col] : '<span style="color:var(--text-muted);">NULL</span>'}</td>`).join('')}</tr>`;
+    }).join('');
+  } catch (e: any) {
+    tbody.innerHTML = `<tr><td style="color:#ef4444; font-family:var(--font-mono); font-size:0.7rem; text-align:left;">Failed to load historical snapshot:<br>${e.message}</td></tr>`;
+  }
+}
+(window as any).loadTimeTravelPreview = loadTimeTravelPreview;
+
+// SUB-TAB 4: Data contracts builder
+async function loadTableContracts() {
+  const container = document.getElementById('contracts-rules-container')!;
+  if (!container) return;
+
+  if (!activeTableName) {
+    container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No table selected.</div>';
+    return;
+  }
+
+  try {
+    const res = await api.catalog.getContracts(activeNamespace, activeTableName);
+    contractRules = res.rules || [];
+    renderContractRulesList();
+  } catch (e) {
+    container.innerHTML = '<div style="color:#ef4444; font-size:0.75rem;">Failed to load contracts.</div>';
+  }
+}
+
+function renderContractRulesList() {
+  const container = document.getElementById('contracts-rules-container')!;
+  if (!container) return;
+
+  if (contractRules.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic; padding:0.5rem 0;">No active rules. Click below to add.</div>';
+    return;
+  }
+
+  container.innerHTML = contractRules.map((rule, idx) => {
+    return `
+      <div style="display:flex; gap:0.4rem; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); padding:0.4rem; border-radius:6px;">
+        <input type="text" class="input-field rule-col" placeholder="column" value="${rule.column || ''}" style="padding:0.3rem; font-size:0.8rem; flex:1;">
+        <select class="input-field rule-op" style="padding:0.3rem; font-size:0.8rem; width:100px;">
+          <option value="not_null" ${rule.rule === 'not_null' ? 'selected' : ''}>not_null</option>
+          <option value="min" ${rule.rule === 'min' ? 'selected' : ''}>min</option>
+          <option value="max" ${rule.rule === 'max' ? 'selected' : ''}>max</option>
+          <option value="regex" ${rule.rule === 'regex' ? 'selected' : ''}>regex</option>
+        </select>
+        <input type="text" class="input-field rule-val" placeholder="value" value="${rule.value || ''}" style="padding:0.3rem; font-size:0.8rem; width:80px;">
+        <button class="btn btn-secondary btn-sm" style="color:#ef4444; padding:0.3rem; margin:0;" onclick="removeContractRuleItem(${idx})"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    `;
+  }).join('');
+}
+
+function addContractRuleItem() {
+  contractRules.push({ column: '', rule: 'not_null', value: '' });
+  renderContractRulesList();
+}
+
+function removeContractRuleItem(idx: number) {
+  contractRules.splice(idx, 1);
+  renderContractRulesList();
+}
+(window as any).removeContractRuleItem = removeContractRuleItem;
+
+async function saveTableContracts() {
+  if (!activeTableName) return;
+
+  const container = document.getElementById('contracts-rules-container')!;
+  const rows = container.querySelectorAll('div');
+  const rulesList: any[] = [];
+
+  rows.forEach(row => {
+    const col = (row.querySelector('.rule-col') as HTMLInputElement).value.trim();
+    const op = (row.querySelector('.rule-op') as HTMLSelectElement).value;
+    const val = (row.querySelector('.rule-val') as HTMLInputElement).value.trim();
+
+    if (col) {
+      rulesList.push({ column: col, rule: op, value: val });
+    }
+  });
+
+  try {
+    await api.catalog.saveContracts(activeNamespace, activeTableName, rulesList);
+    showToast('Data contracts saved successfully.');
+    // Log message emulator
+    const logEl = document.getElementById('contracts-validation-log')!;
+    logEl.innerHTML += `<br>[contracts] Saved ${rulesList.length} metadata validation constraints to properties.`;
+    logEl.scrollTop = logEl.scrollHeight;
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
+}
+
+// SUB-TAB 6: Maintenance Optimize & Expire
+async function runMaintenanceTask(action: 'optimize' | 'expire_snapshots') {
+  if (!activeTableName) {
+    showToast('Select a table first.', 'error');
+    return;
+  }
+
+  const confirmAction = confirm(`Are you sure you want to run '${action}' maintenance on ${activeTableName}?`);
+  if (!confirmAction) return;
+
+  try {
+    const res = await api.catalog.runMaintenance(activeNamespace, activeTableName, action);
+    showToast(res.message);
+  } catch (e: any) {
+    showToast(e.message, 'error');
+  }
+}
+
+
+// Expose functions to window for DOM bindings
+(window as any).initDataStudio = initDataStudio;
+(window as any).initTrafficMonitor = initTrafficMonitor;
 (window as any).logoutToHome = logoutToHome;
 (window as any).toggleLandingMobileMenu = toggleLandingMobileMenu;
 
