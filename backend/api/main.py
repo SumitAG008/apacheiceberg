@@ -179,6 +179,21 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("Password must contain at least one number.")
         return v
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one number.")
+        return v
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -468,6 +483,23 @@ async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
         "created_at": db_user["created_at"].isoformat() if db_user["created_at"] else None,
         "last_login_at": db_user["last_login_at"].isoformat() if db_user.get("last_login_at") else None,
     }
+
+
+
+@app.post("/auth/change-password", tags=["Auth"])
+async def change_password(payload: ChangePasswordRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """Allows an authenticated user to change their password."""
+    user_id = user["sub"]
+    db_user = get_user_by_id(user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if not verify_password(payload.current_password, db_user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+
+    update_password(user_id, payload.new_password)
+    log_audit(user_id, db_user["tier"], "change_password", f"Password changed successfully by user {db_user['email']}", "success")
+    return {"message": "Password updated successfully."}
 
 
 @app.post("/auth/logout", tags=["Auth"])

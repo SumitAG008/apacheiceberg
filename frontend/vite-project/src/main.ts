@@ -1898,7 +1898,15 @@ function initAuthController() {
     }, 400);
     mainApp.style.display = 'flex';
     const user = tokenStore.getUser();
-    if (user) headerEmail.textContent = user.email;
+    if (user) {
+      headerEmail.textContent = user.email;
+      const avatarCharEl = document.getElementById('user-avatar-char');
+      if (avatarCharEl) avatarCharEl.textContent = user.email.charAt(0).toUpperCase();
+      const dropdownEmailEl = document.getElementById('dropdown-user-email');
+      if (dropdownEmailEl) dropdownEmailEl.textContent = user.email;
+      const settingsEmailEl = document.getElementById('settings-info-email');
+      if (settingsEmailEl) settingsEmailEl.textContent = user.email;
+    }
     bootstrapApp();
   }
 
@@ -2483,6 +2491,183 @@ function bootstrapApp() {
     if (runBtn) runBtn.addEventListener('click', runAllTests);
     if (clearBtn) clearBtn.addEventListener('click', resetTests);
   } catch (e) { console.error("Error binding test handlers:", e); }
+
+  try { initUserControls(); } catch (e) { console.error("Error initializing user controls:", e); }
+}
+
+function initUserControls() {
+  const userProfilePill = document.getElementById('user-profile-pill');
+  const profileDropdownPanel = document.getElementById('profile-dropdown-panel');
+  const btnOpenSettings = document.getElementById('btn-open-settings');
+  const settingsModalOverlay = document.getElementById('settings-modal-overlay');
+  const btnCloseSettings = document.getElementById('btn-close-settings');
+  
+  const settingsCurrentPwd = document.getElementById('settings-current-pwd') as HTMLInputElement;
+  const settingsNewPwd = document.getElementById('settings-new-pwd') as HTMLInputElement;
+  const settingsNewPwd2 = document.getElementById('settings-new-pwd2') as HTMLInputElement;
+  const btnSettingsUpdatePwd = document.getElementById('btn-settings-update-pwd') as HTMLButtonElement;
+  const settingsPwdError = document.getElementById('settings-pwd-error')!;
+  const settingsPwdSuccess = document.getElementById('settings-pwd-success')!;
+  const settingsPwdBar = document.getElementById('settings-pwd-bar') as HTMLDivElement;
+
+  const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+  const btnCloseSidebar = document.getElementById('btn-close-sidebar');
+  const sidebarEl = document.querySelector('.sidebar') as HTMLElement;
+  const sidebarOverlay = document.getElementById('sidebar-overlay')!;
+
+  // Toggle Profile Dropdown
+  userProfilePill?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdownPanel?.classList.toggle('show');
+    userProfilePill.parentElement?.classList.toggle('open');
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!userProfilePill?.contains(e.target as Node) && !profileDropdownPanel?.contains(e.target as Node)) {
+      profileDropdownPanel?.classList.remove('show');
+      userProfilePill?.parentElement?.classList.remove('open');
+    }
+  });
+
+  // Toggle Settings Modal
+  btnOpenSettings?.addEventListener('click', async () => {
+    profileDropdownPanel?.classList.remove('show');
+    userProfilePill?.parentElement?.classList.remove('open');
+    
+    // Clear inputs and errors
+    if (settingsCurrentPwd) settingsCurrentPwd.value = '';
+    if (settingsNewPwd) settingsNewPwd.value = '';
+    if (settingsNewPwd2) settingsNewPwd2.value = '';
+    if (settingsPwdError) { settingsPwdError.textContent = ''; settingsPwdError.classList.remove('show'); }
+    if (settingsPwdSuccess) { settingsPwdSuccess.textContent = ''; settingsPwdSuccess.classList.remove('show'); }
+    if (settingsPwdBar) settingsPwdBar.style.width = '0%';
+
+    // Populate user metadata from api
+    try {
+      const userProfile = await api.auth.me();
+      const settingsCreated = document.getElementById('settings-info-created');
+      if (settingsCreated && userProfile.created_at) {
+        const date = new Date(userProfile.created_at);
+        settingsCreated.textContent = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    } catch (err) {
+      console.error('Failed to load user settings data:', err);
+    }
+
+    settingsModalOverlay?.classList.add('active');
+  });
+
+  const closeSettings = () => {
+    settingsModalOverlay?.classList.remove('active');
+  };
+
+  btnCloseSettings?.addEventListener('click', closeSettings);
+  settingsModalOverlay?.addEventListener('click', (e) => {
+    if (e.target === settingsModalOverlay) closeSettings();
+  });
+
+  // Password strength meter
+  settingsNewPwd?.addEventListener('input', () => {
+    const pwd = settingsNewPwd.value;
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    const colors = ['#EF4444','#F59E0B','#10B981','#6D28D9'];
+    const widths = ['25%','50%','75%','100%'];
+    if (settingsPwdBar) {
+      settingsPwdBar.style.width = score > 0 ? widths[score-1] : '0';
+      settingsPwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+    }
+  });
+
+  // Change password submission
+  btnSettingsUpdatePwd?.addEventListener('click', async () => {
+    if (!settingsCurrentPwd || !settingsNewPwd || !settingsNewPwd2) return;
+    if (settingsPwdError) { settingsPwdError.textContent = ''; settingsPwdError.classList.remove('show'); }
+    if (settingsPwdSuccess) { settingsPwdSuccess.textContent = ''; settingsPwdSuccess.classList.remove('show'); }
+
+    const currentVal = settingsCurrentPwd.value;
+    const newVal = settingsNewPwd.value;
+    const confirmVal = settingsNewPwd2.value;
+
+    if (!currentVal) {
+      settingsPwdError.textContent = 'Please enter your current password.';
+      settingsPwdError.classList.add('show');
+      return;
+    }
+    if (newVal.length < 8) {
+      settingsPwdError.textContent = 'New password must be at least 8 characters.';
+      settingsPwdError.classList.add('show');
+      return;
+    }
+    if (!/[A-Z]/.test(newVal)) {
+      settingsPwdError.textContent = 'New password must contain at least one uppercase letter.';
+      settingsPwdError.classList.add('show');
+      return;
+    }
+    if (!/[0-9]/.test(newVal)) {
+      settingsPwdError.textContent = 'New password must contain at least one number.';
+      settingsPwdError.classList.add('show');
+      return;
+    }
+    if (newVal !== confirmVal) {
+      settingsPwdError.textContent = 'Passwords do not match.';
+      settingsPwdError.classList.add('show');
+      return;
+    }
+
+    btnSettingsUpdatePwd.disabled = true;
+    btnSettingsUpdatePwd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+
+    try {
+      await api.auth.changePassword(currentVal, newVal);
+      if (settingsPwdSuccess) {
+        settingsPwdSuccess.textContent = '✓ Password updated successfully!';
+        settingsPwdSuccess.classList.add('show');
+      }
+      settingsCurrentPwd.value = '';
+      settingsNewPwd.value = '';
+      settingsNewPwd2.value = '';
+      if (settingsPwdBar) settingsPwdBar.style.width = '0%';
+      showToast('Password updated successfully!', 'success');
+      setTimeout(closeSettings, 1500);
+    } catch (err: any) {
+      if (settingsPwdError) {
+        settingsPwdError.textContent = err.message || 'Failed to update password.';
+        settingsPwdError.classList.add('show');
+      }
+    } finally {
+      btnSettingsUpdatePwd.disabled = false;
+      btnSettingsUpdatePwd.innerHTML = '<i class="fa-solid fa-key"></i> Update Password';
+    }
+  });
+
+  // Toggle Mobile Sidebar
+  btnToggleSidebar?.addEventListener('click', () => {
+    sidebarEl?.classList.add('open');
+    sidebarOverlay?.classList.add('active');
+  });
+
+  const closeSidebar = () => {
+    sidebarEl?.classList.remove('open');
+    sidebarOverlay?.classList.remove('active');
+  };
+
+  btnCloseSidebar?.addEventListener('click', closeSidebar);
+  sidebarOverlay?.addEventListener('click', closeSidebar);
+
+  // Close sidebar on tab item click (mobile convenience)
+  const navTabs = document.querySelectorAll('.tab-headers .tab-btn');
+  navTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (window.innerWidth <= 1024) {
+        closeSidebar();
+      }
+    });
+  });
 }
 
 if (document.readyState === 'loading') {

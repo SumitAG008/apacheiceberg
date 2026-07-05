@@ -60,6 +60,8 @@ export interface AuthUser {
   email: string;
   mfa_method: string;
   is_verified: boolean;
+  created_at?: string;
+  last_login_at?: string;
 }
 
 export interface AuthTokenResponse {
@@ -221,6 +223,17 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Password reset failed');
+      return data;
+    },
+
+    async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+      const res = await authFetch(`${BASE_URL}/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to change password');
       return data;
     },
   },

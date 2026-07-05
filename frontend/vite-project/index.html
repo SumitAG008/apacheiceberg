@@ -1089,10 +1089,11 @@
     <!-- ── END AUTH OVERLAY ── -->
 
     <div class="app-container" id="main-app" style="display:none">
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
       <!-- ─── SIDEBAR ─── -->
       <aside class="sidebar">
-        <div class="sidebar-brand" style="display: flex; align-items: center; gap: 0.65rem; padding: 1.25rem 1.15rem; border-bottom: 1px solid var(--border-subtle);">
+        <div class="sidebar-brand" style="display: flex; align-items: center; gap: 0.65rem; padding: 1.25rem 1.15rem; border-bottom: 1px solid var(--border-subtle); position: relative;">
           <svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 8px; flex-shrink: 0;">
             <rect width="36" height="36" rx="8" fill="url(#meldra-logo-grad-2)"/>
             <path d="M18 6L28 24H8L18 6Z" fill="#bef264" opacity="0.35"/>
@@ -1110,14 +1111,16 @@
               </linearGradient>
             </defs>
           </svg>
-          <div>
+          <div style="flex-grow: 1;">
             <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1;">meldra</h2>
             <div style="font-size: 0.55rem; color: #16a34a; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px;">ZERO-REPLICATION LAKEHOUSE</div>
           </div>
+          <button id="btn-close-sidebar" class="mobile-close-btn" title="Close Sidebar">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
 
         <div class="sidebar-content">
-
           <!-- AWS Config -->
           <div class="sidebar-section">
             <h3 class="section-title"><i class="fa-brands fa-aws"></i> Data Lake Config</h3>
@@ -1197,6 +1200,22 @@
       <!-- ─── MAIN SHELL ─── -->
       <main class="main-shell">
         <header class="app-header">
+          <button id="btn-toggle-sidebar" class="mobile-menu-btn" title="Toggle Sidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>>
+            <h3 class="section-title"><i class="fa-solid fa-server"></i> Backend Status</h3>
+            <div id="backend-status" style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: var(--text-muted);">
+              <span class="status-dot pending" id="backend-status-dot"></span>
+              <span id="backend-status-text">Checking...</span>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- ─── MAIN SHELL ─── -->
+      <main class="main-shell">
+        <header class="app-header">
 
 
           <nav class="tab-headers">
@@ -1227,12 +1246,28 @@
             <button class="tab-btn" data-tab="audit-tab" id="nav-audit">
               <i class="fa-solid fa-shield-halved"></i> Audit
             </button>
-            <!-- User pill + logout -->
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;padding:0 0.5rem;">
-              <span id="header-user-email" style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);"></span>
-              <button id="btn-logout" title="Sign out" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:8px;color:#F87171;padding:0.35rem 0.65rem;cursor:pointer;font-size:0.78rem;transition:all 0.2s;">
-                <i class="fa-solid fa-right-from-bracket"></i>
+            <!-- User pill + dropdown -->
+            <div class="user-profile-menu-container">
+              <button class="user-profile-pill" id="user-profile-pill">
+                <div class="avatar-circle" id="user-avatar-char">U</div>
+                <span class="user-email-text" id="header-user-email">user@meldra.ai</span>
+                <i class="fa-solid fa-chevron-down chevron-icon"></i>
               </button>
+              <div class="profile-dropdown-panel" id="profile-dropdown-panel">
+                <div class="dropdown-header">
+                  <span class="dropdown-email" id="dropdown-user-email">user@meldra.ai</span>
+                  <span class="badge badge-purple" style="margin-top: 0.35rem; display: inline-block;">Trial Account</span>
+                </div>
+                <div class="dropdown-links">
+                  <button id="btn-open-settings" class="dropdown-link-btn">
+                    <i class="fa-solid fa-user-gear"></i> Account Settings
+                  </button>
+                  <div class="dropdown-divider"></div>
+                  <button id="btn-logout" class="dropdown-link-btn logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                  </button>
+                </div>
+              </div>
             </div>
           </nav>
         </header>
@@ -2419,6 +2454,71 @@ CREATE OR REPLACE ICEBERG TABLE my_snowflake_table
         </section>
       </main>
     </div>  <!-- .app-container -->
+
+    <!-- ── USER SETTINGS MODAL ── -->
+    <div id="settings-modal-overlay" class="settings-modal-overlay">
+      <div class="settings-modal-box">
+        <div class="settings-modal-header">
+          <h3 class="settings-modal-title"><i class="fa-solid fa-user-gear"></i> Account Settings</h3>
+          <button class="settings-modal-close" id="btn-close-settings" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="settings-modal-body">
+          
+          <!-- Section 1: Profile Info -->
+          <div class="settings-section">
+            <h4 class="settings-section-title">User Information</h4>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Email Address</span>
+                <span class="info-value" id="settings-info-email">sumit@meldra.ai</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Subscription Tier</span>
+                <span class="info-value" id="settings-info-tier">Trial</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value" id="settings-info-status">Active</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Member Since</span>
+                <span class="info-value" id="settings-info-created">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-divider"></div>
+          
+          <!-- Section 2: Change Password -->
+          <div class="settings-section">
+            <h4 class="settings-section-title">Change Password</h4>
+            <div id="settings-pwd-error" class="auth-error"></div>
+            <div id="settings-pwd-success" class="auth-success"></div>
+            
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label for="settings-current-pwd">Current Password</label>
+              <input type="password" id="settings-current-pwd" class="input-field" placeholder="••••••••">
+            </div>
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label for="settings-new-pwd">New Password</label>
+              <input type="password" id="settings-new-pwd" class="input-field" placeholder="Min 8 chars, 1 uppercase, 1 number">
+              <div class="pwd-strength" style="margin-top:0.25rem;"><div class="pwd-strength-bar" id="settings-pwd-bar"></div></div>
+            </div>
+            <div class="form-group" style="margin-bottom:1.25rem;">
+              <label for="settings-new-pwd2">Confirm New Password</label>
+              <input type="password" id="settings-new-pwd2" class="input-field" placeholder="Repeat new password">
+            </div>
+            
+            <button id="btn-settings-update-pwd" class="btn btn-primary">
+              <i class="fa-solid fa-key"></i> Update Password
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    </div>
 
     <div id="toast-container" class="toast-container"></div>
     <script type="module" src="/src/main.ts"></script>
