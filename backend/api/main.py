@@ -161,6 +161,98 @@ app.add_middleware(TrafficMiddleware)
 def log_audit(user_id: str, tier: str, action: str, details: str, status: str):
     log_audit_pg(user_id=user_id, tier=tier, action=action, details=details, status=status)
 
+def seed_demo_data():
+    try:
+        from catalog_setup import get_catalog, create_namespace_if_not_exists
+        catalog = get_catalog()
+        
+        # Ensure default namespace exists
+        create_namespace_if_not_exists(catalog, "default")
+        
+        # 1. Seed employees_sample
+        emp_identifier = ("default", "employees_sample")
+        table_exists = False
+        try:
+            catalog.load_table(emp_identifier)
+            table_exists = True
+        except Exception:
+            pass
+            
+        if not table_exists:
+            print("[startup-seeder] Seeding default.employees_sample...")
+            from pyiceberg.schema import Schema
+            from pyiceberg.types import NestedField, IntegerType, StringType, DoubleType
+            import pyarrow as pa
+            
+            schema = Schema(
+                NestedField(field_id=1, name="id", field_type=IntegerType(), required=True),
+                NestedField(field_id=2, name="name", field_type=StringType(), required=False),
+                NestedField(field_id=3, name="department", field_type=StringType(), required=False),
+                NestedField(field_id=4, name="salary", field_type=DoubleType(), required=False),
+                NestedField(field_id=5, name="joined_date", field_type=StringType(), required=False),
+            )
+            
+            # Create Table
+            table = catalog.create_table(emp_identifier, schema=schema)
+            
+            # Append Snapshot 1
+            data1 = {
+                "id": [1, 2, 3],
+                "name": ["Sumit", "Alice", "Bob"],
+                "department": ["Data Engineering", "Enterprise Architecture", "Data Analytics"],
+                "salary": [125000.0, 140000.0, 95000.0],
+                "joined_date": ["2024-01-15", "2023-11-10", "2024-03-01"]
+            }
+            table.append(pa.Table.from_pydict(data1))
+            
+            # Append Snapshot 2 (adds transactions history for Time Travel)
+            data2 = {
+                "id": [4, 5],
+                "name": ["Charlie", "Diana"],
+                "department": ["Data Platform", "VP of Data"],
+                "salary": [115000.0, 195000.0],
+                "joined_date": ["2024-06-01", "2022-04-12"]
+            }
+            table.append(pa.Table.from_pydict(data2))
+            
+            print("[startup-seeder] Seeded default.employees_sample successfully with 2 snapshots.")
+            
+        # 2. Seed orders_sample
+        ord_identifier = ("default", "orders_sample")
+        ord_exists = False
+        try:
+            catalog.load_table(ord_identifier)
+            ord_exists = True
+        except Exception:
+            pass
+            
+        if not ord_exists:
+            print("[startup-seeder] Seeding default.orders_sample...")
+            from pyiceberg.schema import Schema
+            from pyiceberg.types import NestedField, IntegerType, StringType, DoubleType
+            import pyarrow as pa
+            
+            schema = Schema(
+                NestedField(field_id=1, name="order_id", field_type=IntegerType(), required=True),
+                NestedField(field_id=2, name="customer", field_type=StringType(), required=False),
+                NestedField(field_id=3, name="amount", field_type=DoubleType(), required=False),
+                NestedField(field_id=4, name="status", field_type=StringType(), required=False),
+            )
+            
+            table = catalog.create_table(ord_identifier, schema=schema)
+            
+            data = {
+                "order_id": [1001, 1002, 1003, 1004],
+                "customer": ["Acme Corp", "Beta LLC", "Delta Inc", "Sigma Co"],
+                "amount": [4500.50, 12000.00, 750.25, 92000.00],
+                "status": ["COMPLETED", "PENDING", "CANCELLED", "COMPLETED"]
+            }
+            table.append(pa.Table.from_pydict(data))
+            print("[startup-seeder] Seeded default.orders_sample successfully.")
+            
+    except Exception as e:
+        print(f"[startup-seeder] Error seeding demo data: {e}")
+
 @app.on_event("startup")
 def startup_event():
     init_auth_schema()
@@ -169,6 +261,7 @@ def startup_event():
         init_graph_tables()
     except Exception as e:
         print(f"[api/main] Failed to initialize graph tables on startup: {e}")
+    seed_demo_data()
 
 # ─────────────────────────────────────────
 # PYDANTIC SCHEMAS

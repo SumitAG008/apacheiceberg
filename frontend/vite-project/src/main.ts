@@ -1199,8 +1199,9 @@ function copyApiBaseUrl() {
 (window as any).copyApiBaseUrl = copyApiBaseUrl;
 
 function buildApiHelpTab() {
-  const container = document.getElementById('api-endpoints-list')!;
+  const container = document.getElementById('api-endpoints-list');
   const docsLink = document.getElementById('api-docs-link') as HTMLAnchorElement;
+  if (!container || !docsLink) return;
 
   docsLink.href = `${API_BASE}/docs`;
 
@@ -1405,7 +1406,8 @@ const TEST_CASES: TestCase[] = [
 ];
 
 function buildTestTab() {
-  const list = document.getElementById('test-results-list')!;
+  const list = document.getElementById('test-results-list');
+  if (!list) return;
   list.innerHTML = '';
 
   TEST_CASES.forEach((tc, idx) => {
@@ -3525,12 +3527,13 @@ async function loadStudioNamespaces() {
     const res = await api.catalog.listNamespaces();
     const select = document.getElementById('studio-namespace-select') as HTMLSelectElement;
     if (select) {
-      select.innerHTML = res.namespaces.map(ns => `<option value="${ns}">${ns}</option>`).join('');
+      const list = (res && res.namespaces && res.namespaces.length > 0) ? res.namespaces : ['default'];
+      select.innerHTML = list.map(ns => `<option value="${ns}">${ns}</option>`).join('');
       // Select the active one
-      if (res.namespaces.includes(activeNamespace)) {
+      if (list.includes(activeNamespace)) {
         select.value = activeNamespace;
-      } else if (res.namespaces.length > 0) {
-        activeNamespace = res.namespaces[0];
+      } else {
+        activeNamespace = list[0];
         select.value = activeNamespace;
       }
     }
@@ -3592,10 +3595,30 @@ async function selectStudioTable(tableName: string) {
     const details = await api.catalog.getTableDetails(activeNamespace, tableName);
     currentTableSchema = details.schema || [];
     
-    // Auto populate SQL Console query
     const sqlEditor = document.getElementById('studio-sql-editor') as HTMLTextAreaElement;
-    if (sqlEditor && sqlEditor.value.trim().startsWith('-- Type your SQL') || sqlEditor.value.trim().includes('FROM')) {
+    if (sqlEditor && (sqlEditor.value.trim().startsWith('-- Type your SQL') || sqlEditor.value.trim().includes('FROM'))) {
       sqlEditor.value = `SELECT * FROM ${tableName} LIMIT 10;`;
+    }
+
+    // Update Orchestrator DAG labels dynamically based on selected table
+    const nodeBronze = document.getElementById('dag-node-bronze-name');
+    const nodeSilver = document.getElementById('dag-node-silver-name');
+    const nodeGold = document.getElementById('dag-node-gold-name');
+    
+    if (nodeBronze && nodeSilver && nodeGold) {
+      if (tableName === 'employees_sample') {
+        nodeBronze.textContent = 'Ingest EMP_RAW';
+        nodeSilver.textContent = 'Clean Employees';
+        nodeGold.textContent = 'Salary Summary';
+      } else if (tableName === 'orders_sample') {
+        nodeBronze.textContent = 'Ingest ORD_RAW';
+        nodeSilver.textContent = 'Clean Orders';
+        nodeGold.textContent = 'Revenue Summary';
+      } else {
+        nodeBronze.textContent = `Ingest RAW_${tableName.toUpperCase()}`;
+        nodeSilver.textContent = `Clean ${tableName}`;
+        nodeGold.textContent = `${tableName} Summary`;
+      }
     }
 
     // Refresh active subtab

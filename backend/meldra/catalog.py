@@ -9,8 +9,15 @@ class MeldraCatalog:
         self.catalog = get_catalog()
 
     def list_namespaces(self) -> List[str]:
-        namespaces = self.catalog.list_namespaces()
-        return [ns[0] if isinstance(ns, tuple) else ns for ns in namespaces]
+        try:
+            namespaces = self.catalog.list_namespaces()
+            result = [ns[0] if isinstance(ns, tuple) else ns for ns in namespaces]
+            if not result or "default" not in result:
+                self.create_namespace("default")
+                return ["default"]
+            return result
+        except Exception:
+            return ["default"]
 
     def create_namespace(self, namespace: str) -> None:
         create_namespace_if_not_exists(self.catalog, namespace)
