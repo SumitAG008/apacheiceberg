@@ -1781,33 +1781,7 @@
 
 
 
-          <!-- ── VIDEO MODAL LIGHTBOX ── -->
-          <div id="video-modal-overlay">
-            <div class="video-modal-box">
-              <div class="video-modal-header">
-                <div class="video-modal-title" id="video-modal-title">
-                  <i class="fa-brands fa-youtube"></i> <span>Video</span>
-                </div>
-                <button class="video-modal-close" onclick="closeVideoModal()" title="Close">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
-              </div>
-              <div class="video-player-area" style="position:relative; background:#000;">
-                <div class="video-placeholder" id="video-placeholder">
-                  <i class="fa-brands fa-youtube"></i>
-                  <p id="video-placeholder-text">This video will be embedded here once uploaded to YouTube.<br>Replace the <code>data-yt-id</code> attribute on each video card with your YouTube video ID.</p>
-                </div>
-                <video id="video-player-native" style="display:none; width:100%; height:100%; object-fit:contain;" controls autoplay></video>
-                <iframe id="video-iframe" style="display:none; border:none;" allow="autoplay; fullscreen" allowfullscreen></iframe>
-              </div>
-              <div class="video-modal-footer">
-                <div>
-                  <div class="video-modal-desc" id="video-modal-desc"></div>
-                  <div class="video-modal-tags" id="video-modal-tags"></div>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           <!-- TAB 8: ARCHITECTURE -->
           <div id="architecture-tab" class="tab-content">
@@ -2901,6 +2875,34 @@ CREATE OR REPLACE ICEBERG TABLE my_snowflake_table
         </div>
         <div class="settings-modal-body" id="article-modal-body" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; max-height: 70vh; overflow-y: auto; padding-right: 0.5rem; display: flex; flex-direction: column; gap: 1rem;">
           <!-- Content injected dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VIDEO MODAL LIGHTBOX ── -->
+    <div id="video-modal-overlay">
+      <div class="video-modal-box">
+        <div class="video-modal-header">
+          <div class="video-modal-title" id="video-modal-title">
+            <i class="fa-brands fa-youtube"></i> <span>Video</span>
+          </div>
+          <button class="video-modal-close" onclick="closeVideoModal()" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="video-player-area" style="position:relative; background:#000;">
+          <div class="video-placeholder" id="video-placeholder">
+            <i class="fa-brands fa-youtube"></i>
+            <p id="video-placeholder-text">This video will be embedded here once uploaded to YouTube.<br>Replace the <code>data-yt-id</code> attribute on each video card with your YouTube video ID.</p>
+          </div>
+          <video id="video-player-native" style="display:none; width:100%; height:100%; object-fit:contain;" controls autoplay></video>
+          <iframe id="video-iframe" style="display:none; border:none;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+        <div class="video-modal-footer">
+          <div>
+            <div class="video-modal-desc" id="video-modal-desc"></div>
+            <div class="video-modal-tags" id="video-modal-tags"></div>
+          </div>
         </div>
       </div>
     </div>
