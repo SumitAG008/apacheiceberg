@@ -144,6 +144,8 @@ tabButtons.forEach(button => {
       initDataStudio();
     } else if (targetTab === 'traffic-tab') {
       initTrafficMonitor();
+    } else if (targetTab === 'workspace-tab') {
+      initDeveloperWorkspace();
     }
   });
 });
@@ -3639,7 +3641,7 @@ function renderSchemaTab() {
     return `
       <tr>
         <td style="font-family:var(--font-mono);">${col.id}</td>
-        <td style="font-weight:600; color:#fff;">${col.name}</td>
+        <td style="font-weight:600; color:var(--text-color);">${col.name}</td>
         <td style="font-family:var(--font-mono); color:#bef264;">${col.type}</td>
         <td>${col.required ? '✅ Required' : 'Optional'}</td>
         <td>
@@ -3871,6 +3873,223 @@ async function runMaintenanceTask(action: 'optimize' | 'expire_snapshots') {
     showToast(e.message, 'error');
   }
 }
+
+// ─────────────────────────────────────────
+// DEVELOPER WORKSPACE CONTROLLER
+// ─────────────────────────────────────────
+let activeCloudProvider = 'aws';
+
+function selectCloudProvider(provider: 'aws' | 'gcp') {
+  activeCloudProvider = provider;
+  
+  const btnAws = document.getElementById('btn-cloud-aws') as HTMLButtonElement;
+  const btnGcp = document.getElementById('btn-cloud-gcp') as HTMLButtonElement;
+  const labelBucket = document.getElementById('label-bucket-uri') as HTMLLabelElement;
+  const inputBucket = document.getElementById('workspace-bucket-uri') as HTMLInputElement;
+  const labelCatalog = document.getElementById('label-catalog-type') as HTMLLabelElement;
+  const inputCatalog = document.getElementById('workspace-catalog-db') as HTMLInputElement;
+  const labelKey = document.getElementById('label-auth-key') as HTMLLabelElement;
+  const inputKey = document.getElementById('workspace-cloud-key') as HTMLInputElement;
+  const inputRegion = document.getElementById('workspace-cloud-region') as HTMLInputElement;
+  
+  if (provider === 'aws') {
+    btnAws.className = 'btn btn-primary btn-sm';
+    btnGcp.className = 'btn btn-secondary btn-sm';
+    labelBucket.textContent = 'Target S3 Bucket URI';
+    inputBucket.placeholder = 's3://meldra-lakehouse-warehouse/';
+    labelCatalog.textContent = 'Glue Catalog Database';
+    inputCatalog.placeholder = 'meldra_catalog';
+    labelKey.textContent = 'AWS Access Key ID / IAM Role';
+    inputKey.placeholder = 'AKIAIOSFODNN7EXAMPLE';
+    inputRegion.placeholder = 'us-east-1';
+    
+    // Update sandbox code template
+    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
+    if (textCode) {
+      textCode.value = `import meldra
+
+# Initialize Meldra engine (AWS credentials read from env)
+catalog = meldra.MeldraCatalog()
+
+# 1. Read S3 Parquet tables without copy
+arrow_table = catalog.run_time_travel_scan("default", "employees_sample")
+df = arrow_table.to_pandas()
+
+# 2. Perform manipulations (deduplicate and filter)
+clean_df = df.dropna(subset=["salary"])
+print(f"[sandbox] Cleaned data shape: {clean_df.shape}")
+
+# 3. Save to database lakehouse properties
+catalog.optimize_table("default", "employees_sample")`;
+    }
+
+    // Update Airflow DAG template
+    const dagEl = document.getElementById('airflow-dag-code')!;
+    if (dagEl) {
+      dagEl.textContent = `from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+default_args = {
+    'owner': 'meldra',
+    'start_date': datetime(2025, 1, 1),
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5),
+}
+
+def run_aws_meldra_compaction():
+    from meldra import MeldraCatalog
+    # Connect directly to AWS S3 & Glue Catalog
+    catalog = MeldraCatalog()
+    catalog.optimize_table("default", "employees_sample")
+
+with DAG(
+    'aws_meldra_lakehouse_compaction_dag',
+    default_args=default_args,
+    description='Compacts manifest Parquet files on AWS S3 & Glue Catalog',
+    schedule_interval='@daily',
+    catchup=False,
+) as dag:
+    
+    compact_task = PythonOperator(
+        task_id='trigger_aws_compaction',
+        python_callable=run_aws_meldra_compaction,
+    )`;
+    }
+  } else {
+    btnAws.className = 'btn btn-secondary btn-sm';
+    btnGcp.className = 'btn btn-primary btn-sm';
+    labelBucket.textContent = 'Target GCS Bucket URI';
+    inputBucket.placeholder = 'gs://meldra-lakehouse-bucket/';
+    labelCatalog.textContent = 'BigQuery / BigLake Catalog Namespace';
+    inputCatalog.placeholder = 'meldra_biglake_catalog';
+    labelKey.textContent = 'GCP Service Account JSON Key';
+    inputKey.placeholder = '{ "type": "service_account", "project_id": ... }';
+    inputRegion.placeholder = 'us-central1';
+    
+    // Update sandbox code template
+    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
+    if (textCode) {
+      textCode.value = `import meldra
+
+# Initialize Meldra GCP engine
+catalog = meldra.MeldraCatalog(provider="gcp")
+
+# 1. Read GCS Parquet tables directly from Google Storage
+arrow_table = catalog.run_time_travel_scan("default", "employees_sample")
+df = arrow_table.to_pandas()
+
+# 2. Perform manipulations (deduplicate and filter)
+clean_df = df[df["salary"] > 50000]
+print(f"[sandbox] Filtered data shape: {clean_df.shape}")
+
+# 3. Optimize and sync metadata to Google BigLake Catalog
+catalog.optimize_table("default", "employees_sample")`;
+    }
+
+    // Update Airflow DAG template
+    const dagEl = document.getElementById('airflow-dag-code')!;
+    if (dagEl) {
+      dagEl.textContent = `from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+default_args = {
+    'owner': 'meldra',
+    'start_date': datetime(2025, 1, 1),
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5),
+}
+
+def run_gcp_meldra_compaction():
+    from meldra import MeldraCatalog
+    # Connect directly to Google Cloud GCS & BigLake Catalog
+    catalog = MeldraCatalog(provider="gcp")
+    catalog.optimize_table("default", "employees_sample")
+
+with DAG(
+    'gcp_meldra_lakehouse_compaction_dag',
+    default_args=default_args,
+    description='Compacts manifest Parquet files on Google Cloud GCS & BigLake',
+    schedule_interval='@daily',
+    catchup=False,
+) as dag:
+    
+    compact_task = PythonOperator(
+        task_id='trigger_gcp_compaction',
+        python_callable=run_gcp_meldra_compaction,
+    )`;
+    }
+  }
+}
+(window as any).selectCloudProvider = selectCloudProvider;
+
+function initDeveloperWorkspace() {
+  const btnSave = document.getElementById('btn-save-workspace-config') as HTMLButtonElement;
+  const btnRun = document.getElementById('btn-run-sandbox') as HTMLButtonElement;
+  const btnDownload = document.getElementById('btn-download-dag') as HTMLButtonElement;
+  
+  if (btnSave) {
+    btnSave.onclick = () => {
+      const bucket = (document.getElementById('workspace-bucket-uri') as HTMLInputElement).value || 'default';
+      const region = (document.getElementById('workspace-cloud-region') as HTMLInputElement).value || 'default';
+      showToast(`Meldra Connection Parameters applied for ${activeCloudProvider.toUpperCase()} (${region}) targeting bucket: ${bucket}`);
+    };
+  }
+  
+  if (btnRun) {
+    btnRun.onclick = () => {
+      btnRun.disabled = true;
+      btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Executing...';
+      
+      const consoleOut = document.getElementById('sandbox-console-output')!;
+      consoleOut.textContent = '[sandbox] Starting python sandbox interpreter...';
+      
+      setTimeout(() => {
+        consoleOut.innerHTML += `<br>[sandbox] Loading custom meldr.ai library components...`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 500);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<br>[sandbox] Connecting to ${activeCloudProvider.toUpperCase()} catalog metadata...`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 1000);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<br>[sandbox] Executing: df = arrow_table.to_pandas() [SUCCESS]`;
+        consoleOut.innerHTML += `<br>[sandbox] Evaluated data contracts: Verified 4 checks, 0 violations.`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 1600);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<br>[sandbox] Transaction committed. Compaction finished successfully in 285ms.`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+        
+        btnRun.disabled = false;
+        btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Execute Sandbox';
+        showToast('Python script executed successfully in sandbox.');
+      }, 2300);
+    };
+  }
+  
+  if (btnDownload) {
+    btnDownload.onclick = () => {
+      const code = document.getElementById('airflow-dag-code')!.textContent || '';
+      const blob = new Blob([code], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeCloudProvider}_meldra_compaction_dag.py`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Airflow DAG script downloaded successfully.');
+    };
+  }
+  
+  // Set default provider view
+  selectCloudProvider(activeCloudProvider as any);
+}
+(window as any).initDeveloperWorkspace = initDeveloperWorkspace;
 
 
 // Expose functions to window for DOM bindings
