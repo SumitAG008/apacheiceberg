@@ -2448,7 +2448,11 @@ function initAuthController() {
 
     try {
       // 1. Call registration
-      await api.auth.register(email, password);
+      try {
+        await api.auth.register(email, password);
+      } catch (regErr: any) {
+        console.warn("Registration returned status, attempting login fallback:", regErr);
+      }
       // 2. Call login to fetch MFA temp_token
       const loginRes = await api.auth.login(email, password);
       currentTempToken = loginRes.temp_token;
