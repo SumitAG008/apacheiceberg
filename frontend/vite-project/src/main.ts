@@ -564,71 +564,83 @@ const lessonsList: Lesson[] = [
 ];
 
 function buildLessonsDeck() {
-  const wrapper = document.getElementById('lessons-wrapper')!;
-  wrapper.innerHTML = '';
-  
-  lessonsList.forEach(lesson => {
-    const card = document.createElement('div');
-    card.className = 'lesson-card';
+  const appWrapper = document.getElementById('lessons-wrapper');
+  const commWrapper = document.getElementById('community-lessons-wrapper');
+
+  [appWrapper, commWrapper].forEach(wrapper => {
+    if (!wrapper) return;
+    wrapper.innerHTML = '';
     
-    let levelBadge = 'badge-green';
-    if (lesson.level === 'Intermediate') levelBadge = 'badge-blue';
-    if (lesson.level === 'Advanced') levelBadge = 'badge-orange';
-    
-    card.innerHTML = `
-      <div class="lesson-header">
-        <div class="lesson-title-area">
-          <span class="lesson-num">${lesson.num}</span>
-          <i class="fa-solid ${lesson.icon}" style="color: var(--color-primary);"></i>
-          <span class="lesson-title">${lesson.title}</span>
-        </div>
-        <div class="lesson-meta">
-          <span class="badge ${levelBadge}">${lesson.level}</span>
-          <i class="fa-solid fa-chevron-down lesson-chevron"></i>
-        </div>
-      </div>
-      <div class="lesson-body">
-        <div class="lesson-content">
-          <div>${lesson.concept}</div>
-          <div class="lesson-try-box">
-            <div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">🔥 Interactive prompt to run:</div>
-              <div class="lesson-try-text">"${lesson.tryPrompt}"</div>
-            </div>
-            <button class="btn btn-primary btn-sm btn-try-prompt" data-prompt="${lesson.tryPrompt}">
-              <i class="fa-solid fa-play"></i> Run Query
-            </button>
+    lessonsList.forEach(lesson => {
+      const card = document.createElement('div');
+      card.className = 'lesson-card';
+      
+      let levelBadge = 'badge-green';
+      if (lesson.level === 'Intermediate') levelBadge = 'badge-blue';
+      if (lesson.level === 'Advanced') levelBadge = 'badge-orange';
+      
+      card.innerHTML = `
+        <div class="lesson-header">
+          <div class="lesson-title-area">
+            <span class="lesson-num">${lesson.num}</span>
+            <i class="fa-solid ${lesson.icon}" style="color: var(--color-primary);"></i>
+            <span class="lesson-title">${lesson.title}</span>
+          </div>
+          <div class="lesson-meta">
+            <span class="badge ${levelBadge}">${lesson.level}</span>
+            <i class="fa-solid fa-chevron-down lesson-chevron"></i>
           </div>
         </div>
-      </div>
-    `;
-    
-    // Toggle expand
-    const header = card.querySelector('.lesson-header')!;
-    header.addEventListener('click', () => {
-      const isExpanded = card.classList.contains('expanded');
+        <div class="lesson-body">
+          <div class="lesson-content">
+            <div>${lesson.concept}</div>
+            <div class="lesson-try-box">
+              <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">🔥 Interactive prompt to run:</div>
+                <div class="lesson-try-text">"${lesson.tryPrompt}"</div>
+              </div>
+              <button class="btn btn-primary btn-sm btn-try-prompt" data-prompt="${lesson.tryPrompt}">
+                <i class="fa-solid fa-play"></i> Run Query
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
       
-      // Close other cards
-      document.querySelectorAll('.lesson-card').forEach(c => c.classList.remove('expanded'));
+      // Toggle expand
+      const header = card.querySelector('.lesson-header')!;
+      header.addEventListener('click', () => {
+        const isExpanded = card.classList.contains('expanded');
+        
+        // Close other cards in the same wrapper
+        wrapper.querySelectorAll('.lesson-card').forEach(c => c.classList.remove('expanded'));
+        
+        if (!isExpanded) {
+          card.classList.add('expanded');
+        }
+      });
       
-      if (!isExpanded) {
-        card.classList.add('expanded');
-      }
+      // Run prompt click
+      const btnTry = card.querySelector('.btn-try-prompt')!;
+      btnTry.addEventListener('click', (e) => {
+        e.stopPropagation(); // Avoid folding the card
+        const prompt = btnTry.getAttribute('data-prompt');
+        if (!prompt) return;
+        
+        // If we are on the public community portal, trigger login overlay first
+        if (wrapper === commWrapper) {
+          showToast('Sign in or register to run this query inside your workspace!', 'info');
+          document.getElementById('landing-btn-login')?.click();
+          return;
+        }
+        
+        switchTab('chat-tab');
+        chatInputText.value = prompt;
+        chatInputText.focus();
+      });
+      
+      wrapper.appendChild(card);
     });
-    
-    // Run prompt click
-    const btnTry = card.querySelector('.btn-try-prompt')!;
-    btnTry.addEventListener('click', (e) => {
-      e.stopPropagation(); // Avoid folding the card
-      const prompt = btnTry.getAttribute('data-prompt');
-      if (!prompt) return;
-      
-      switchTab('chat-tab');
-      chatInputText.value = prompt;
-      chatInputText.focus();
-    });
-    
-    wrapper.appendChild(card);
   });
 }
 
@@ -2370,7 +2382,8 @@ function initAuthController() {
 interface VideoEntry {
   title: string;
   desc: string;
-  ytId: string | null;  // YouTube video ID — set to null until uploaded
+  ytId: string | null;
+  videoUrl?: string; // Native HTML5 MP4 URL
   tags: { label: string; cls: string }[];
 }
 
@@ -2378,7 +2391,8 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'What is meldra.ai & the Zero-Copy Lakehouse?',
     desc: 'A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without ever replicating or moving your raw data.',
-    ytId: '8yL0bI-PmqU', // What is Apache Iceberg?
+    ytId: '8yL0bI-PmqU',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-futuristic-technology-nodes-loop-9960-large.mp4',
     tags: [
       { label: 'Introduction',    cls: 'vmt-green'  },
       { label: 'Architecture',    cls: 'vmt-blue'   },
@@ -2388,7 +2402,8 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'Why Zero-Copy? The Business Problems We Solve',
     desc: 'Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your existing stack.',
-    ytId: 'hK8YlXp-g1E', // What is a Data Lakehouse?
+    ytId: 'hK8YlXp-g1E',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-server-room-rack-in-datacenter-41584-large.mp4',
     tags: [
       { label: 'Business Case',   cls: 'vmt-orange' },
       { label: 'Enterprise',      cls: 'vmt-blue'   },
@@ -2398,7 +2413,8 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'Build Your First Pipeline: SAP → Iceberg → AI',
     desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
-    ytId: '91q8-W7z-bY', // DuckDB Explained
+    ytId: '91q8-W7z-bY',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-lines-background-loop-43093-large.mp4',
     tags: [
       { label: 'Hands-On',        cls: 'vmt-green'  },
       { label: 'Pipeline',        cls: 'vmt-blue'   },
@@ -2413,13 +2429,14 @@ function openVideoModal(videoIndex: number) {
   const descEl    = document.getElementById('video-modal-desc')!;
   const tagsEl    = document.getElementById('video-modal-tags')!;
   const iframeEl  = document.getElementById('video-iframe') as HTMLIFrameElement;
+  const nativeEl  = document.getElementById('video-player-native') as HTMLVideoElement;
   const placeholderEl = document.getElementById('video-placeholder')!;
 
   const entry = videoLibrary[videoIndex - 1];
   if (!entry) return;
 
   // Set title
-  titleEl.innerHTML = `<i class="fa-brands fa-youtube"></i> ${entry.title}`;
+  titleEl.innerHTML = `<i class="fa-solid fa-circle-play" style="color:#22c55e;"></i> ${entry.title}`;
 
   // Set description
   descEl.textContent = entry.desc;
@@ -2430,11 +2447,25 @@ function openVideoModal(videoIndex: number) {
     .join('');
 
   // Show video or placeholder
-  if (entry.ytId) {
+  if (entry.videoUrl) {
+    iframeEl.style.display = 'none';
+    iframeEl.src = '';
+    placeholderEl.style.display = 'none';
+    
+    nativeEl.src = entry.videoUrl;
+    nativeEl.style.display = 'block';
+    nativeEl.load();
+    nativeEl.play().catch(err => console.log('Autoplay blocked:', err));
+  } else if (entry.ytId) {
+    nativeEl.style.display = 'none';
+    nativeEl.src = '';
+    
     iframeEl.src = `https://www.youtube.com/embed/${entry.ytId}?autoplay=1&rel=0&modestbranding=1`;
     iframeEl.style.display = 'block';
     placeholderEl.style.display = 'none';
   } else {
+    nativeEl.style.display = 'none';
+    nativeEl.src = '';
     iframeEl.style.display = 'none';
     iframeEl.src = '';
     placeholderEl.style.display = 'flex';
@@ -2453,8 +2484,17 @@ function openVideoModal(videoIndex: number) {
 function closeVideoModal() {
   const overlay  = document.getElementById('video-modal-overlay')!;
   const iframeEl = document.getElementById('video-iframe') as HTMLIFrameElement;
+  const nativeEl = document.getElementById('video-player-native') as HTMLVideoElement;
   overlay.classList.remove('active');
+  
+  // Pause and reset players
+  nativeEl.pause();
+  nativeEl.src = '';
+  nativeEl.style.display = 'none';
+  
   iframeEl.src = '';   // Stop playback
+  iframeEl.style.display = 'none';
+  
   document.body.style.overflow = '';
 }
 
@@ -2776,6 +2816,52 @@ function closePublicArticle() {
 // Expose to window
 (window as any).openPublicArticle = openPublicArticle;
 (window as any).closePublicArticle = closePublicArticle;
+
+function showCommunityPortal() {
+  const landing = document.getElementById('landing-page');
+  const community = document.getElementById('community-portal');
+  const app = document.getElementById('main-app');
+  if (landing) landing.style.display = 'none';
+  if (app) app.style.display = 'none';
+  if (community) community.style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function hideCommunityPortal() {
+  const landing = document.getElementById('landing-page');
+  const community = document.getElementById('community-portal');
+  const app = document.getElementById('main-app');
+  if (landing) landing.style.display = 'block';
+  if (app) app.style.display = 'none';
+  if (community) community.style.display = 'none';
+  window.scrollTo(0, 0);
+}
+
+async function logoutToCommunity() {
+  try {
+    await api.auth.logout();
+  } catch (e) {}
+  
+  const landing = document.getElementById('landing-page');
+  const community = document.getElementById('community-portal');
+  const app = document.getElementById('main-app');
+  const overlay = document.getElementById('auth-overlay');
+  
+  if (app) app.style.display = 'none';
+  if (landing) landing.style.display = 'none';
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.classList.remove('active');
+  }
+  if (community) community.style.display = 'block';
+  
+  window.scrollTo(0, 0);
+  showToast('Signed out. Welcome to Community Hub!', 'info');
+}
+
+(window as any).showCommunityPortal = showCommunityPortal;
+(window as any).hideCommunityPortal = hideCommunityPortal;
+(window as any).logoutToCommunity = logoutToCommunity;
 
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initAuthController);
