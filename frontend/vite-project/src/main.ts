@@ -2834,46 +2834,27 @@ function closePublicArticle() {
 (window as any).openPublicArticle = openPublicArticle;
 (window as any).closePublicArticle = closePublicArticle;
 
-function showCommunityPortal() {
-  const landing = document.getElementById('landing-page');
-  const community = document.getElementById('community-portal');
-  const app = document.getElementById('main-app');
-  if (landing) landing.style.display = 'none';
-  if (app) app.style.display = 'none';
-  if (community) community.style.display = 'block';
-  window.scrollTo(0, 0);
-}
-
-function hideCommunityPortal() {
-  const landing = document.getElementById('landing-page');
-  const community = document.getElementById('community-portal');
-  const app = document.getElementById('main-app');
-  if (landing) landing.style.display = 'block';
-  if (app) app.style.display = 'none';
-  if (community) community.style.display = 'none';
-  window.scrollTo(0, 0);
-}
-
-async function logoutToCommunity() {
+async function logoutToHome() {
   try {
     await api.auth.logout();
   } catch (e) {}
   
   const landing = document.getElementById('landing-page');
-  const community = document.getElementById('community-portal');
   const app = document.getElementById('main-app');
   const overlay = document.getElementById('auth-overlay');
   
   if (app) app.style.display = 'none';
-  if (landing) landing.style.display = 'none';
+  if (landing) {
+    landing.style.display = 'block';
+    landing.classList.remove('hidden');
+  }
   if (overlay) {
     overlay.style.display = 'none';
     overlay.classList.remove('active');
   }
-  if (community) community.style.display = 'block';
   
   window.scrollTo(0, 0);
-  showToast('Signed out. Welcome to Community Hub!', 'info');
+  showToast('Signed out successfully.', 'info');
 }
 
 function toggleLandingMobileMenu(btn: HTMLElement) {
@@ -2887,9 +2868,7 @@ function toggleLandingMobileMenu(btn: HTMLElement) {
   }
 }
 
-(window as any).showCommunityPortal = showCommunityPortal;
-(window as any).hideCommunityPortal = hideCommunityPortal;
-(window as any).logoutToCommunity = logoutToCommunity;
+(window as any).logoutToHome = logoutToHome;
 (window as any).toggleLandingMobileMenu = toggleLandingMobileMenu;
 
 if (document.readyState === 'loading') {
