@@ -2682,7 +2682,100 @@ function initUserControls() {
       }
     });
   });
+
+  // Article Modal Close handlers
+  document.getElementById('btn-close-article')?.addEventListener('click', () => {
+    (window as any).closePublicArticle();
+  });
+  document.getElementById('article-modal-overlay')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) (window as any).closePublicArticle();
+  });
 }
+
+const publicArticles = [
+  {
+    title: "Enterprise AI Agents Grounded in Context",
+    tag: "Enterprise AI",
+    meta: "Published by Meldra AI Team · 6 Min Read",
+    body: `
+      <p>
+        Building reliable AI agents for enterprise data lakes is not just about using the largest language model. Raw models are blind to the database schemas, access policies, and real-time transaction updates of your active storage systems. Without context grounding, agents hallucinate schemas and produce incorrect SQL.
+      </p>
+      <p>
+        <strong>meldra.ai</strong> resolves this by implementing a metadata-first context router. Our engine sweeps a PostgreSQL AGE graph catalog mapping database dependencies (such as SAP ledgers and company codes). When a query is asked, the agent immediately binds the exact schemas and issues serverless DuckDB queries over S3 partitions.
+      </p>
+      <div style="background: rgba(34, 197, 94, 0.05); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.2); margin: 1rem 0;">
+        <h4 style="color: #22c55e; margin-top: 0; margin-bottom: 0.5rem; font-weight: 700;">Context-Grounded Routing vs RAG</h4>
+        <p style="margin: 0; font-size: 0.88rem; color: #94a3b8;">
+          Standard Retrieval-Augmented Generation (RAG) splits text into vector chunks. This fails for structural databases where transactions are linked by parent-child relations. Meldra's graph-grounded engine paths ledger schemas directly, yielding 100% accuracy.
+        </p>
+      </div>
+    `
+  },
+  {
+    title: "Why meldra.ai Bypasses the Databricks & Snowflake Spark Tax",
+    tag: "Data Engineering",
+    meta: "Published by Meldra Infrastructure Team · 6 Min Read",
+    body: `
+      <p>
+        Traditional cloud data warehouses (like <strong>Databricks</strong> or <strong>Snowflake</strong>) force teams to spin up heavy virtual machine clusters (Spark nodes) just to handle simple queries or basic ingestion pipelines. This results in thousands of dollars of idle server costs every single month.
+      </p>
+      <p>
+        <strong>meldra.ai</strong> completely eliminates this "Spark Tax". By compiling natural language questions directly into optimized <strong>DuckDB SQL</strong>, our architecture queries <strong>S3 Apache Iceberg</strong> files locally and serverless on-the-fly. There is no warm cluster compute node kept running, meaning your monthly compute idle cost is exactly <strong>$0</strong>.
+      </p>
+      <p>
+        Because we write S3 data files using open-standard <strong>Apache Iceberg</strong> metadata and Parquet rows, external platforms can read these tables directly from your S3 bucket without requiring you to export, copy, or transfer a single byte of data.
+      </p>
+    `
+  },
+  {
+    title: "Zero-Replication Architecture Deep Dive",
+    tag: "Architecture",
+    meta: "Published by Meldra Systems Team · 7 Min Read",
+    body: `
+      <p>
+        Copying transactional databases across staging and analysis environments is a severe security vulnerability. Under GDPR, HIPAA, and SOC2, duplicated records represent an untracked surface area. Furthermore, copying terabytes of data over cloud regions incurs huge egress fees.
+      </p>
+      <p>
+        <strong>meldra.ai</strong> leverages a zero-copy metadata framework. Instead of copying ledger tables, we map directory pointers directly to S3 Parquet blocks. Analytical engines read the metadata catalog on S3 to retrieve column statistics and partition values on-the-fly.
+      </p>
+      <p>
+        This guarantees that your raw enterprise ledgers stay securely in your own S3 bucket. Access is audited via AWS IAM roles and postgres-based trails, ensuring full enterprise compliance.
+      </p>
+    `
+  }
+];
+
+function openPublicArticle(index: number) {
+  const overlay = document.getElementById('article-modal-overlay')!;
+  const titleEl = document.getElementById('article-modal-title')!;
+  const bodyEl = document.getElementById('article-modal-body')!;
+  
+  const article = publicArticles[index - 1];
+  if (!article) return;
+  
+  titleEl.innerHTML = `<i class="fa-solid fa-book-open" style="color: #22c55e;"></i> ${article.title}`;
+  bodyEl.innerHTML = `
+    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.5rem; text-align: left;">
+      <span style="color: #22c55e; font-weight: 700; text-transform: uppercase; margin-right: 0.5rem;">${article.tag}</span> | ${article.meta}
+    </div>
+    <div style="border-bottom: 1px solid #1e293b; margin-bottom: 0.5rem; padding-bottom: 0.5rem;"></div>
+    ${article.body}
+  `;
+  
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePublicArticle() {
+  const overlay = document.getElementById('article-modal-overlay')!;
+  overlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Expose to window
+(window as any).openPublicArticle = openPublicArticle;
+(window as any).closePublicArticle = closePublicArticle;
 
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initAuthController);
