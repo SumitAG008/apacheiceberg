@@ -3141,6 +3141,25 @@ let trafficEvents: any[] = [];
 let trafficPaused = false;
 let selectedTrafficEventId: string | null = null;
 
+async function loadRecentTrafficLogs() {
+  try {
+    const events = await api.getRecentTraffic();
+    // Add and deduplicate
+    events.forEach((evt: any) => {
+      if (!trafficEvents.some(e => e.id === evt.id)) {
+        trafficEvents.push(evt);
+      }
+    });
+    // Sort by timestamp descending
+    trafficEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    renderTrafficTimeline();
+    updateTrafficStats();
+  } catch (e) {
+    console.error('Failed to load recent traffic logs via REST:', e);
+  }
+}
+
 function initTrafficMonitor() {
   // Bind buttons
   const btnPause = document.getElementById('btn-traffic-pause') as HTMLButtonElement;
@@ -3174,6 +3193,9 @@ function initTrafficMonitor() {
   if (filterSelect) {
     filterSelect.onchange = () => renderTrafficTimeline();
   }
+
+  // Load initial logs
+  loadRecentTrafficLogs();
 
   // Connect WebSocket
   if (!trafficWebSocket || trafficWebSocket.readyState !== WebSocket.OPEN) {

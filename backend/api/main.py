@@ -1197,7 +1197,7 @@ async def execute_mcp_tool_endpoint(
 # ── Live Traffic WebSocket & REST Fallback ──────────────────────────────────
 @app.websocket("/ws/traffic")
 async def websocket_traffic(websocket: WebSocket, token: Optional[str] = None):
-    if not token:
+    if not token or token in ("null", "undefined", ""):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     try:

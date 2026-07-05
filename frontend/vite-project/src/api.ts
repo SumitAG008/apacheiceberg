@@ -348,6 +348,12 @@ export const api = {
     }
     return res.json();
   },
+  
+  async getRecentTraffic(): Promise<any[]> {
+    const res = await authFetch(`${BASE_URL}/v1/traffic/recent`);
+    if (!res.ok) throw new Error('Failed to fetch recent traffic logs');
+    return res.json();
+  },
 
   // ── Catalog & Data Studio ───────────────────────────────────────────────
   catalog: {
