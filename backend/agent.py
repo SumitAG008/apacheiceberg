@@ -12,12 +12,13 @@ from tools import (
 load_dotenv()
 
 def create_iceberg_agent():
-    # Verify API key is available
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("Warning: ANTHROPIC_API_KEY environment variable not found. The agent will not run without it.")
-        print("You can create a .env file with ANTHROPIC_API_KEY=your_key")
-        
-    llm = ChatAnthropic(model="claude-sonnet-5")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not anthropic_key:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not set. "
+            "Add it to Railway environment variables: Settings → Variables → New Variable."
+        )
+    llm = ChatAnthropic(model="claude-sonnet-4-5", api_key=anthropic_key)
     
     tools = [
         create_iceberg_table,
