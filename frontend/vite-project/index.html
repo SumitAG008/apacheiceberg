@@ -1124,8 +1124,209 @@
         </div>
       </section>
 
+      <!-- ── HOW THE ZERO-COPY ENGINE WORKS ── -->
+      <section style="padding: 5rem 2rem; background: #0a0f1e; border-top: 1px solid #1e293b;">
+        <div style="max-width: 1100px; margin: 0 auto;">
+          <div style="text-align: center; margin-bottom: 3rem;">
+            <span style="color: #22c55e; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Architecture</span>
+            <h2 style="font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
+              How the Zero-Copy Engine Works
+            </h2>
+            <p style="color: #94a3b8; font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+              Your data stays exactly where it is. meldra.ai adds an open Iceberg metadata layer on top — making it instantly queryable by AI, SQL, and any engine in the world.
+            </p>
+          </div>
+
+          <!-- Architecture steps -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 3rem;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center; position: relative;">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#14532d,#16a34a); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">📥</div>
+              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 1</div>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Ingest Any Source</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">CSV, ERP exports, REST APIs, database dumps, IoT streams — drag, drop, or automate.</p>
+              <div style="position: absolute; right: -12px; top: 50%; transform: translateY(-50%); color: #22c55e; font-size: 1.2rem; z-index: 2; display: none;" class="arch-arrow">→</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#0c4a6e,#0ea5e9); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🧠</div>
+              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 2</div>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">AI Auto-Schemas</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Our AI detects column types, builds Iceberg schemas, and writes partitioned Parquet files to your S3 — automatically.</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#4a044e,#a855f7); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🗄️</div>
+              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 3</div>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Open Iceberg on S3</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Data lives in open Apache Iceberg format in <strong style="color:#94a3b8;">your own S3 bucket</strong>. You own it. We never touch the original.</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#7c2d12,#f97316); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">⚡</div>
+              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 4</div>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Query in Plain English</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Ask anything. The AI translates your question to DuckDB SQL, runs it serverlessly, and returns a formatted answer in seconds.</p>
+            </div>
+          </div>
+
+          <!-- Source tags -->
+          <div style="text-align: center; margin-bottom: 1.5rem;">
+            <p style="color: #475569; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Works with any data source</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;">
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📄 CSV / Excel</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔗 REST APIs</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">💰 SAP ERP</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🗃️ PostgreSQL Exports</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 IoT &amp; Sensor Data</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📊 JSON Feeds</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🛒 Shopify / E-Commerce</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📋 CRM Exports</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── BUSINESS VALUE / METRICS ── -->
+      <section style="padding: 5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <div style="max-width: 1100px; margin: 0 auto;">
+          <div style="text-align: center; margin-bottom: 3.5rem;">
+            <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Why Customers Choose meldra.ai</span>
+            <h2 style="font-size: 2.2rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
+              What Your Business Gets
+            </h2>
+            <p style="color: #475569; font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+              Stop spending on compute clusters. Stop waiting on engineers. Start getting answers from your own data — instantly.
+            </p>
+          </div>
+
+          <!-- 4 metric cards -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 4rem;">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+              <div style="font-size: 3rem; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">90%</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Cost Reduction</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">vs traditional data warehouse cluster pricing</div>
+            </div>
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+              <div style="font-size: 3rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">&lt;1s</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Query Latency</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">DuckDB serverless SQL on S3 datasets up to 50TB</div>
+            </div>
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+              <div style="font-size: 3rem; font-weight: 900; color: #a855f7; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">0</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Data Copies</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Query data in-place from S3. No duplication, ever.</div>
+            </div>
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+              <div style="font-size: 3rem; font-weight: 900; color: #f97316; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">∞</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Scale Ceiling</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">No cluster limits, no idle costs, no capacity planning</div>
+            </div>
+          </div>
+
+          <!-- What non-technical users get -->
+          <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 20px; padding: 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center;">
+            <div>
+              <span style="color: #16a34a; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">The Business Unlock</span>
+              <h3 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 1rem; font-family: var(--font-sans);">Your Non-Technical Teams Get Answers — Today</h3>
+              <p style="color: #475569; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem;">
+                Finance managers, HR directors, and operations leads no longer need to raise a ticket and wait 2 weeks for a SQL report. They simply ask meldra.ai in plain English.
+              </p>
+              <button id="landing-btn-signup" class="landing-btn landing-btn-teal" style="font-size: 0.9rem; padding: 0.7rem 1.5rem;">
+                Start Free 30-Day Trial <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
+                <span style="font-size: 1.2rem;">💬</span>
+                <div>
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">HR Director asks:</div>
+                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Which departments had the highest headcount growth in Q3?"</div>
+                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Answer returned in 0.8 seconds</div>
+                </div>
+              </div>
+              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
+                <span style="font-size: 1.2rem;">💬</span>
+                <div>
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">CFO asks:</div>
+                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Show me all purchase orders above £50k that haven't been invoiced yet."</div>
+                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Pulls from SAP ERP data, returns table instantly</div>
+                </div>
+              </div>
+              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
+                <span style="font-size: 1.2rem;">💬</span>
+                <div>
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Ops Manager asks:</div>
+                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Which warehouse had the most stock discrepancies last month?"</div>
+                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Graph analysis complete in 1.2 seconds</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── INDUSTRIES / WHO IS THIS FOR ── -->
+      <section style="padding: 5rem 2rem; background: #0f172a; border-top: 1px solid #1e293b;">
+        <div style="max-width: 1100px; margin: 0 auto; text-align: center;">
+          <span style="color: #22c55e; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Built for Every Industry</span>
+          <h2 style="font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
+            Any Business With Data Can Use This
+          </h2>
+          <p style="color: #64748b; font-size: 0.95rem; max-width: 600px; margin: 0 auto 3rem; line-height: 1.6;">
+            You don't need a data engineering team. You don't need a warehouse. You just need your data and an S3 bucket.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align: left;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏦</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Finance &amp; Banking</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest GL journals, AP/AR ledgers, and trade data. Run compliance checks in plain English. Audit trails built-in.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">SAP BSEG · BKPF · GL journals · Trade data</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🛒</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Retail &amp; E-Commerce</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Sync orders, inventory, and customer data from Shopify, WooCommerce, or any ERP. Query trends instantly without a BI tool.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Orders · Inventory · Customer segments · Returns</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏥</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Healthcare &amp; Life Sciences</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Store patient data, trial results, and clinical records in compliant open format. HIPAA-ready audit logs on every query.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Clinical data · Drug trials · Patient records · HIPAA</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🚚</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Logistics &amp; Supply Chain</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Track shipments, warehouse stock levels, and supplier performance across millions of rows. Detect anomalies with AI graph analysis.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Shipments · Stock levels · Supplier KPIs · IoT</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">👥</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">HR &amp; People Analytics</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Analyse headcount, salary bands, hiring funnels, and attrition without a data team. Ask HR questions in plain English.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Headcount · Salary · Attrition · Hiring pipeline</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏗️</div>
+              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Manufacturing &amp; OT</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest sensor readings, production line metrics, and quality control data. Run root-cause analysis with AI-powered graph traversal.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Sensors · OEE metrics · Quality control · MES data</div>
+            </div>
+          </div>
+
+          <!-- CTA bar -->
+          <div style="margin-top: 3.5rem; background: linear-gradient(135deg, rgba(22,163,74,0.15), rgba(5,150,105,0.1)); border: 1px solid rgba(34,197,94,0.25); border-radius: 20px; padding: 2.5rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
+            <div style="text-align: left;">
+              <h3 style="color: #f1f5f9; font-size: 1.4rem; font-weight: 800; margin-bottom: 0.4rem; font-family: var(--font-sans);">Ready to build your own lakehouse?</h3>
+              <p style="color: #94a3b8; font-size: 0.88rem;">30-day free trial. No credit card. Your S3 bucket. Your data. Zero lock-in.</p>
+            </div>
+            <button id="landing-hero-signup2" class="landing-btn landing-btn-teal" style="font-size: 1rem; padding: 0.85rem 2rem; white-space: nowrap;" onclick="document.getElementById('landing-hero-signup') && document.getElementById('landing-hero-signup').click()">
+              Create Free Workspace <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Public Academy Section -->
       <section class="landing-academy" id="landing-academy-section" style="padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid #cbd5e1;">
+
         <div style="margin-bottom: 3rem; text-align: center;">
           <h2 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-family: var(--font-sans);">
             <i class="fa-solid fa-graduation-cap" style="color: #16a34a;"></i> meldra Academy
