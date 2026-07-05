@@ -1940,21 +1940,6 @@ function initAuthController() {
       if (settingsEmailEl) settingsEmailEl.textContent = user.email;
     }
     bootstrapApp();
-
-    // Check if user came from Academy signup referral
-    if (sessionStorage.getItem('meldra_academy_referral') === 'true') {
-      sessionStorage.removeItem('meldra_academy_referral');
-      setTimeout(() => {
-        const navArch = document.getElementById('nav-architecture');
-        if (navArch) {
-          navArch.click();
-          setTimeout(() => {
-            const blogItem = document.querySelector('[data-article="training-getting-started"]') as HTMLElement;
-            if (blogItem) blogItem.click();
-          }, 150);
-        }
-      }, 500);
-    }
   }
 
   function openAuthModal(mode: 'login' | 'register') {
@@ -2350,7 +2335,20 @@ function initAuthController() {
       sessionStorage.removeItem('meldra_mfa_email');
       if (otpCountdown) clearInterval(otpCountdown);
       if (resendCountdown) clearInterval(resendCountdown);
-      showMainApp();
+      
+      if (sessionStorage.getItem('meldra_academy_referral') === 'true') {
+        sessionStorage.removeItem('meldra_academy_referral');
+        overlay.classList.remove('active');
+        overlay.classList.add('hidden');
+        setTimeout(() => { overlay.style.display = 'none'; }, 400);
+        
+        // Show Academy page directly (which will detect user is logged in)
+        const showAcad = (window as any).showAcademyPage;
+        if (showAcad) showAcad();
+        showToast('Verification successful! Your 14-day training pass is active.', 'success');
+      } else {
+        showMainApp();
+      }
     } catch(e: any) {
       setError(mfaErrorEl, e.message || 'Invalid code. Please try again.');
       if (e.message && e.message.includes('Please log in again')) {
@@ -2414,7 +2412,22 @@ function initAuthController() {
     landingPage.classList.add('hidden');
     landingPage.style.display = 'none';
     const academy = document.getElementById('academy-portal-page');
-    if (academy) academy.style.display = 'flex';
+    if (academy) {
+      academy.style.display = 'flex';
+      
+      const lockedView = document.getElementById('academy-locked-view');
+      const unlockedView = document.getElementById('academy-unlocked-view');
+      
+      if (tokenStore.isLoggedIn()) {
+        if (lockedView) lockedView.style.display = 'none';
+        if (unlockedView) unlockedView.style.display = 'grid';
+        // Select first module by default
+        (window as any).selectAcademyModule(1);
+      } else {
+        if (lockedView) lockedView.style.display = 'grid';
+        if (unlockedView) unlockedView.style.display = 'none';
+      }
+    }
   };
 
   (window as any).showLandingPageFromAcademy = () => {
@@ -2422,6 +2435,44 @@ function initAuthController() {
     if (academy) academy.style.display = 'none';
     landingPage.classList.remove('hidden');
     landingPage.style.display = 'flex';
+  };
+
+  (window as any).selectAcademyModule = (moduleNum: number) => {
+    // 1. Toggle button active states
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.getElementById(`ac-mod-btn-${i}`);
+      const content = document.getElementById(`ac-mod-content-${i}`);
+      
+      if (btn) {
+        if (i === moduleNum) {
+          btn.classList.add('active');
+          btn.style.background = 'rgba(255,255,255,0.03)';
+          btn.style.borderColor = 'rgba(255,255,255,0.06)';
+          const h5 = btn.querySelector('h5');
+          if (h5) h5.style.color = '#fff';
+        } else {
+          btn.classList.remove('active');
+          btn.style.background = 'transparent';
+          btn.style.borderColor = 'transparent';
+          const h5 = btn.querySelector('h5');
+          if (h5) h5.style.color = '#94a3b8';
+        }
+      }
+      
+      if (content) {
+        if (i === moduleNum) {
+          content.style.display = 'block';
+        } else {
+          content.style.display = 'none';
+        }
+      }
+    }
+  };
+
+  (window as any).launchProductFromAcademy = () => {
+    const academy = document.getElementById('academy-portal-page');
+    if (academy) academy.style.display = 'none';
+    showMainApp();
   };
 
   (window as any).handleAcademySignup = async (e: Event) => {

@@ -1708,8 +1708,8 @@
         </button>
       </nav>
 
-      <!-- Main Course Grid -->
-      <div class="academy-content-grid">
+      <!-- Locked View: Curriculum + Registration Form -->
+      <div id="academy-locked-view" class="academy-content-grid">
         
         <!-- Left Column: Syllabus details -->
         <div class="academy-card">
@@ -1718,7 +1718,7 @@
           </div>
           <h2 style="font-size: 1.65rem; font-weight: 800; color: #fff; margin: 0 0 0.5rem 0;">meldra.py Data Engineering Course</h2>
           <p style="color: #94a3b8; font-size: 0.85rem; line-height: 1.5; margin: 0;">
-            Master Zero-Copy architectures, Iceberg tables, schema evolution, and serverless data quality rules in 7 interactive modules.
+            Master Zero-Copy architectures, Iceberg tables, schema evolution, and serverless data quality rules in 5 interactive modules.
           </p>
 
           <div class="academy-syllabus-timeline">
@@ -1803,12 +1803,148 @@
         </div>
 
       </div>
-    </div>
+
+      <!-- Unlocked View: Course Modules Reader Content -->
+      <div id="academy-unlocked-view" class="academy-content-grid" style="display: none; grid-template-columns: 300px minmax(0, 1fr);">
+        
+        <!-- Left Sidebar: Modules list -->
+        <div class="academy-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
+          <h4 style="font-size: 0.85rem; font-weight: 800; color: #bef264; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.5rem 0;">Course Syllabus</h4>
+          
+          <div class="blog-nav-item active" style="padding:0.75rem; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); cursor:pointer;" onclick="selectAcademyModule(1)" id="ac-mod-btn-1">
+            <span style="font-size: 0.65rem; font-weight: 700; color: #10b981; text-transform: uppercase;">Module 1</span>
+            <h5 style="margin: 0.2rem 0 0 0; font-size: 0.82rem; color: #fff; font-weight:700;">Architecture Foundations</h5>
+          </div>
+
+          <div class="blog-nav-item" style="padding:0.75rem; border-radius:8px; border:1px solid transparent; cursor:pointer;" onclick="selectAcademyModule(2)" id="ac-mod-btn-2">
+            <span style="font-size: 0.65rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Module 2</span>
+            <h5 style="margin: 0.2rem 0 0 0; font-size: 0.82rem; color: #94a3b8; font-weight:600;">Setting up Cloud Catalogs</h5>
+          </div>
+
+          <div class="blog-nav-item" style="padding:0.75rem; border-radius:8px; border:1px solid transparent; cursor:pointer;" onclick="selectAcademyModule(3)" id="ac-mod-btn-3">
+            <span style="font-size: 0.65rem; font-weight: 700; color: #a78bfa; text-transform: uppercase;">Module 3</span>
+            <h5 style="margin: 0.2rem 0 0 0; font-size: 0.82rem; color: #94a3b8; font-weight:600;">Ingesting Data Tables</h5>
+          </div>
+
+          <div class="blog-nav-item" style="padding:0.75rem; border-radius:8px; border:1px solid transparent; cursor:pointer;" onclick="selectAcademyModule(4)" id="ac-mod-btn-4">
+            <span style="font-size: 0.65rem; font-weight: 700; color: #fb7185; text-transform: uppercase;">Module 4</span>
+            <h5 style="margin: 0.2rem 0 0 0; font-size: 0.82rem; color: #94a3b8; font-weight:600;">Zero-Copy Schema Evolution</h5>
+          </div>
+
+          <div class="blog-nav-item" style="padding:0.75rem; border-radius:8px; border:1px solid transparent; cursor:pointer;" onclick="selectAcademyModule(5)" id="ac-mod-btn-5">
+            <span style="font-size: 0.65rem; font-weight: 700; color: #f59e0b; text-transform: uppercase;">Module 5</span>
+            <h5 style="margin: 0.2rem 0 0 0; font-size: 0.82rem; color: #94a3b8; font-weight:600;">Data Contracts &amp; Airflow</h5>
+          </div>
+        </div>
+
+        <!-- Right Side: Content Panel -->
+        <div class="academy-card" style="padding: 2.25rem;">
+          
+          <!-- Module 1 Content -->
+          <div id="ac-mod-content-1" class="academy-module-page active-page">
+            <div style="display:flex; align-items:center; gap:0.5rem; color:#10b981; font-weight:700; font-size:0.75rem; text-transform:uppercase; margin-bottom:0.75rem;">
+              Module 1 · Conceptual Foundations
+            </div>
+            <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Lakehouse Architecture Foundations</h3>
+            <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
+              <p>Traditional architectures replicate enterprise transactional data (e.g. SAP ERP accounts) across several stages (Raw landing ➔ Stage ➔ Core warehouse ➔ Data marts). This results in massive cloud compute charges (the Spark Tax) and security vulnerabilities due to scattered copies.</p>
+              <p><strong>meldra.py Zero-Copy Strategy</strong>: Ingest raw CSV, API feeds, or database logs directly to open Apache Iceberg tables stored on your own S3/GCS. Queries run serverless in DuckDB or PyIceberg, keeping the storage completely decentralized and zero-copy.</p>
+              <div style="background: rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:1rem; font-family:monospace; color:#bef264;">
+                # Concept: metadata-only reads
+                import pyiceberg.catalog
+                catalog = pyiceberg.catalog.load_catalog("local")
+                table = catalog.load_table("default.employees")
+              </div>
+            </div>
+          </div>
+
+          <!-- Module 2 Content -->
+          <div id="ac-mod-content-2" class="academy-module-page" style="display:none;">
+            <div style="display:flex; align-items:center; gap:0.5rem; color:#38bdf8; font-weight:700; font-size:0.75rem; text-transform:uppercase; margin-bottom:0.75rem;">
+              Module 2 · Connection Configuration
+            </div>
+            <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Setting up AWS Glue &amp; GCP BigLake Catalogs</h3>
+            <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
+              <p>In this module, you connect meldra.py directly to your real storage catalogs. Open the product console and navigate to the <strong>Workspace</strong> tab:</p>
+              <ul>
+                <li><strong>AWS Glue</strong>: Provide the S3 warehouse URI (e.g. <code>s3://my-company-lakehouse/</code>), Region, and AWS Access Key credentials.</li>
+                <li><strong>GCP BigLake</strong>: Provide the Google Cloud Storage bucket path and upload your Service Account Key JSON.</li>
+              </ul>
+              <p>Applying parameters establishes connection tokens. Any table created hereafter becomes queryable by external engines like Athena or BigQuery.</p>
+            </div>
+          </div>
+
+          <!-- Module 3 Content -->
+          <div id="ac-mod-content-3" class="academy-module-page" style="display:none;">
+            <div style="display:flex; align-items:center; gap:0.5rem; color:#a78bfa; font-weight:700; font-size:0.75rem; text-transform:uppercase; margin-bottom:0.75rem;">
+              Module 3 · Ingestion Pipelines
+            </div>
+            <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Ingesting Data Tables (Append vs. Merge)</h3>
+            <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
+              <p>To populate your lakehouse, select the <strong>Ingest</strong> tab in the main application:</p>
+              <ol>
+                <li>Upload a CSV file (e.g., sample transaction ledger or customer CSV).</li>
+                <li>Select write mode:
+                  <ul>
+                    <li><code>Append</code>: Appends new rows to the Iceberg table on every run.</li>
+                    <li><code>Merge</code>: Upserts records on a unique primary key, preventing duplicate entries on S3 automatically.</li>
+                  </ul>
+                </li>
+              </ol>
+              <div style="background: rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:1rem; font-family:monospace; color:#bef264;">
+                # Under-the-hood: pyiceberg transaction commit
+                with table.transaction() as tx:
+                    tx.append_row_groups(df.to_coo())
+              </div>
+            </div>
+          </div>
+
+          <!-- Module 4 Content -->
+          <div id="ac-mod-content-4" class="academy-module-page" style="display:none;">
+            <div style="display:flex; align-items:center; gap:0.5rem; color:#fb7185; font-weight:700; font-size:0.75rem; text-transform:uppercase; margin-bottom:0.75rem;">
+              Module 4 · Schema Evolution
+            </div>
+            <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Zero-Copy Schema Evolution</h3>
+            <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
+              <p>One of Iceberg's greatest strengths is schema evolution without rewrite. In the <strong>Data Studio</strong> tab:</p>
+              <ul>
+                <li>Select a table, click the **Schema Evolution** subtab.</li>
+                <li>Choose "Add Column" or "Rename Column" or "Drop Column".</li>
+                <li>Meldra executes this in milliseconds as a metadata transaction, leaving your underlying parquet data files completely untouched.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Module 5 Content -->
+          <div id="ac-mod-content-5" class="academy-module-page" style="display:none;">
+            <div style="display:flex; align-items:center; gap:0.5rem; color:#f59e0b; font-weight:700; font-size:0.75rem; text-transform:uppercase; margin-bottom:0.75rem;">
+              Module 5 · Production automation
+            </div>
+            <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Data Contracts &amp; Airflow Automation</h3>
+            <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
+              <p>Ensure data reliability by establishing **Data Quality Contracts** under the Data Studio subtab:</p>
+              <ul>
+                <li>Add rules such as <code>amount >= 0</code> or <code>status IS NOT NULL</code>. Meldra's ingestion engine will reject faulty records during future batch ingestion runs.</li>
+                <li>Go to the **Workspace** tab and download the **Airflow DAG python code**. This lets you schedule daily Iceberg metadata compactions in production with zero effort.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Sandbox Practice Call To Action -->
+          <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div style="font-size: 0.78rem; color:#94a3b8;">
+              <i class="fa-solid fa-laptop-code" style="color:#10b981;"></i> Practice these steps in the interactive workspace sandbox.
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="launchProductFromAcademy()" style="background:#10b981; border:none; color:#0b150f; font-weight:700;">
+              <i class="fa-solid fa-play"></i> Launch meldra.py Console
+            </button>
+          </div>
 
         </div>
 
       </div>
     </div>
+
 
     <!-- ── AUTH OVERLAY ── -->
     <div id="auth-overlay">
@@ -2282,14 +2418,6 @@
                   <span class="blog-nav-domain" style="color: #7c3aed;">MCP · Orchestration</span>
                   <h4>Multi-Agent A2A Orchestration</h4>
                   <span>MCP server mediating between specialist agents.</span>
-                </div>
-
-                <div style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; padding: 0.5rem 0.5rem 0.25rem; margin-top: 0.5rem; border-top: 1px solid var(--border-subtle);">Training Academy</div>
-
-                <div class="blog-nav-item" data-article="training-getting-started">
-                  <span class="blog-nav-domain" style="color: #10b981;">Lakehouse Course</span>
-                  <h4>Meldra Getting Started Guide</h4>
-                  <span>Complete course on building, evolving & validating tables.</span>
                 </div>
               </div>
 
@@ -2859,60 +2987,6 @@ Orchestrator:
   └── mcp.invoke("audit_submission_agent",           {"trail_table": "compliance.audit_log"})
          └── Packages Iceberg audit snapshots, submits to external auditor portal</pre>
                     <p>Each agent runs in parallel where dependencies allow. The orchestrator monitors completion, handles exceptions (e.g., retries a failed FX fetch with a fallback rate source), and assembles the final consolidated close package — reducing the 5-day process to <strong>under 4 hours</strong> of fully autonomous execution.</p>
-                    <p>This is the core power of the <strong>A2A (Agent-to-Agent) Protocol</strong> combined with MCP: each specialist agent speaks a structured, verifiable tool language. No unstructured API calls, no brittle RPA scripts, no human handoffs for routine decisions.</p>
-                  </div>
-                </div>
-
-                <!-- Article: Training Course Getting Started Guide -->
-                <div id="art-training-getting-started" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Lakehouse Course</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">meldra.py Getting Started Guide &amp; Training Course</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Training Academy · 10 Min Read</div>
-                  </div>
-                  
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>Welcome to the meldra.py interactive training guide! This curriculum walks you through the step-by-step process of building, running, and managing zero-copy pipelines in the application.</p>
-                    
-                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 1: Create a Lakehouse Connection (Local vs. Cloud)</h4>
-                    <p>First, set up your target environment. Navigate to the <strong>Workspace</strong> tab:</p>
-                    <ul>
-                      <li><strong>AWS S3 &amp; Glue Setup</strong>: Select "Amazon AWS" and enter your target S3 Bucket URI (e.g. <code>s3://meldra-lakehouse-warehouse/</code>), region, and connection keys.</li>
-                      <li><strong>GCP GCS &amp; BigLake Setup</strong>: Select "Google GCP" and configure your target GCS Bucket URI and BigLake Service credentials.</li>
-                      <li>Click <strong>Apply Connection Parameters</strong>.</li>
-                    </ul>
-
-                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 2: Ingestion &amp; Table Creation</h4>
-                    <p>Navigate to the <strong>Ingest</strong> tab to create tables from raw sources:</p>
-                    <ul>
-                      <li>Upload or drag-and-drop a CSV file (e.g. <code>employees.csv</code>).</li>
-                      <li>Specify the target namespace (e.g., <code>default</code>) and Table Name.</li>
-                      <li>Choose Ingestion Write Mode: <code>Append</code> (add new records) or <code>Merge</code> (upsert based on a unique key).</li>
-                      <li>Click <strong>Start Ingestion Pipeline</strong>.</li>
-                    </ul>
-
-                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 3: Data Studio SQL Queries &amp; Schema Evolution</h4>
-                    <p>Navigate to the <strong>Data Studio</strong> tab. You will see your newly created tables in the left sidebar catalog:</p>
-                    <ul>
-                      <li><strong>SQL Console</strong>: Select a table, write standard ANSI SQL queries, and click <strong>Run Query</strong> to review real-time outputs in-memory.</li>
-                      <li><strong>Schema Evolution</strong>: Click "Schema Evolution" subtab to add new columns, rename existing headers, or delete outdated fields as instant zero-copy metadata operations.</li>
-                    </ul>
-
-                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 4: Establishing Data Quality Contracts</h4>
-                    <p>Prevent database anomalies and schema drift. Navigate to the <strong>Data Quality</strong> subtab:</p>
-                    <ul>
-                      <li>Click "Add Validation Constraint" to add a rule.</li>
-                      <li>For example, choose column <code>salary</code>, constraint <code>Greater Than Or Equal (>=)</code>, value <code>0</code>.</li>
-                      <li>Click <strong>Save Rules</strong>. Future ingestions will validate rows against these rules automatically.</li>
-                    </ul>
-
-                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 5: Automating Pipelines with Airflow</h4>
-                    <p>To run daily maintenance consolidations at scale, navigate to the <strong>Workspace</strong> tab:</p>
-                    <ul>
-                      <li>Click the GCP or AWS provider selector.</li>
-                      <li>The **Airflow DAG Exporter** automatically updates to output a scheduling template.</li>
-                      <li>Click **Download Airflow DAG Code** to export the production-ready script.</li>
-                    </ul>
                   </div>
                 </div>
 
