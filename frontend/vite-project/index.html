@@ -1411,7 +1411,12 @@
               <!-- Left side: Blog Navigation List -->
               <div class="blog-nav-list">
                 <div style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; padding: 0.25rem 0.5rem; margin-bottom: 0.25rem;">Architecture</div>
-                <div class="blog-nav-item active" data-article="spark-tax">
+                <div class="blog-nav-item active" data-article="grounded-context">
+                  <span class="blog-nav-domain" style="color: #6366f1;">Semantic Architecture</span>
+                  <h4>AI Agents Grounded in Context</h4>
+                  <span>Zero-Copy semantic grounding vs. data replication.</span>
+                </div>
+                <div class="blog-nav-item" data-article="spark-tax">
                   <span class="blog-nav-domain" style="color: #0052cc;">Infrastructure</span>
                   <h4>Bypassing the Spark Tax</h4>
                   <span>Zero-Copy Databricks &amp; Snowflake integrations.</span>
@@ -1479,8 +1484,96 @@
               <!-- Right side: Blog Reader Panel -->
               <div class="blog-reader-panel">
                 
+                <!-- Article 0: Grounded Context Zero-Copy -->
+                <div id="art-grounded-context" class="blog-article-content active">
+                  <div class="blog-header">
+                    <span class="blog-tag" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">Semantic Architecture</span>
+                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Grounded Context Without Replication: The Zero-Copy AI Agent</h3>
+                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra AI Architecture Team · 7 Min Read</div>
+                  </div>
+                  
+                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
+                    <p>
+                      Enterprise AI agents frequently fail in production due to a lack of precise business context. Large Language Models (LLMs) cannot accurately answer queries like <em>"What is our outstanding liability for Vendor A?"</em> if they cannot securely inspect raw schemas, active transaction snapshops, and double-entry mappings.
+                    </p>
+                    <p>
+                      Traditional data warehouses like <strong>Snowflake</strong> (with features like Cortex Sense) and <strong>Databricks</strong> address this by building proprietary semantic search indexes. However, this model has a major flaw: <strong>it requires data replication</strong>. To ground the AI, you must first build complex ETL pipelines to extract your ERP records (such as SAP BSEG tables) and ingest them into their proprietary cloud systems, paying heavy compute and storage fees along the way.
+                    </p>
+                    
+                    <div style="background: rgba(99, 102, 241, 0.03); border-left: 4px solid #6366f1; padding: 1.2rem; border-radius: 6px; margin: 0.5rem 0;">
+                      <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">The Meldra Approach: Grounding-in-Place</h4>
+                      <p style="margin: 0;">
+                        <strong>meldra.ai</strong> solves the context gap without moving a single byte of data. By leveraging open-standard <strong>Apache Iceberg</strong> metadata and serverless compiles, our agents gain semantic context directly from your raw data lake.
+                      </p>
+                    </div>
+
+                    <!-- Diagram of Zero-Copy Grounding Loop -->
+                    <div class="architecture-diagram-container" style="border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; background: #f8fafc; margin: 1rem 0;">
+                      <h4 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 0.95rem; font-weight: 800; color: #0f172a; text-align: center;">Meldra Zero-Copy Grounding Loop</h4>
+                      <div class="arch-flow" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div class="arch-node" style="flex: 1.2; text-align: center; background: #fff; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #0f172a;">User Question</h5>
+                          <span style="font-size: 0.65rem; color: #64748b;">Natural Language Prompt</span>
+                        </div>
+                        <div class="arch-connector" style="color: #6366f1;"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(99, 102, 241, 0.05); padding: 0.6rem; border: 1px solid #6366f1; border-radius: 6px;">
+                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #6366f1;">Semantic AGE Graph</h5>
+                          <span style="font-size: 0.65rem; color: #6366f1;">Resolves Relationships &amp; Columns</span>
+                        </div>
+                        <div class="arch-connector" style="color: #16a34a;"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(22, 163, 74, 0.05); padding: 0.6rem; border: 1px solid #16a34a; border-radius: 6px;">
+                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #16a34a;">DuckDB Serverless Compile</h5>
+                          <span style="font-size: 0.65rem; color: #16a34a;">Local Query Execution</span>
+                        </div>
+                        <div class="arch-connector" style="color: #0052cc;"><i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(0, 82, 204, 0.05); padding: 0.6rem; border: 1px solid #0052cc; border-radius: 6px;">
+                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #0052cc;">S3 Iceberg Table</h5>
+                          <span style="font-size: 0.65rem; color: #0052cc;">Durable Raw Storage</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">How Our Architecture Differs</h4>
+                    
+                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">1. Hybrid Knowledge Graph Routing</h5>
+                    <p style="margin-top: 0;">
+                      Instead of running expensive vector searches across every table schema, meldra.ai uses a **Postgres AGE graph layer** to map query history, table dependencies, and transactional links. When a user asks a question, the agent runs a fast graph sweep to resolve the exact tables and columns required, eliminating query-time latency and hallucination.
+                    </p>
+
+                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">2. Open-Standard Model Context Protocol (MCP)</h5>
+                    <p style="margin-top: 0;">
+                      Snowflake and Databricks lock you into their respective LLM ecosystems. meldra.ai is built on the **Model Context Protocol (MCP)**. We expose an open-standard gateway, meaning you can plug in any state-of-the-art model (such as Claude 3.5 Sonnet, GPT-4o, or local Llama models) and it will instantly receive grounded data lake context via standardized tool schemas.
+                    </p>
+                    
+                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">3. DuckDB-Powered Serverless Compilation</h5>
+                    <p style="margin-top: 0;">
+                      We compile natural language queries directly into optimized DuckDB operations that target raw S3 Parquet partitions. This bypasses the heavy compute clusters, keeping your monthly infrastructure cost serverless and highly performant.
+                    </p>
+
+                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Agentic Execution Example</h4>
+                    <p>
+                      Below is the semantic schema resolution pattern our agent uses to map transactional relationships before issuing the local serverless compile.
+                    </p>
+                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
+# Meldra AI Agent context routing payload
+{
+  "semantic_context": {
+    "target_catalog": "inventory_catalog",
+    "target_namespace": "default",
+    "primary_table": "sap_bseg",
+    "dependencies": ["bkpf_headers", "vendor_registry"],
+    "relationship_graph_path": "a:Account-[:TRANSFERS]->b:Account"
+  },
+  "duckdb_compile_params": {
+    "engine": "duckdb_iceberg_reader",
+    "s3_path": "s3://meldra-warehouse/default.db/sap_bseg"
+  }
+}</pre>
+                  </div>
+                </div>
+
                 <!-- Article 1: Spark Tax & Config Guides -->
-                <div id="art-spark-tax" class="blog-article-content active">
+                <div id="art-spark-tax" class="blog-article-content">
                   <div class="blog-header">
                     <span class="blog-tag" style="background: rgba(0, 82, 204, 0.1); color: #0052cc;">Infrastructure Design</span>
                     <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Why meldra.ai Bypasses the Databricks &amp; Snowflake Spark Tax</h3>
