@@ -2065,6 +2065,14 @@
                   <h4>Multi-Agent A2A Orchestration</h4>
                   <span>MCP server mediating between specialist agents.</span>
                 </div>
+
+                <div style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; padding: 0.5rem 0.5rem 0.25rem; margin-top: 0.5rem; border-top: 1px solid var(--border-subtle);">Training Academy</div>
+
+                <div class="blog-nav-item" data-article="training-getting-started">
+                  <span class="blog-nav-domain" style="color: #10b981;">Lakehouse Course</span>
+                  <h4>Meldra Getting Started Guide</h4>
+                  <span>Complete course on building, evolving & validating tables.</span>
+                </div>
               </div>
 
               <!-- Right side: Blog Reader Panel -->
@@ -2634,6 +2642,59 @@ Orchestrator:
          └── Packages Iceberg audit snapshots, submits to external auditor portal</pre>
                     <p>Each agent runs in parallel where dependencies allow. The orchestrator monitors completion, handles exceptions (e.g., retries a failed FX fetch with a fallback rate source), and assembles the final consolidated close package — reducing the 5-day process to <strong>under 4 hours</strong> of fully autonomous execution.</p>
                     <p>This is the core power of the <strong>A2A (Agent-to-Agent) Protocol</strong> combined with MCP: each specialist agent speaks a structured, verifiable tool language. No unstructured API calls, no brittle RPA scripts, no human handoffs for routine decisions.</p>
+                  </div>
+                </div>
+
+                <!-- Article: Training Course Getting Started Guide -->
+                <div id="art-training-getting-started" class="blog-article-content">
+                  <div class="blog-header">
+                    <span class="blog-tag" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Lakehouse Course</span>
+                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Meldra Getting Started Guide &amp; Training Course</h3>
+                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Training Academy · 10 Min Read</div>
+                  </div>
+                  
+                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
+                    <p>Welcome to the Meldra.py interactive training guide! This curriculum walks you through the step-by-step process of building, running, and managing zero-copy pipelines in the application.</p>
+                    
+                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 1: Create a Lakehouse Connection (Local vs. Cloud)</h4>
+                    <p>First, set up your target environment. Navigate to the <strong>Workspace</strong> tab:</p>
+                    <ul>
+                      <li><strong>AWS S3 &amp; Glue Setup</strong>: Select "Amazon AWS" and enter your target S3 Bucket URI (e.g. <code>s3://meldra-lakehouse-warehouse/</code>), region, and connection keys.</li>
+                      <li><strong>GCP GCS &amp; BigLake Setup</strong>: Select "Google GCP" and configure your target GCS Bucket URI and BigLake Service credentials.</li>
+                      <li>Click <strong>Apply Connection Parameters</strong>.</li>
+                    </ul>
+
+                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 2: Ingestion &amp; Table Creation</h4>
+                    <p>Navigate to the <strong>Ingest</strong> tab to create tables from raw sources:</p>
+                    <ul>
+                      <li>Upload or drag-and-drop a CSV file (e.g. <code>employees.csv</code>).</li>
+                      <li>Specify the target namespace (e.g., <code>default</code>) and Table Name.</li>
+                      <li>Choose Ingestion Write Mode: <code>Append</code> (add new records) or <code>Merge</code> (upsert based on a unique key).</li>
+                      <li>Click <strong>Start Ingestion Pipeline</strong>.</li>
+                    </ul>
+
+                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 3: Data Studio SQL Queries &amp; Schema Evolution</h4>
+                    <p>Navigate to the <strong>Data Studio</strong> tab. You will see your newly created tables in the left sidebar catalog:</p>
+                    <ul>
+                      <li><strong>SQL Console</strong>: Select a table, write standard ANSI SQL queries, and click <strong>Run Query</strong> to review real-time outputs in-memory.</li>
+                      <li><strong>Schema Evolution</strong>: Click "Schema Evolution" subtab to add new columns, rename existing headers, or delete outdated fields as instant zero-copy metadata operations.</li>
+                    </ul>
+
+                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 4: Establishing Data Quality Contracts</h4>
+                    <p>Prevent database anomalies and schema drift. Navigate to the <strong>Data Quality</strong> subtab:</p>
+                    <ul>
+                      <li>Click "Add Validation Constraint" to add a rule.</li>
+                      <li>For example, choose column <code>salary</code>, constraint <code>Greater Than Or Equal (>=)</code>, value <code>0</code>.</li>
+                      <li>Click <strong>Save Rules</strong>. Future ingestions will validate rows against these rules automatically.</li>
+                    </ul>
+
+                    <h4 style="font-size: 1.1rem; color: #0f172a; font-weight: 700; margin-top: 0.5rem;">Module 5: Automating Pipelines with Airflow</h4>
+                    <p>To run daily maintenance consolidations at scale, navigate to the <strong>Workspace</strong> tab:</p>
+                    <ul>
+                      <li>Click the GCP or AWS provider selector.</li>
+                      <li>The **Airflow DAG Exporter** automatically updates to output a scheduling template.</li>
+                      <li>Click **Download Airflow DAG Code** to export the production-ready script.</li>
+                    </ul>
                   </div>
                 </div>
 
