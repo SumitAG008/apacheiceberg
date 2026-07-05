@@ -1,0 +1,19 @@
+{
+  "name": "meldra-ui-tests",
+  "version": "1.0.0",
+  "description": "Playwright E2E UI tests for Meldra AI / LakeMind frontend screens",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:ui": "npx playwright test --ui",
+    "test:debug": "npx playwright test --debug",
+    "test:report": "npx playwright show-report",
+    "test:chat": "npx playwright test tests/chat.spec.ts --headed",
+    "test:mcp": "npx playwright test tests/mcp-gateway.spec.ts --headed",
+    "test:ingest": "npx playwright test tests/ingest.spec.ts --headed",
+    "test:workspace": "npx playwright test tests/workspace.spec.ts --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

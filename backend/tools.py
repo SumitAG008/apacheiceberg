@@ -9,6 +9,7 @@ from pyiceberg.types import (
     NestedField,
     StringType,
     IntegerType,
+    LongType,
     FloatType,
     DoubleType,
     BooleanType,
@@ -23,13 +24,15 @@ def get_pyiceberg_type(type_str: str):
     type_str = type_str.lower()
     if type_str == "string":
         return StringType()
-    elif type_str == "integer" or type_str == "int":
-        return IntegerType()
+    elif type_str in ("integer", "int"):
+        return IntegerType()   # 32-bit
+    elif type_str in ("long", "bigint", "int64"):
+        return LongType()      # 64-bit — matches pandas default
     elif type_str == "float":
         return FloatType()
     elif type_str == "double":
         return DoubleType()
-    elif type_str == "boolean" or type_str == "bool":
+    elif type_str in ("boolean", "bool"):
         return BooleanType()
     elif type_str == "date":
         return DateType()
@@ -100,6 +103,33 @@ def ingest_csv_to_iceberg(namespace: str, table_name: str, csv_path: str) -> str
         # Read CSV with pandas, convert to pyarrow table
         df = pd.read_csv(csv_path)
         arrow_table = pa.Table.from_pandas(df)
+        
+        # ── Cast PyArrow columns to match the Iceberg table schema ────────────
+        # pandas infers integers as int64 (long) but the Iceberg table may have
+        # been created with IntegerType() (int32). We cast each column to match
+        # the table's actual schema to avoid "Mismatch in fields" errors.
+        iceberg_schema = table.schema()
+        pyarrow_schema = iceberg_schema.as_arrow()
+        
+        # Build a new schema that matches column-for-column, keeping only
+        # columns that exist in the Iceberg table (ignores pandas __index_level_0__)
+        cast_arrays = []
+        cast_fields = []
+        for field in pyarrow_schema:
+            if field.name in arrow_table.schema.names:
+                col = arrow_table.column(field.name)
+                try:
+                    cast_arrays.append(col.cast(field.type))
+                except (pa.ArrowInvalid, pa.ArrowNotImplementedError):
+                    # If cast fails (e.g. string → int), keep the original and
+                    # let Iceberg surface a meaningful error rather than crashing
+                    cast_arrays.append(col)
+                cast_fields.append(field)
+        
+        arrow_table = pa.table(
+            {field.name: arr for field, arr in zip(cast_fields, cast_arrays)},
+            schema=pa.schema(cast_fields)
+        )
         
         # Append data to the iceberg table
         table.append(arrow_table)

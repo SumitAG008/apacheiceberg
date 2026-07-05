@@ -609,9 +609,10 @@ async def upload_csv_endpoint(
             
         df = pd.read_csv(temp_file_path)
         
-        # Auto-detect schema
+        # Auto-detect schema — use "long" (int64) to match pandas/PyArrow defaults.
+        # Iceberg IntegerType is 32-bit; LongType is 64-bit (what pandas produces).
         type_map = {
-            "int64": "integer", "int32": "integer",
+            "int64": "long", "int32": "integer",
             "float64": "double", "float32": "float",
             "bool": "boolean",
             "object": "string",

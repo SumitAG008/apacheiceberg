@@ -19,3 +19,7 @@ requests>=2.31.0
 httpx>=0.27.0
 # Authentication
 bcrypt>=4.0.0
+
+# Testing and Load Testing
+pytest>=8.0.0
+locust>=2.20.0
