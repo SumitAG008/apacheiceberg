@@ -1187,7 +1187,7 @@ function buildApiHelpTab() {
   const baseUrlDisplay = document.getElementById('api-base-url-display')!;
   const docsLink = document.getElementById('api-docs-link') as HTMLAnchorElement;
 
-  baseUrlDisplay.textContent = API_BASE;
+  baseUrlDisplay.textContent = 'https://api.meldra.ai/v1';
   docsLink.href = `${API_BASE}/docs`;
 
   const tagColors: Record<string, string> = {
