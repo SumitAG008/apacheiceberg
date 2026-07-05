@@ -2859,9 +2859,21 @@ async function logoutToCommunity() {
   showToast('Signed out. Welcome to Community Hub!', 'info');
 }
 
+function toggleLandingMobileMenu(btn: HTMLElement) {
+  const navLinks = btn.parentElement?.querySelector('.landing-nav-links');
+  if (navLinks) {
+    const isActive = navLinks.classList.toggle('mobile-active');
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.className = isActive ? 'fa-solid fa-xmark' : 'fa-solid fa-bars';
+    }
+  }
+}
+
 (window as any).showCommunityPortal = showCommunityPortal;
 (window as any).hideCommunityPortal = hideCommunityPortal;
 (window as any).logoutToCommunity = logoutToCommunity;
+(window as any).toggleLandingMobileMenu = toggleLandingMobileMenu;
 
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initAuthController);

@@ -841,6 +841,169 @@
       .vmt-green  { background: rgba(22,163,74,0.12);  color: #16a34a; }
       .vmt-blue   { background: rgba(59,130,246,0.12); color: #3b82f6; }
       .vmt-orange { background: rgba(234,88,12,0.12);  color: #ea580c; }
+
+      /* ── RESPONSIVE MEDIA QUERIES FOR PUBLIC PAGES (LANDING & COMMUNITY) ── */
+      @media (max-width: 860px) {
+        .landing-nav {
+          padding: 1rem;
+          position: relative;
+        }
+        .landing-nav-links {
+          display: none; /* Hide standard nav links on mobile */
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #ffffff;
+          border-bottom: 1px solid #cbd5e1;
+          padding: 1rem 1.5rem;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 1.25rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+          z-index: 1000;
+        }
+        .landing-nav-links.mobile-active {
+          display: flex;
+        }
+        .landing-nav-links .landing-nav-link {
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #f1f5f9;
+          font-size: 0.95rem;
+          color: #0f172a;
+        }
+        .landing-nav-actions {
+          display: none; /* Hide primary actions on mobile header */
+        }
+        /* Mobile menu toggle button */
+        .landing-mobile-menu-toggle {
+          display: flex !important;
+          background: #f1f5f9;
+          border: 1px solid #cbd5e1;
+          color: #0f172a;
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.1rem;
+          margin-left: auto;
+          outline: none;
+        }
+        
+        /* Hero Section Responsive */
+        .landing-hero {
+          padding: 3.5rem 1.5rem 2.5rem 1.5rem;
+        }
+        .landing-hero h1 {
+          font-size: clamp(2rem, 9vw, 2.8rem);
+          line-height: 1.2;
+        }
+        .landing-hero p {
+          font-size: 0.95rem;
+          line-height: 1.5;
+        }
+        .landing-ctas {
+          flex-direction: column;
+          width: 100%;
+          gap: 0.75rem;
+        }
+        .landing-ctas button, .landing-ctas a {
+          width: 100%;
+          justify-content: center;
+        }
+        
+        /* Features Section */
+        .landing-features {
+          grid-template-columns: 1fr;
+          gap: 1.25rem;
+          padding: 0 1rem;
+          margin-top: 1rem;
+          margin-bottom: 3.5rem;
+        }
+        
+        /* Example / SQL Section Stack */
+        .landing-examples-grid {
+          grid-template-columns: 1fr !important;
+          gap: 2rem !important;
+        }
+        .landing-examples-terminal {
+          width: 100% !important;
+          overflow-x: auto;
+        }
+        
+        /* Blog Section Stack */
+        .landing-blog-grid {
+          grid-template-columns: 1fr !important;
+          gap: 1.5rem !important;
+        }
+        
+        /* Resources Setup Steps Stack */
+        .landing-resources-grid {
+          grid-template-columns: 1fr !important;
+          gap: 2rem !important;
+        }
+      }
+
+      /* Community Portal Responsive Adjustments */
+      @media (max-width: 900px) {
+        #community-portal nav {
+          padding: 1rem !important;
+          position: relative;
+        }
+        #community-portal nav .landing-nav-links {
+          display: none;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #090d16;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          padding: 1rem 1.5rem;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 1rem;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+        }
+        #community-portal nav .landing-nav-links.mobile-active {
+          display: flex;
+        }
+        #community-portal nav .landing-nav-links .landing-nav-link {
+          color: #cbd5e1;
+          border-bottom-color: rgba(255,255,255,0.05);
+        }
+        #community-portal nav .landing-nav-actions {
+          display: none !important;
+        }
+        
+        /* Main Layout Stack */
+        #community-portal > div[style*="grid-template-columns"] {
+          grid-template-columns: 1fr !important;
+          gap: 2.5rem !important;
+          padding: 0 1rem !important;
+        }
+        
+        /* Video cards grid */
+        #community-videos-section .video-grid {
+          grid-template-columns: 1fr !important;
+        }
+        
+        /* Custom horizontal video card stack */
+        #community-videos-section .video-card[style*="grid-template-columns"] {
+          grid-template-columns: 1fr !important;
+        }
+        #community-videos-section .video-card[style*="grid-template-columns"] img,
+        #community-videos-section .video-card[style*="grid-template-columns"] .video-thumb-wrap {
+          border-radius: 12px 12px 0 0 !important;
+          height: 180px !important;
+          min-height: 180px !important;
+        }
+        #community-videos-section .video-card[style*="grid-template-columns"] .video-card-body {
+          border-radius: 0 0 12px 12px !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -884,6 +1047,10 @@
           <span class="landing-nav-link" onclick="document.getElementById('landing-blog-section').scrollIntoView({ behavior: 'smooth' })">Blog</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-resources-section').scrollIntoView({ behavior: 'smooth' })">Resources</span>
         </div>
+        <!-- Hamburger Button -->
+        <button class="landing-mobile-menu-toggle" style="display:none;" onclick="toggleLandingMobileMenu(this)" aria-label="Toggle Navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
         <div class="landing-nav-actions">
           <button id="landing-btn-login" class="landing-btn landing-btn-secondary">
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
@@ -935,8 +1102,11 @@
         </div>
       </section>
 
-      <!-- Public Academy Section -->
-      <section class="landing-academy" id="landing-academy-section" style="padding: 4.5rem 2rem 5.5rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid rgba(255,255,255,0.06);">
+      <!-- ── DARK-THEME MARKETING & DEVELOPER BLOCK ── -->
+      <div class="landing-dark-wrapper" style="background: #090d16; border-top: 1px solid #cbd5e1; width: 100%; overflow: hidden;">
+
+        <!-- Public Academy Section -->
+        <section class="landing-academy" id="landing-academy-section" style="padding: 4.5rem 2rem 5.5rem; max-width: 1100px; margin: 0 auto;">
         <div style="margin-bottom: 3rem; text-align: center;">
           <h2 style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-family: var(--font-sans);">
             <i class="fa-solid fa-graduation-cap" style="color: #22c55e;"></i> meldra Academy
@@ -1022,7 +1192,7 @@
 
       <!-- ── EXAMPLES SECTION ── -->
       <section class="landing-examples" id="landing-examples-section" style="padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid rgba(255,255,255,0.06);">
-        <div style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 3.5rem; align-items: center;">
+        <div class="landing-examples-grid" style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 3.5rem; align-items: center;">
           <div>
             <h2 style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 1.25rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
               ⚡ Sub-second SQL Queries Over S3
@@ -1102,7 +1272,7 @@
           </p>
         </div>
         
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+        <div class="landing-blog-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
           <!-- Article 1 -->
           <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
@@ -1158,7 +1328,7 @@
           </p>
         </div>
         
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+        <div class="landing-resources-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
           
           <!-- Step 1 -->
           <div style="position: relative;">
@@ -1191,9 +1361,10 @@
       </section>
 
       <!-- Footer -->
-      <footer class="landing-footer">
+      <footer class="landing-footer" style="border-top: 1px solid rgba(255,255,255,0.06); color: #64748b;">
         <p>Copyright &copy; 2025 meldra.ai Ltd. All rights reserved. meldra.ai Lakehouse and its source code are proprietary.</p>
       </footer>
+      </div><!-- Close landing-dark-wrapper -->
     </div>
     <!-- ── END LANDING PAGE ── -->
 
@@ -1225,6 +1396,10 @@
           <span class="landing-nav-link" onclick="document.getElementById('community-lessons-section').scrollIntoView({ behavior: 'smooth' })">Lessons</span>
           <span class="landing-nav-link" onclick="document.getElementById('community-forum-section').scrollIntoView({ behavior: 'smooth' })">Forum</span>
         </div>
+        <!-- Hamburger Button -->
+        <button class="landing-mobile-menu-toggle" style="display:none;" onclick="toggleLandingMobileMenu(this)" aria-label="Toggle Navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
         <div class="landing-nav-actions">
           <button onclick="document.getElementById('landing-btn-login').click()" class="landing-btn landing-btn-teal">
             Sign In to Console
