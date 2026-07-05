@@ -2645,10 +2645,24 @@ function initUserControls() {
     }
   });
 
-  // Toggle Mobile Sidebar
+  // Load saved desktop sidebar state on initialization
+  if (window.innerWidth > 1024) {
+    const isCollapsed = localStorage.getItem('meldra_sidebar_collapsed') === 'true';
+    if (isCollapsed && sidebarEl) {
+      sidebarEl.classList.add('collapsed');
+    }
+  }
+
+  // Toggle Sidebar (collapses on desktop, opens drawer overlay on mobile)
   btnToggleSidebar?.addEventListener('click', () => {
-    sidebarEl?.classList.add('open');
-    sidebarOverlay?.classList.add('active');
+    if (window.innerWidth > 1024) {
+      sidebarEl?.classList.toggle('collapsed');
+      const isCollapsed = sidebarEl?.classList.contains('collapsed');
+      localStorage.setItem('meldra_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+    } else {
+      sidebarEl?.classList.add('open');
+      sidebarOverlay?.classList.add('active');
+    }
   });
 
   const closeSidebar = () => {
