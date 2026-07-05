@@ -204,6 +204,108 @@
       #landing-page.hidden {
         display: none !important;
       }
+      
+      /* ── ACADEMY PORTAL PAGE ───────────────────────────────────────────── */
+      #academy-portal-page {
+        position: fixed;
+        inset: 0;
+        z-index: 9995;
+        background-color: #0b150f;
+        background-image: 
+          radial-gradient(circle at 10% 20%, rgba(34, 197, 94, 0.05) 0%, transparent 40%),
+          radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.04) 0%, transparent 40%);
+        overflow-y: auto;
+        color: #f8fafc;
+        font-family: var(--font-sans);
+        display: flex;
+        flex-direction: column;
+      }
+      .academy-nav {
+        background: rgba(11, 21, 15, 0.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 0.85rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .academy-content-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 2.5rem;
+        max-width: 1200px;
+        margin: 2.5rem auto;
+        padding: 0 1.5rem;
+        flex: 1;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .academy-content-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .academy-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(8px);
+      }
+      .academy-signup-card {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.03) 0%, rgba(56, 189, 248, 0.02) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.15);
+      }
+      .academy-syllabus-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+      }
+      .academy-syllabus-step {
+        display: flex;
+        gap: 1rem;
+      }
+      .academy-step-num {
+        background: rgba(34, 197, 94, 0.15);
+        color: #bef264;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .academy-step-body h5 {
+        font-size: 0.85rem;
+        color: #fff;
+        margin: 0 0 0.15rem 0;
+      }
+      .academy-step-body p {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin: 0;
+        line-height: 1.4;
+      }
+      .academy-locked-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 0.35rem;
+      }
       .landing-banner {
         background: #00f099;
         color: #0f172a;
@@ -1064,7 +1166,7 @@
         </div>
         <div class="landing-nav-links">
           <span class="landing-nav-link" onclick="document.getElementById('landing-features-section').scrollIntoView({ behavior: 'smooth' })">Features</span>
-          <span class="landing-nav-link" onclick="document.getElementById('landing-academy-section').scrollIntoView({ behavior: 'smooth' })">Academy</span>
+          <span class="landing-nav-link" onclick="showAcademyPage()">Academy</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-examples-section').scrollIntoView({ behavior: 'smooth' })">Examples</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-blog-section').scrollIntoView({ behavior: 'smooth' })">Blog</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-resources-section').scrollIntoView({ behavior: 'smooth' })">Resources</span>
@@ -1586,6 +1688,122 @@
       </footer>
     </div>
     <!-- ── END LANDING PAGE ── -->
+
+    <!-- ── ACADEMY PORTAL PAGE ── -->
+    <div id="academy-portal-page" style="display: none;">
+      <!-- Academy Header -->
+      <nav class="academy-nav">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <svg width="30" height="30" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="36" height="36" rx="8" fill="url(#meldra-logo-grad-1)"/>
+            <path d="M18 6L28 24H8L18 6Z" fill="#bef264" opacity="0.35"/>
+            <path d="M18 10L25 24H11L18 10Z" fill="#ffffff" opacity="0.95"/>
+          </svg>
+          <div>
+            <span style="font-size: 1.15rem; font-weight: 800; color: #fff; line-height: 1;">meldra <span style="color:#10b981;font-size:0.9rem;font-weight:600;margin-left:0.25rem;">Academy</span></span>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="showLandingPageFromAcademy()" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: #94a3b8;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Home
+        </button>
+      </nav>
+
+      <!-- Main Course Grid -->
+      <div class="academy-content-grid">
+        
+        <!-- Left Column: Syllabus details -->
+        <div class="academy-card">
+          <div style="display:flex; align-items:center; gap:0.5rem; color:#10b981; font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.75rem;">
+            <i class="fa-solid fa-graduation-cap"></i> 14-Day Free Training Pass Active
+          </div>
+          <h2 style="font-size: 1.65rem; font-weight: 800; color: #fff; margin: 0 0 0.5rem 0;">Meldra.py Data Engineering Course</h2>
+          <p style="color: #94a3b8; font-size: 0.85rem; line-height: 1.5; margin: 0;">
+            Master Zero-Copy architectures, Iceberg tables, schema evolution, and serverless data quality rules in 7 interactive modules.
+          </p>
+
+          <div class="academy-syllabus-timeline">
+            <!-- Step 1 -->
+            <div class="academy-syllabus-step">
+              <div class="academy-step-num">1</div>
+              <div class="academy-step-body">
+                <h5>Module 1: Lakehouse Architecture Foundations</h5>
+                <p>Understanding serverless metadata scanning vs. continuous cluster execution.</p>
+              </div>
+            </div>
+            <!-- Step 2 -->
+            <div class="academy-syllabus-step">
+              <div class="academy-step-num">2</div>
+              <div class="academy-step-body">
+                <h5>Module 2: Setting up AWS Glue &amp; GCP BigLake</h5>
+                <p>Configuring secure credentials, regions, and cloud object store links.</p>
+              </div>
+            </div>
+            <!-- Step 3 -->
+            <div class="academy-syllabus-step">
+              <div class="academy-step-num">3</div>
+              <div class="academy-step-body">
+                <h5>Module 3: Ingesting Data Tables (Append &amp; Merge)</h5>
+                <p>Programmatically loading CSV files and running merge-upserts.</p>
+              </div>
+            </div>
+            <!-- Step 4 -->
+            <div class="academy-syllabus-step">
+              <div class="academy-step-num">4</div>
+              <div class="academy-step-body">
+                <h5>Module 4: Zero-Copy Schema Evolution</h5>
+                <p>Adding, renaming, and dropping columns instantly in metadata.</p>
+              </div>
+            </div>
+            <!-- Step 5 -->
+            <div class="academy-syllabus-step">
+              <div class="academy-step-num">5</div>
+              <div class="academy-step-body">
+                <h5>Module 5: Active Data Contract Constraints</h5>
+                <p>Writing and enforcing schema validators before pipeline commits.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Registration Card -->
+        <div class="academy-card academy-signup-card">
+          <div class="academy-locked-badge"><i class="fa-solid fa-lock"></i> Access Locked</div>
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0 0 0.5rem 0;">Claim Your Training Pass</h3>
+          <p style="color: #94a3b8; font-size: 0.8rem; line-height: 1.4; margin: 0 0 1.5rem 0;">
+            Register now to instantly unlock all 5 modules and gain access to the interactive practice workspace.
+          </p>
+
+          <form id="academy-register-form" onsubmit="handleAcademySignup(event)" style="display:flex; flex-direction:column; gap:1rem;">
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <label for="academy-reg-name" style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">Full Name</label>
+              <input type="text" id="academy-reg-name" required placeholder="John Doe" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.5rem 0.75rem; color:#fff; font-size: 0.82rem; outline: none;">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <label for="academy-reg-email" style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">Corporate Email</label>
+              <input type="email" id="academy-reg-email" required placeholder="john@company.com" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.5rem 0.75rem; color:#fff; font-size: 0.82rem; outline: none;">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <label for="academy-reg-password" style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">Create Password</label>
+              <input type="password" id="academy-reg-password" required placeholder="••••••••" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.5rem 0.75rem; color:#fff; font-size: 0.82rem; outline: none;">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <label for="academy-reg-role" style="font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">Job Role</label>
+              <select id="academy-reg-role" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.5rem 0.75rem; color:#fff; font-size: 0.82rem; outline: none; width: 100%;">
+                <option value="data_engineer" style="background:#0b150f;">Data Engineer</option>
+                <option value="data_architect" style="background:#0b150f;">Data Architect</option>
+                <option value="analytics_lead" style="background:#0b150f;">Analytics Lead</option>
+                <option value="other" style="background:#0b150f;">Other</option>
+              </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="background: #10b981; border: none; padding: 0.65rem; border-radius: 8px; font-weight: 700; color: #0b150f; font-size: 0.85rem; cursor: pointer; margin-top: 0.5rem;">
+              <i class="fa-solid fa-circle-check"></i> Register &amp; Start Free Training
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
 
         </div>
 
@@ -3346,7 +3564,7 @@ with DAG(
               <!-- Traffic Top Toolbar -->
               <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                  <h3 style="font-size: 1rem; color: #fff; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                  <h3 style="font-size: 1rem; color: var(--text-color); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-network-wired" style="color: #22c55e;"></i> API Traffic Monitor
                   </h3>
                   <span id="traffic-stream-status" style="font-size: 0.7rem; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; padding: 0.15rem 0.5rem; display: flex; align-items: center; gap: 0.35rem;">

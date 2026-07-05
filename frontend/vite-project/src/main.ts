@@ -1920,6 +1920,10 @@ function initAuthController() {
     landingPage.classList.add('hidden');
     overlay.classList.add('hidden');
     overlay.classList.remove('active');
+    
+    const academyPage = document.getElementById('academy-portal-page');
+    if (academyPage) academyPage.style.display = 'none';
+
     setTimeout(() => { 
       overlay.style.display = 'none'; 
       landingPage.style.display = 'none';
@@ -1936,6 +1940,21 @@ function initAuthController() {
       if (settingsEmailEl) settingsEmailEl.textContent = user.email;
     }
     bootstrapApp();
+
+    // Check if user came from Academy signup referral
+    if (sessionStorage.getItem('meldra_academy_referral') === 'true') {
+      sessionStorage.removeItem('meldra_academy_referral');
+      setTimeout(() => {
+        const navArch = document.getElementById('nav-architecture');
+        if (navArch) {
+          navArch.click();
+          setTimeout(() => {
+            const blogItem = document.querySelector('[data-article="training-getting-started"]') as HTMLElement;
+            if (blogItem) blogItem.click();
+          }, 150);
+        }
+      }, 500);
+    }
   }
 
   function openAuthModal(mode: 'login' | 'register') {
@@ -2389,6 +2408,78 @@ function initAuthController() {
     startResendCooldown(60);
     setTimeout(() => otpDigits[0]?.focus(), 100);
   }
+
+  // ── ACADEMY ROUTING & REGISTER CONTROLS ─────────────────
+  (window as any).showAcademyPage = () => {
+    landingPage.classList.add('hidden');
+    landingPage.style.display = 'none';
+    const academy = document.getElementById('academy-portal-page');
+    if (academy) academy.style.display = 'flex';
+  };
+
+  (window as any).showLandingPageFromAcademy = () => {
+    const academy = document.getElementById('academy-portal-page');
+    if (academy) academy.style.display = 'none';
+    landingPage.classList.remove('hidden');
+    landingPage.style.display = 'flex';
+  };
+
+  (window as any).handleAcademySignup = async (e: Event) => {
+    e.preventDefault();
+    const nameEl = document.getElementById('academy-reg-name') as HTMLInputElement;
+    const emailEl = document.getElementById('academy-reg-email') as HTMLInputElement;
+    const pwdEl = document.getElementById('academy-reg-password') as HTMLInputElement;
+
+    if (!nameEl || !emailEl || !pwdEl) return;
+    const email = emailEl.value.trim();
+    const password = pwdEl.value;
+
+    if (password.length < 8) {
+      showToast('Password must be at least 8 characters.', 'error');
+      return;
+    }
+
+    const form = e.target as HTMLFormElement;
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Initializing pass...';
+    }
+
+    try {
+      // 1. Call registration
+      await api.auth.register(email, password);
+      // 2. Call login to fetch MFA temp_token
+      const loginRes = await api.auth.login(email, password);
+      currentTempToken = loginRes.temp_token;
+      sessionStorage.setItem('meldra_temp_token', loginRes.temp_token);
+      sessionStorage.setItem('meldra_mfa_email', email);
+      sessionStorage.setItem('meldra_academy_referral', 'true');
+      
+      otpEmailBadge.textContent = email;
+      clearOtpInputs();
+      clearError(mfaErrorEl);
+      mfaSuccessEl.classList.remove('show');
+
+      // 3. Show MFA prompt overlay
+      overlay.style.display = 'flex';
+      overlay.classList.remove('hidden');
+      overlay.classList.add('active');
+      showScreen(screenMfa);
+      startOtpTimer(600);
+      startResendCooldown(60);
+      
+      showToast('14-Day Free Training Pass registered! Please enter the MFA code sent to your email.', 'success');
+      setTimeout(() => otpDigits[0]?.focus(), 150);
+    } catch (err: any) {
+      showToast(err.message || 'Registration failed.', 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Register &amp; Start Free Training';
+      }
+    }
+  };
 }
 
 
