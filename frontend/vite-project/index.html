@@ -878,11 +878,10 @@
           </div>
         </div>
         <div class="landing-nav-links">
-          <span class="landing-nav-link" onclick="document.getElementById('landing-btn-login').click()">Examples</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-btn-login').click()">Features</span>
+          <span class="landing-nav-link" onclick="document.getElementById('landing-academy-section').scrollIntoView({ behavior: 'smooth' })">Academy</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-btn-login').click()">Enterprise</span>
           <span class="landing-nav-link" onclick="document.getElementById('landing-btn-login').click()">Blog</span>
-          <span class="landing-nav-link" onclick="document.getElementById('landing-btn-login').click()">Resources</span>
         </div>
         <div class="landing-nav-actions">
           <button id="landing-btn-login" class="landing-btn landing-btn-secondary">
@@ -932,6 +931,91 @@
           <div class="landing-feature-icon"><i class="fa-solid fa-sliders"></i></div>
           <h3>Instant Schema Evolution</h3>
           <p>Safely add, rename, or drop columns as metadata-only actions. Older Parquet files are read dynamically without needing full table rewrites.</p>
+        </div>
+      </section>
+
+      <!-- Public Academy Section -->
+      <section class="landing-academy" id="landing-academy-section" style="padding: 4.5rem 2rem 5.5rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid rgba(255,255,255,0.06);">
+        <div style="margin-bottom: 3rem; text-align: center;">
+          <h2 style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-family: var(--font-sans);">
+            <i class="fa-solid fa-graduation-cap" style="color: #22c55e;"></i> meldra Academy
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 580px; margin: 0.4rem auto 0; line-height: 1.5;">
+            Learn how the Zero-Copy Lakehouse works, watch technical demonstrations, and discover the business challenges we solve.
+          </p>
+        </div>
+        
+        <div class="video-grid">
+ 
+           <!-- Video 1 -->
+           <div class="video-card" id="landing-vc-1" onclick="openVideoModal(1)">
+             <div class="video-thumb-wrap premium-thumb-1">
+               <div class="thumb-glow"></div>
+               <div class="thumb-graphic">
+                 <i class="fa-solid fa-cube"></i>
+               </div>
+               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+               <div class="video-duration-badge">8:42</div>
+             </div>
+             <div class="video-card-body">
+               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Introduction</div>
+               <div class="video-card-title" style="color: #0f172a;">What is meldra.ai &amp; the Zero-Copy Lakehouse?</div>
+               <div class="video-card-desc" style="color: #475569;">A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without replicating your data.</div>
+               <div class="video-card-footer">
+                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-eye"></i> Overview · 8 min</div>
+                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(1)">
+                   <i class="fa-solid fa-play"></i> Watch
+                 </button>
+               </div>
+             </div>
+           </div>
+ 
+           <!-- Video 2 -->
+           <div class="video-card" id="landing-vc-2" onclick="openVideoModal(2)">
+             <div class="video-thumb-wrap premium-thumb-2">
+               <div class="thumb-glow"></div>
+               <div class="thumb-graphic">
+                 <i class="fa-solid fa-diagram-project"></i>
+               </div>
+               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+               <div class="video-duration-badge">12:17</div>
+             </div>
+             <div class="video-card-body">
+               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Business Case</div>
+               <div class="video-card-title" style="color: #0f172a;">Why Zero-Copy? The Business Problems We Solve</div>
+               <div class="video-card-desc" style="color: #475569;">Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your stack.</div>
+               <div class="video-card-footer">
+                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-briefcase"></i> Enterprise · 12 min</div>
+                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(2)">
+                   <i class="fa-solid fa-play"></i> Watch
+                 </button>
+               </div>
+             </div>
+           </div>
+ 
+           <!-- Video 3 -->
+           <div class="video-card" id="landing-vc-3" onclick="openVideoModal(3)">
+             <div class="video-thumb-wrap premium-thumb-3">
+               <div class="thumb-glow"></div>
+               <div class="thumb-graphic">
+                 <i class="fa-solid fa-network-wired"></i>
+               </div>
+               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+               <div class="video-duration-badge">10:05</div>
+             </div>
+             <div class="video-card-body">
+               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Hands-On</div>
+               <div class="video-card-title" style="color: #0f172a;">Build Your First Pipeline: SAP → Iceberg → AI</div>
+               <div class="video-card-desc" style="color: #475569;">Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.</div>
+               <div class="video-card-footer">
+                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-code"></i> Tutorial · 10 min</div>
+                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(3)">
+                   <i class="fa-solid fa-play"></i> Watch
+                 </button>
+               </div>
+             </div>
+           </div>
+ 
         </div>
       </section>
 
@@ -1243,7 +1327,7 @@
               <i class="fa-solid fa-comments"></i> Chat
             </button>
             <button class="tab-btn" data-tab="tutorial-tab" id="nav-learn">
-              <i class="fa-solid fa-graduation-cap"></i> Learn
+              <i class="fa-solid fa-graduation-cap"></i> Academy
             </button>
             <button class="tab-btn" data-tab="architecture-tab" id="nav-architecture">
               <i class="fa-solid fa-sitemap"></i> Architecture
