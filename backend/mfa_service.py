@@ -103,11 +103,14 @@ def send_email_otp(to_email: str, code: str, purpose: str = "login") -> bool:
     Send OTP code via Resend.com API.
     Returns True on success, raises RuntimeError on failure.
     """
+    # Always log OTP to server logs as fallback (Railway deploy logs)
+    print("\n" + "=" * 60)
+    print(f"🔑 MFA OTP Code for {to_email}: {code}")
+    print(f"Purpose: {purpose.upper()}")
+    print("=" * 60 + "\n")
+
     if not RESEND_API_KEY:
-        print("\n" + "=" * 60)
-        print(f"🔑 [DEV MODE] MFA OTP Code for {to_email}: {code}")
-        print(f"Purpose: {purpose.upper()}")
-        print("=" * 60 + "\n")
+        print("[DEV MODE] RESEND_API_KEY not set — OTP logged above only.")
         return True
 
     subject_map = {
@@ -137,6 +140,7 @@ def send_email_otp(to_email: str, code: str, purpose: str = "login") -> bool:
             json=payload,
             timeout=10.0,
         )
+        print(f"[Resend] Response: {response.status_code} — {response.text}")
         if response.status_code not in (200, 201):
             error_detail = response.text
             raise RuntimeError(f"Resend API error {response.status_code}: {error_detail}")
