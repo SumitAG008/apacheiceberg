@@ -201,6 +201,28 @@ export const api = {
       }
       tokenStore.clear();
     },
+
+    async forgotPassword(email: string): Promise<{ message: string; temp_token: string }> {
+      const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to send reset code');
+      return data;
+    },
+
+    async resetPassword(tempToken: string, code: string, newPassword: string): Promise<{ message: string }> {
+      const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ temp_token: tempToken, code, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Password reset failed');
+      return data;
+    },
   },
 
   // ── AWS Configuration ────────────────────────────────────────────────────

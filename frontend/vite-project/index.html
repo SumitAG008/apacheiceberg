@@ -524,6 +524,290 @@
         gap: 2rem;
         margin-top: 0.5rem;
       }
+
+      /* ── VIDEO LIBRARY ────────────────────────────────────────────────── */
+      .video-library-section {
+        width: 100%;
+        margin-bottom: 2rem;
+      }
+      .video-library-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+      .video-library-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--text-main, #0f172a);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .video-library-title i {
+        color: #ef4444;
+      }
+      .video-library-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted, #64748b);
+        margin-top: 0.15rem;
+      }
+      .video-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+      .video-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      }
+      .video-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(22,163,74,0.12), 0 4px 12px rgba(0,0,0,0.06);
+        border-color: #16a34a;
+      }
+      .video-thumb-wrap {
+        position: relative;
+        width: 100%;
+        padding-top: 56.25%; /* 16:9 */
+        background: #0f172a;
+        overflow: hidden;
+      }
+      .video-thumb-wrap img {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+      }
+      .video-card:hover .video-thumb-wrap img {
+        transform: scale(1.04);
+      }
+      .video-play-btn {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 52px; height: 52px;
+        background: rgba(255,255,255,0.92);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+        color: #ef4444;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+      }
+      .video-card:hover .video-play-btn {
+        transform: translate(-50%, -50%) scale(1.12);
+        background: #ffffff;
+        box-shadow: 0 6px 28px rgba(0,0,0,0.3);
+      }
+      .video-duration-badge {
+        position: absolute;
+        bottom: 8px; right: 8px;
+        background: rgba(0,0,0,0.8);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.18rem 0.4rem;
+        border-radius: 4px;
+        font-family: monospace;
+        letter-spacing: 0.5px;
+      }
+      .video-card-body {
+        padding: 0.9rem 1rem 1rem 1rem;
+      }
+      .video-card-tag {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #16a34a;
+        margin-bottom: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .video-card-title {
+        font-size: 0.93rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.35;
+        margin-bottom: 0.4rem;
+      }
+      .video-card-desc {
+        font-size: 0.78rem;
+        color: #64748b;
+        line-height: 1.5;
+      }
+      .video-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 0.75rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid #f1f5f9;
+      }
+      .video-card-meta {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .video-watch-btn {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #16a34a;
+        background: rgba(22,163,74,0.08);
+        border: 1px solid rgba(22,163,74,0.2);
+        border-radius: 6px;
+        padding: 0.3rem 0.7rem;
+        cursor: pointer;
+        transition: all 0.18s;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .video-watch-btn:hover {
+        background: rgba(22,163,74,0.15);
+        border-color: rgba(22,163,74,0.4);
+      }
+
+      /* ── VIDEO MODAL LIGHTBOX ─────────────────────────────────────────── */
+      #video-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        background: rgba(0,0,0,0.88);
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.2s ease;
+      }
+      #video-modal-overlay.active {
+        display: flex;
+      }
+      .video-modal-box {
+        background: #0f172a;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        width: 100%;
+        max-width: 820px;
+        overflow: hidden;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+        animation: authCardIn 0.3s cubic-bezier(0.16,1,0.3,1);
+      }
+      .video-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+      }
+      .video-modal-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .video-modal-title i {
+        color: #ef4444;
+      }
+      .video-modal-close {
+        background: rgba(255,255,255,0.08);
+        border: none;
+        color: #94a3b8;
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+      .video-modal-close:hover {
+        background: rgba(239,68,68,0.15);
+        color: #ef4444;
+      }
+      .video-player-area {
+        position: relative;
+        width: 100%;
+        padding-top: 56.25%;
+        background: #020617;
+      }
+      .video-player-area iframe,
+      .video-player-area .video-placeholder {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+      }
+      .video-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        color: #475569;
+      }
+      .video-placeholder i {
+        font-size: 3rem;
+        color: #1e293b;
+      }
+      .video-placeholder p {
+        font-size: 0.85rem;
+        color: #475569;
+        text-align: center;
+        max-width: 340px;
+        line-height: 1.6;
+      }
+      .video-placeholder code {
+        font-size: 0.75rem;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        color: #94a3b8;
+        font-family: monospace;
+      }
+      .video-modal-footer {
+        padding: 0.9rem 1.25rem;
+        border-top: 1px solid rgba(255,255,255,0.07);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .video-modal-desc {
+        font-size: 0.8rem;
+        color: #64748b;
+        line-height: 1.5;
+        max-width: 540px;
+      }
+      .video-modal-tags {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        margin-top: 0.4rem;
+      }
+      .video-modal-tag {
+        font-size: 0.62rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+      }
+      .vmt-green  { background: rgba(22,163,74,0.12);  color: #16a34a; }
+      .vmt-blue   { background: rgba(59,130,246,0.12); color: #3b82f6; }
+      .vmt-orange { background: rgba(234,88,12,0.12);  color: #ea580c; }
     </style>
   </head>
   <body>
@@ -671,8 +955,9 @@
           <button id="btn-login" class="auth-btn">
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Continue
           </button>
-          <div class="auth-switch">
-            No account? <a id="goto-register">Create one</a>
+          <div class="auth-switch" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>No account? <a id="goto-register">Create one</a></span>
+            <a id="goto-forgot-password" style="color:#64748b;font-size:0.82rem;">Forgot password?</a>
           </div>
         </div>
 
@@ -731,6 +1016,71 @@
           </button>
           <div class="auth-switch">
             <a id="goto-login-from-mfa"><i class="fa-solid fa-arrow-left" style="font-size:0.7rem"></i> Back to login</a>
+          </div>
+        </div>
+
+        <!-- Screen 4: FORGOT PASSWORD — enter email -->
+        <div id="auth-screen-forgot" class="auth-screen">
+          <h2 class="auth-title">Forgot password?</h2>
+          <p class="auth-subtitle">Enter your email and we'll send a reset code.</p>
+          <div id="forgot-error" class="auth-error"></div>
+          <div id="forgot-success" class="auth-success"></div>
+          <div class="auth-field">
+            <label for="forgot-email">Email address</label>
+            <input type="email" id="forgot-email" class="auth-input" placeholder="you@company.com" autocomplete="email">
+          </div>
+          <button id="btn-send-reset" class="auth-btn">
+            <i class="fa-solid fa-paper-plane"></i> Send Reset Code
+          </button>
+          <div class="auth-switch">
+            <a id="goto-login-from-forgot"><i class="fa-solid fa-arrow-left" style="font-size:0.7rem"></i> Back to login</a>
+          </div>
+        </div>
+
+        <!-- Screen 5: RESET OTP VERIFY -->
+        <div id="auth-screen-reset-otp" class="auth-screen">
+          <h2 class="auth-title">Enter reset code</h2>
+          <p class="auth-subtitle">We sent a 6-digit code to</p>
+          <div class="otp-email-badge" id="reset-otp-target-email">your@email.com</div>
+          <div id="reset-otp-error" class="auth-error"></div>
+          <div id="reset-otp-success" class="auth-success"></div>
+          <div class="otp-inputs">
+            <input class="otp-digit" id="rotp-0" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="rotp-1" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="rotp-2" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="rotp-3" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="rotp-4" type="text" inputmode="numeric" maxlength="1">
+            <input class="otp-digit" id="rotp-5" type="text" inputmode="numeric" maxlength="1">
+          </div>
+          <div class="otp-countdown">Code expires in <span id="reset-otp-timer">10:00</span></div>
+          <button id="btn-verify-reset-otp" class="auth-btn">
+            <i class="fa-solid fa-shield-check"></i> Verify Code
+          </button>
+          <div class="auth-switch">
+            <a id="goto-forgot-from-reset-otp"><i class="fa-solid fa-arrow-left" style="font-size:0.7rem"></i> Back</a>
+          </div>
+        </div>
+
+        <!-- Screen 6: SET NEW PASSWORD -->
+        <div id="auth-screen-new-password" class="auth-screen">
+          <h2 class="auth-title">Set new password</h2>
+          <p class="auth-subtitle">Choose a strong password for your account.</p>
+          <div id="new-pwd-error" class="auth-error"></div>
+          <div id="new-pwd-success" class="auth-success"></div>
+          <div class="auth-field">
+            <label for="new-password-input">New password</label>
+            <input type="password" id="new-password-input" class="auth-input" placeholder="Min 8 chars, 1 uppercase, 1 number" autocomplete="new-password">
+            <div class="pwd-strength"><div class="pwd-strength-bar" id="new-pwd-strength-bar"></div></div>
+          </div>
+          <div class="auth-field">
+            <label for="new-password-confirm">Confirm password</label>
+            <input type="password" id="new-password-confirm" class="auth-input" placeholder="Repeat password" autocomplete="new-password">
+          </div>
+          <button id="btn-set-new-password" class="auth-btn">
+            <i class="fa-solid fa-lock"></i> Reset Password
+          </button>
+          <div class="auth-switch">
+            <a id="goto-login-from-new-pwd"><i class="fa-solid fa-arrow-left" style="font-size:0.7rem"></i> Back to login</a>
           </div>
         </div>
 
@@ -926,6 +1276,8 @@
           <!-- TAB 2: LEARN -->
           <div id="tutorial-tab" class="tab-content">
             <div class="tutorial-container" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%; max-width: 1000px; margin: 0 auto;">
+
+              <!-- Academy Intro -->
               <div class="tutorial-intro">
                 <h2>📚 Learn Apache Iceberg — Hands-On</h2>
                 <p>Master Iceberg concepts by doing. Each lesson has a concept explainer and a live query you can run.</p>
@@ -936,7 +1288,119 @@
                   <span class="badge badge-purple">Graph Analytics</span>
                 </div>
               </div>
+
+              <!-- ── VIDEO LIBRARY ── -->
+              <section class="video-library-section">
+                <div class="video-library-header">
+                  <div>
+                    <div class="video-library-title">
+                      <i class="fa-brands fa-youtube"></i> Video Library
+                    </div>
+                    <div class="video-library-subtitle">Watch to understand the why, the what, and the how — then run it live.</div>
+                  </div>
+                  <span class="badge badge-green" style="font-size:0.7rem;">3 Videos</span>
+                </div>
+
+                <div class="video-grid">
+
+                  <!-- Video 1 -->
+                  <div class="video-card" id="vc-1" onclick="openVideoModal(1)">
+                    <div class="video-thumb-wrap">
+                      <img src="/vid_thumb1.png" alt="What is meldra.ai?" loading="lazy">
+                      <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+                      <div class="video-duration-badge">8:42</div>
+                    </div>
+                    <div class="video-card-body">
+                      <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Introduction</div>
+                      <div class="video-card-title">What is meldra.ai &amp; the Zero-Copy Lakehouse?</div>
+                      <div class="video-card-desc">A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without replicating your data.</div>
+                      <div class="video-card-footer">
+                        <div class="video-card-meta"><i class="fa-solid fa-eye"></i> Overview · 8 min</div>
+                        <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(1)">
+                          <i class="fa-solid fa-play"></i> Watch
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Video 2 -->
+                  <div class="video-card" id="vc-2" onclick="openVideoModal(2)">
+                    <div class="video-thumb-wrap">
+                      <img src="/vid_thumb2.png" alt="Why Zero-Copy Lakehouse?" loading="lazy">
+                      <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+                      <div class="video-duration-badge">12:17</div>
+                    </div>
+                    <div class="video-card-body">
+                      <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Business Case</div>
+                      <div class="video-card-title">Why Zero-Copy? The Business Problems We Solve</div>
+                      <div class="video-card-desc">Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your stack.</div>
+                      <div class="video-card-footer">
+                        <div class="video-card-meta"><i class="fa-solid fa-briefcase"></i> Enterprise · 12 min</div>
+                        <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(2)">
+                          <i class="fa-solid fa-play"></i> Watch
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Video 3 -->
+                  <div class="video-card" id="vc-3" onclick="openVideoModal(3)">
+                    <div class="video-thumb-wrap">
+                      <img src="/vid_thumb3.png" alt="Build Your First Pipeline" loading="lazy">
+                      <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
+                      <div class="video-duration-badge">10:05</div>
+                    </div>
+                    <div class="video-card-body">
+                      <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Hands-On</div>
+                      <div class="video-card-title">Build Your First Pipeline: SAP → Iceberg → AI</div>
+                      <div class="video-card-desc">Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.</div>
+                      <div class="video-card-footer">
+                        <div class="video-card-meta"><i class="fa-solid fa-code"></i> Tutorial · 10 min</div>
+                        <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(3)">
+                          <i class="fa-solid fa-play"></i> Watch
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div><!-- /video-grid -->
+              </section><!-- /video-library-section -->
+
+              <!-- Divider -->
+              <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.25rem;">
+                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;">Interactive Lessons</span>
+                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+              </div>
+
               <div class="lesson-list" id="lessons-wrapper" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <!-- ── VIDEO MODAL LIGHTBOX ── -->
+          <div id="video-modal-overlay">
+            <div class="video-modal-box">
+              <div class="video-modal-header">
+                <div class="video-modal-title" id="video-modal-title">
+                  <i class="fa-brands fa-youtube"></i> <span>Video</span>
+                </div>
+                <button class="video-modal-close" onclick="closeVideoModal()" title="Close">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div class="video-player-area">
+                <div class="video-placeholder" id="video-placeholder">
+                  <i class="fa-brands fa-youtube"></i>
+                  <p id="video-placeholder-text">This video will be embedded here once uploaded to YouTube.<br>Replace the <code>data-yt-id</code> attribute on each video card with your YouTube video ID.</p>
+                </div>
+                <iframe id="video-iframe" style="display:none;border:none;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+              </div>
+              <div class="video-modal-footer">
+                <div>
+                  <div class="video-modal-desc" id="video-modal-desc"></div>
+                  <div class="video-modal-tags" id="video-modal-tags"></div>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -232,6 +232,21 @@ def update_last_login(user_id: str):
         conn.close()
 
 
+def update_password(user_id: str, new_password: str):
+    """Set a new bcrypt-hashed password for the given user."""
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        pwd_hash = hash_password(new_password)
+        cur.execute(
+            "UPDATE auth.users SET password_hash = %s WHERE id = %s",
+            (pwd_hash, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # ─────────────────────────────────────────
 # MFA TOKEN OPERATIONS
 # ─────────────────────────────────────────

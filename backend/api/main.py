@@ -45,6 +45,7 @@ from auth_db import (
     get_user_by_id,
     mark_user_verified,
     update_last_login,
+    update_password,
     generate_otp,
     store_mfa_token,
     verify_mfa_token,
@@ -158,6 +159,25 @@ class VerifyMFARequest(BaseModel):
 
 class ResendOTPRequest(BaseModel):
     temp_token: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    temp_token: str   # same opaque temp token issued after forgot-password
+    code: str         # 6-digit OTP from email
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one number.")
+        return v
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -382,6 +402,56 @@ async def resend_otp(payload: ResendOTPRequest):
         raise HTTPException(status_code=500, detail=f"Failed to resend OTP: {e}")
 
     return {"message": "A new verification code has been sent."}
+
+
+@app.post("/auth/forgot-password", tags=["Auth"])
+async def forgot_password(payload: ForgotPasswordRequest):
+    """
+    Step 1 of password reset: lookup email, send a 'reset' OTP.
+    Always returns 200 to prevent email enumeration attacks.
+    """
+    user = get_user_by_email(payload.email)
+    if not user:
+        # Return a generic success response regardless — don't leak whether email exists
+        return {"message": "If that email is registered you will receive a reset code shortly.", "temp_token": ""}
+
+    code = generate_otp()
+    store_mfa_token(str(user["id"]), code, purpose="reset")
+
+    try:
+        send_email_otp(payload.email, code, purpose="reset")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send reset email: {e}")
+
+    temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
+    log_audit(str(user["id"]), user["tier"], "forgot_password", f"Password reset code sent to {payload.email}", "success")
+
+    return {
+        "message": f"A password reset code has been sent to {payload.email}.",
+        "temp_token": temp_token,
+    }
+
+
+@app.post("/auth/reset-password", tags=["Auth"])
+async def reset_password(payload: ResetPasswordRequest):
+    """
+    Step 2 of password reset: verify OTP and set new password.
+    """
+    user_id = _decode_temp_token(payload.temp_token)
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    try:
+        verify_mfa_token(user_id, payload.code.strip(), purpose="reset")
+    except ValueError as e:
+        log_audit(user_id, user["tier"], "reset_password", f"Failed OTP: {e}", "error")
+        raise HTTPException(status_code=401, detail=str(e))
+
+    update_password(user_id, payload.new_password)
+    log_audit(user_id, user["tier"], "reset_password", f"Password reset successful for {user['email']}", "success")
+
+    return {"message": "Password reset successfully. You can now log in with your new password."}
 
 
 @app.get("/auth/me", tags=["Auth"])

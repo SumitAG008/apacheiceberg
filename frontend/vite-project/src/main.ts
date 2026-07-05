@@ -1798,6 +1798,9 @@ function initAuthController() {
   const screenLogin    = document.getElementById('auth-screen-login')!;
   const screenRegister = document.getElementById('auth-screen-register')!;
   const screenMfa      = document.getElementById('auth-screen-mfa')!;
+  const screenForgot   = document.getElementById('auth-screen-forgot')!;
+  const screenResetOtp = document.getElementById('auth-screen-reset-otp')!;
+  const screenNewPwd   = document.getElementById('auth-screen-new-password')!;
 
   // ─ Login elements
   const loginEmailEl    = document.getElementById('login-email') as HTMLInputElement;
@@ -1829,6 +1832,35 @@ function initAuthController() {
   const headerEmail = document.getElementById('header-user-email')!;
   const btnLogout   = document.getElementById('btn-logout') as HTMLButtonElement;
 
+  // ─ Forgot Password elements
+  const forgotEmailEl      = document.getElementById('forgot-email') as HTMLInputElement;
+  const forgotErrorEl      = document.getElementById('forgot-error')!;
+  const forgotSuccessEl    = document.getElementById('forgot-success')!;
+  const btnSendReset       = document.getElementById('btn-send-reset') as HTMLButtonElement;
+  const gotoForgotPwd      = document.getElementById('goto-forgot-password')!;
+  const gotoLoginFromForgot = document.getElementById('goto-login-from-forgot')!;
+
+  // ─ Reset OTP elements
+  const resetOtpEmailBadge = document.getElementById('reset-otp-target-email')!;
+  const resetOtpErrorEl    = document.getElementById('reset-otp-error')!;
+  const resetOtpSuccessEl  = document.getElementById('reset-otp-success')!;
+  const resetOtpTimer      = document.getElementById('reset-otp-timer')!;
+  const btnVerifyResetOtp  = document.getElementById('btn-verify-reset-otp') as HTMLButtonElement;
+  const gotoForgotFromResetOtp = document.getElementById('goto-forgot-from-reset-otp')!;
+  const resetOtpDigits     = Array.from({length:6}, (_,i) => document.getElementById(`rotp-${i}`) as HTMLInputElement);
+
+  // ─ New Password elements
+  const newPwdInput        = document.getElementById('new-password-input') as HTMLInputElement;
+  const newPwdConfirm      = document.getElementById('new-password-confirm') as HTMLInputElement;
+  const newPwdErrorEl      = document.getElementById('new-pwd-error')!;
+  const newPwdSuccessEl    = document.getElementById('new-pwd-success')!;
+  const newPwdBar          = document.getElementById('new-pwd-strength-bar') as HTMLDivElement;
+  const btnSetNewPwd       = document.getElementById('btn-set-new-password') as HTMLButtonElement;
+  const gotoLoginFromNewPwd = document.getElementById('goto-login-from-new-pwd')!;
+
+  // ─ Reset flow state
+  let resetTempToken = '';
+
   // ─ State
   let currentTempToken = sessionStorage.getItem('meldra_temp_token') || '';
   let otpCountdown: ReturnType<typeof setInterval> | null = null;
@@ -1836,7 +1868,7 @@ function initAuthController() {
 
   // ── Helpers─────────────────────────────────────────────
   function showScreen(screen: HTMLElement) {
-    [screenLogin, screenRegister, screenMfa].forEach(s => s.classList.remove('active'));
+    [screenLogin, screenRegister, screenMfa, screenForgot, screenResetOtp, screenNewPwd].forEach(s => s.classList.remove('active'));
     screen.classList.add('active');
   }
 
@@ -1998,6 +2030,190 @@ function initAuthController() {
     showScreen(screenLogin);
   });
 
+  // ─ Forgot password navigation
+  gotoForgotPwd.addEventListener('click', () => {
+    clearError(loginErrorEl);
+    clearError(forgotErrorEl);
+    forgotSuccessEl.classList.remove('show');
+    forgotEmailEl.value = '';
+    showScreen(screenForgot);
+    setTimeout(() => forgotEmailEl.focus(), 100);
+  });
+  gotoLoginFromForgot.addEventListener('click', () => {
+    clearError(forgotErrorEl);
+    forgotSuccessEl.classList.remove('show');
+    showScreen(screenLogin);
+  });
+  gotoForgotFromResetOtp.addEventListener('click', () => {
+    clearError(resetOtpErrorEl);
+    resetOtpSuccessEl.classList.remove('show');
+    showScreen(screenForgot);
+  });
+  gotoLoginFromNewPwd.addEventListener('click', () => {
+    clearError(newPwdErrorEl);
+    newPwdSuccessEl.classList.remove('show');
+    resetTempToken = '';
+    showScreen(screenLogin);
+  });
+
+  // ─ Reset OTP helpers
+  let resetOtpCountdown: ReturnType<typeof setInterval> | null = null;
+
+  function getResetOtpValue(): string {
+    return resetOtpDigits.map(d => d.value).join('');
+  }
+  function clearResetOtpInputs() {
+    resetOtpDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+    resetOtpDigits[0]?.focus();
+  }
+  function startResetOtpTimer(seconds = 600) {
+    if (resetOtpCountdown) clearInterval(resetOtpCountdown);
+    let remaining = seconds;
+    const update = () => {
+      const m = Math.floor(remaining / 60).toString().padStart(2,'0');
+      const s = (remaining % 60).toString().padStart(2,'0');
+      resetOtpTimer.textContent = `${m}:${s}`;
+      if (remaining <= 0) { clearInterval(resetOtpCountdown!); resetOtpTimer.textContent = 'Expired'; resetOtpTimer.style.color = '#F87171'; }
+      remaining--;
+    };
+    update();
+    resetOtpCountdown = setInterval(update, 1000);
+  }
+
+  // ─ Reset OTP digit keyboard navigation
+  resetOtpDigits.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      const val = input.value.replace(/\D/g,'');
+      input.value = val.slice(-1);
+      input.classList.toggle('filled', val.length > 0);
+      if (val && idx < 5) resetOtpDigits[idx+1].focus();
+      if (getResetOtpValue().length === 6) btnVerifyResetOtp.click();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) resetOtpDigits[idx-1].focus();
+    });
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g,'').slice(0,6);
+      pasted.split('').forEach((ch, i) => {
+        if (resetOtpDigits[i]) { resetOtpDigits[i].value = ch; resetOtpDigits[i].classList.add('filled'); }
+      });
+      if (pasted.length === 6) btnVerifyResetOtp.click();
+    });
+  });
+
+  // ─ New password strength bar
+  newPwdInput.addEventListener('input', () => {
+    const pwd = newPwdInput.value;
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    const colors = ['#EF4444','#F59E0B','#10B981','#6D28D9'];
+    const widths = ['25%','50%','75%','100%'];
+    newPwdBar.style.width = score > 0 ? widths[score-1] : '0';
+    newPwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+  });
+
+  // ── FORGOT PASSWORD — Step 1: send reset code
+  async function doForgotPassword() {
+    clearError(forgotErrorEl);
+    forgotSuccessEl.classList.remove('show');
+    const email = forgotEmailEl.value.trim();
+    if (!email) { setError(forgotErrorEl, 'Please enter your email address.'); return; }
+
+    btnSendReset.disabled = true;
+    btnSendReset.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    try {
+      const res = await api.auth.forgotPassword(email);
+      resetTempToken = res.temp_token;
+      if (resetTempToken) {
+        resetOtpEmailBadge.textContent = email;
+        clearResetOtpInputs();
+        clearError(resetOtpErrorEl);
+        resetOtpSuccessEl.classList.remove('show');
+        showScreen(screenResetOtp);
+        startResetOtpTimer(600);
+        setTimeout(() => resetOtpDigits[0]?.focus(), 100);
+      } else {
+        setSuccess(forgotSuccessEl, '✓ If that email is registered, a reset code has been sent.');
+        forgotSuccessEl.classList.add('show');
+      }
+    } catch(e: any) {
+      setError(forgotErrorEl, e.message || 'Failed to send reset code. Please try again.');
+    } finally {
+      btnSendReset.disabled = false;
+      btnSendReset.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Reset Code';
+    }
+  }
+  btnSendReset.addEventListener('click', doForgotPassword);
+  forgotEmailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doForgotPassword(); });
+
+  // ── FORGOT PASSWORD — Step 2: verify reset OTP
+  btnVerifyResetOtp.addEventListener('click', async () => {
+    clearError(resetOtpErrorEl);
+    const code = getResetOtpValue();
+    if (code.length < 6) { setError(resetOtpErrorEl, 'Please enter all 6 digits.'); return; }
+
+    btnVerifyResetOtp.disabled = true;
+    btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    try {
+      clearError(newPwdErrorEl);
+      newPwdSuccessEl.classList.remove('show');
+      newPwdInput.value = '';
+      newPwdConfirm.value = '';
+      newPwdBar.style.width = '0';
+      sessionStorage.setItem('meldra_reset_otp', code);
+      showScreen(screenNewPwd);
+      setTimeout(() => newPwdInput.focus(), 100);
+    } catch(e: any) {
+      setError(resetOtpErrorEl, e.message || 'Invalid code. Please try again.');
+      clearResetOtpInputs();
+    } finally {
+      btnVerifyResetOtp.disabled = false;
+      btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Code';
+    }
+  });
+
+  // ── FORGOT PASSWORD — Step 3: set new password
+  btnSetNewPwd.addEventListener('click', async () => {
+    clearError(newPwdErrorEl);
+    const pwd = newPwdInput.value;
+    const confirm = newPwdConfirm.value;
+    const code = sessionStorage.getItem('meldra_reset_otp') || '';
+
+    if (pwd.length < 8) { setError(newPwdErrorEl, 'Password must be at least 8 characters.'); return; }
+    if (!/[A-Z]/.test(pwd)) { setError(newPwdErrorEl, 'Password must contain at least one uppercase letter.'); return; }
+    if (!/[0-9]/.test(pwd)) { setError(newPwdErrorEl, 'Password must contain at least one number.'); return; }
+    if (pwd !== confirm)   { setError(newPwdErrorEl, 'Passwords do not match.'); return; }
+    if (!code || !resetTempToken) { setError(newPwdErrorEl, 'Session expired. Please restart the reset flow.'); return; }
+
+    btnSetNewPwd.disabled = true;
+    btnSetNewPwd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+    try {
+      await api.auth.resetPassword(resetTempToken, code, pwd);
+      sessionStorage.removeItem('meldra_reset_otp');
+      resetTempToken = '';
+      if (resetOtpCountdown) clearInterval(resetOtpCountdown);
+      setSuccess(newPwdSuccessEl, '✓ Password reset! Redirecting to login...');
+      newPwdSuccessEl.classList.add('show');
+      setTimeout(() => {
+        clearError(newPwdErrorEl);
+        newPwdSuccessEl.classList.remove('show');
+        loginEmailEl.value = '';
+        loginPasswordEl.value = '';
+        showScreen(screenLogin);
+        showToast('Password reset successfully! Please sign in.', 'success');
+      }, 1800);
+    } catch(e: any) {
+      setError(newPwdErrorEl, e.message || 'Reset failed. Please go back and re-enter the code.');
+    } finally {
+      btnSetNewPwd.disabled = false;
+      btnSetNewPwd.innerHTML = '<i class="fa-solid fa-lock"></i> Reset Password';
+    }
+  });
+
   // ── LOGIN ───────────────────────────────────────────────
   async function doLogin() {
     clearError(loginErrorEl);
@@ -2139,6 +2355,114 @@ function initAuthController() {
   }
 }
 
+
+// ─────────────────────────────────────────
+// VIDEO LIBRARY — MODAL CONTROLLER
+// ─────────────────────────────────────────
+interface VideoEntry {
+  title: string;
+  desc: string;
+  ytId: string | null;  // YouTube video ID — set to null until uploaded
+  tags: { label: string; cls: string }[];
+}
+
+const videoLibrary: VideoEntry[] = [
+  {
+    title: 'What is meldra.ai & the Zero-Copy Lakehouse?',
+    desc: 'A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without ever replicating or moving your raw data.',
+    ytId: null, // e.g. 'dQw4w9WgXcQ' once uploaded to YouTube
+    tags: [
+      { label: 'Introduction',    cls: 'vmt-green'  },
+      { label: 'Architecture',    cls: 'vmt-blue'   },
+      { label: '8 min',           cls: 'vmt-orange' },
+    ]
+  },
+  {
+    title: 'Why Zero-Copy? The Business Problems We Solve',
+    desc: 'Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your existing stack.',
+    ytId: null,
+    tags: [
+      { label: 'Business Case',   cls: 'vmt-orange' },
+      { label: 'Enterprise',      cls: 'vmt-blue'   },
+      { label: '12 min',          cls: 'vmt-green'  },
+    ]
+  },
+  {
+    title: 'Build Your First Pipeline: SAP → Iceberg → AI',
+    desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
+    ytId: null,
+    tags: [
+      { label: 'Hands-On',        cls: 'vmt-green'  },
+      { label: 'Pipeline',        cls: 'vmt-blue'   },
+      { label: '10 min',          cls: 'vmt-orange' },
+    ]
+  }
+];
+
+function openVideoModal(videoIndex: number) {
+  const overlay   = document.getElementById('video-modal-overlay')!;
+  const titleEl   = document.getElementById('video-modal-title')!;
+  const descEl    = document.getElementById('video-modal-desc')!;
+  const tagsEl    = document.getElementById('video-modal-tags')!;
+  const iframeEl  = document.getElementById('video-iframe') as HTMLIFrameElement;
+  const placeholderEl = document.getElementById('video-placeholder')!;
+
+  const entry = videoLibrary[videoIndex - 1];
+  if (!entry) return;
+
+  // Set title
+  titleEl.innerHTML = `<i class="fa-brands fa-youtube"></i> ${entry.title}`;
+
+  // Set description
+  descEl.textContent = entry.desc;
+
+  // Set tags
+  tagsEl.innerHTML = entry.tags
+    .map(t => `<span class="video-modal-tag ${t.cls}">${t.label}</span>`)
+    .join('');
+
+  // Show video or placeholder
+  if (entry.ytId) {
+    iframeEl.src = `https://www.youtube.com/embed/${entry.ytId}?autoplay=1&rel=0&modestbranding=1`;
+    iframeEl.style.display = 'block';
+    placeholderEl.style.display = 'none';
+  } else {
+    iframeEl.style.display = 'none';
+    iframeEl.src = '';
+    placeholderEl.style.display = 'flex';
+    const placeholderTextEl = document.getElementById('video-placeholder-text')!;
+    placeholderTextEl.innerHTML = `
+      <strong style="color:#94a3b8;">Video Coming Soon</strong><br>
+      "${entry.title}" will be embedded here once uploaded to YouTube.<br>
+      Set <code>ytId</code> in <code>videoLibrary[${videoIndex - 1}]</code> inside <code>main.ts</code> to activate.
+    `;
+  }
+
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeVideoModal() {
+  const overlay  = document.getElementById('video-modal-overlay')!;
+  const iframeEl = document.getElementById('video-iframe') as HTMLIFrameElement;
+  overlay.classList.remove('active');
+  iframeEl.src = '';   // Stop playback
+  document.body.style.overflow = '';
+}
+
+// Expose to window so inline onclick attributes can call them
+(window as any).openVideoModal  = openVideoModal;
+(window as any).closeVideoModal = closeVideoModal;
+
+// Close modal when clicking the backdrop
+document.getElementById('video-modal-overlay')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeVideoModal();
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeVideoModal();
+});
 
 // ─────────────────────────────────────────
 // APP BOOTSTRAP
