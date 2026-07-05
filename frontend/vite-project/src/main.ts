@@ -2392,7 +2392,7 @@ const videoLibrary: VideoEntry[] = [
     title: 'What is meldra.ai & the Zero-Copy Lakehouse?',
     desc: 'A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without ever replicating or moving your raw data.',
     ytId: '8yL0bI-PmqU',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-futuristic-technology-nodes-loop-9960-large.mp4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     tags: [
       { label: 'Introduction',    cls: 'vmt-green'  },
       { label: 'Architecture',    cls: 'vmt-blue'   },
@@ -2403,7 +2403,7 @@ const videoLibrary: VideoEntry[] = [
     title: 'Why Zero-Copy? The Business Problems We Solve',
     desc: 'Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your existing stack.',
     ytId: 'hK8YlXp-g1E',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-server-room-rack-in-datacenter-41584-large.mp4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     tags: [
       { label: 'Business Case',   cls: 'vmt-orange' },
       { label: 'Enterprise',      cls: 'vmt-blue'   },
@@ -2414,7 +2414,7 @@ const videoLibrary: VideoEntry[] = [
     title: 'Build Your First Pipeline: SAP → Iceberg → AI',
     desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
     ytId: '91q8-W7z-bY',
-    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-lines-background-loop-43093-large.mp4',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
     tags: [
       { label: 'Hands-On',        cls: 'vmt-green'  },
       { label: 'Pipeline',        cls: 'vmt-blue'   },
@@ -2498,18 +2498,42 @@ function closeVideoModal() {
   document.body.style.overflow = '';
 }
 
+function closeAuthModal() {
+  const overlay = document.getElementById('auth-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+    overlay.classList.add('hidden');
+    setTimeout(() => { overlay.style.display = 'none'; }, 400);
+  }
+}
+
 // Expose to window so inline onclick attributes can call them
 (window as any).openVideoModal  = openVideoModal;
 (window as any).closeVideoModal = closeVideoModal;
+(window as any).closeAuthModal  = closeAuthModal;
 
-// Close modal when clicking the backdrop
+// Close video modal when clicking backdrop
 document.getElementById('video-modal-overlay')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeVideoModal();
 });
 
-// Close modal on Escape key
+// Close article modal when clicking backdrop
+document.getElementById('article-modal-overlay')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closePublicArticle();
+});
+
+// Close article modal when clicking close button
+document.getElementById('btn-close-article')?.addEventListener('click', () => {
+  closePublicArticle();
+});
+
+// Close all modals on Escape key
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeVideoModal();
+  if (e.key === 'Escape') {
+    closeVideoModal();
+    closePublicArticle();
+    closeAuthModal();
+  }
 });
 
 // ─────────────────────────────────────────
@@ -2723,13 +2747,6 @@ function initUserControls() {
     });
   });
 
-  // Article Modal Close handlers
-  document.getElementById('btn-close-article')?.addEventListener('click', () => {
-    (window as any).closePublicArticle();
-  });
-  document.getElementById('article-modal-overlay')?.addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) (window as any).closePublicArticle();
-  });
 }
 
 const publicArticles = [

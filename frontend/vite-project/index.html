@@ -842,6 +842,28 @@
       .vmt-blue   { background: rgba(59,130,246,0.12); color: #3b82f6; }
       .vmt-orange { background: rgba(234,88,12,0.12);  color: #ea580c; }
 
+      /* Community Portal Navigation Styling overrides */
+      #community-portal .landing-nav-link {
+        color: #94a3b8 !important;
+        font-weight: 600;
+        transition: color 0.2s ease;
+      }
+      #community-portal .landing-nav-link:hover {
+        color: #ffffff !important;
+      }
+
+      /* Client-side override to force-hide Vercel Toolbar widgets */
+      vercel-live-feedback,
+      #vercel-live-feedback,
+      [id*="vercel-live-feedback"],
+      iframe[src*="vercel"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+
       /* ── RESPONSIVE MEDIA QUERIES FOR PUBLIC PAGES (LANDING & COMMUNITY) ── */
       @media (max-width: 860px) {
         .landing-nav {
@@ -1593,7 +1615,11 @@
 
     <!-- ── AUTH OVERLAY ── -->
     <div id="auth-overlay">
-      <div class="auth-card">
+      <div class="auth-card" style="position: relative;">
+        <!-- Close button -->
+        <button class="settings-modal-close" onclick="closeAuthModal()" style="position: absolute; top: 1.25rem; right: 1.25rem; background: #f1f5f9; border: none; color: #64748b; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; z-index: 10;" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
 
 
         <!-- Brand logo -->
