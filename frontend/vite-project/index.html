@@ -1087,7 +1087,7 @@
       <header class="landing-hero">
         <h1>The Serverless S3<br>Iceberg Lakehouse.</h1>
         <p>
-          Stop paying massive cluster tax for Databricks. Ingest ERP tables directly to open Apache Iceberg format on S3, map to postgres graphs, and query instantly.
+          Upload any CSV, ERP export, or JSON feed. meldra.ai writes open Apache Iceberg tables directly to your S3 bucket — queryable instantly with natural language, DuckDB, or any Spark engine. No servers. No copies. No lock-in.
         </p>
         <div class="landing-ctas">
           <button id="landing-hero-signup" class="landing-btn landing-btn-teal" style="font-size: 1.05rem; padding: 0.8rem 1.75rem;">
@@ -1298,7 +1298,7 @@
               <span style="color: #16a34a; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.6rem;">Enterprise AI</span>
               <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; line-height: 1.35; font-family: var(--font-sans);">Enterprise AI Agents Grounded in Context</h3>
               <p style="color: #475569; font-size: 0.82rem; line-height: 1.5; margin-bottom: 1.25rem;">
-                Why enterprise context is the boundary between raw language models and secure, reliable, zero-hallucination execution. Inspired by Snowflake's metadata-first approach.
+                Why enterprise AI agents need structured context to deliver zero-hallucination, audit-ready answers — and how meldra.ai's Iceberg-native memory layer makes this possible at scale.
               </p>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="openPublicArticle(1)" style="align-self: flex-start;">
@@ -2704,13 +2704,13 @@ Orchestrator:
                 </div>
 
                 <div class="stat-card" style="align-items: flex-start; text-align: left; padding: 1.5rem; background: var(--bg-surface2); width: 100%;">
-                  <h3 class="section-title" style="margin-bottom: 1rem;"><i class="fa-solid fa-circle-nodes"></i> Snowflake &amp; Databricks Interoperability</h3>
+                  <h3 class="section-title" style="margin-bottom: 1rem;"><i class="fa-solid fa-circle-nodes"></i> Open Standards &amp; Interoperability</h3>
                   <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 0.50rem;">
-                    Because meldra.ai writes table data in the open **Apache Iceberg** format, external engines can query the S3 bucket directly without duplicate ingestion fees.
+                    meldra.ai writes all data in open <strong>Apache Iceberg</strong> format on your own S3 bucket. Any Spark engine, DuckDB instance, or compliant query tool can read it directly — zero lock-in, zero duplication.
                   </p>
                   <div style="display: flex; gap: 0.5rem; margin-top: auto; width: 100%;">
-                    <button class="btn btn-secondary btn-sm" id="btn-goto-databricks" style="flex: 1;"><i class="fa-solid fa-fire"></i> Databricks Guide</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-goto-snowflake" style="flex: 1;"><i class="fa-solid fa-snowflake"></i> Snowflake Guide</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-goto-databricks" style="flex: 1;"><i class="fa-solid fa-bolt"></i> Apache Spark Guide</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-goto-snowflake" style="flex: 1;"><i class="fa-solid fa-database"></i> DuckDB Guide</button>
                   </div>
                 </div>
               </div>
@@ -2718,48 +2718,51 @@ Orchestrator:
               <!-- Integration Guides Section -->
               <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;">
                 
-                <!-- Databricks Guide -->
+                <!-- Apache Spark Guide -->
                 <div id="guide-databricks" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
                   <h3 style="font-family: var(--font-sans); font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-fire" style="color: #FF5A1F;"></i> Databricks Spark Configuration
+                    <i class="fa-solid fa-bolt" style="color: #FACC15;"></i> Apache Spark Configuration
                   </h3>
                   <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                    To query your meldra.ai Iceberg tables from Databricks, configure your Spark Cluster's SparkConf to point to the AWS Glue Catalog and S3 storage:
+                    Because meldra.ai uses open Apache Iceberg format, any Spark cluster can read your S3 tables directly. Configure SparkConf to point at your AWS Glue Catalog:
                   </p>
                   <pre style="background: #02120a; border: 1px solid var(--border-glass); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.78rem; overflow-x: auto; color: #38bdf8;">
-# Set Spark SQL Catalog to use Iceberg and AWS Glue
+# Spark SQL Catalog — point to your meldra.ai S3 warehouse
 spark.sql.extensions                  org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
 spark.sql.catalog.meldra_lake         org.apache.iceberg.spark.SparkCatalog
 spark.sql.catalog.meldra_lake.catalog-impl org.apache.iceberg.aws.glue.GlueCatalog
 spark.sql.catalog.meldra_lake.warehouse    s3://your-meldra-bucket/iceberg-warehouse
 spark.sql.catalog.meldra_lake.io-impl      org.apache.iceberg.aws.s3.S3FileIO</pre>
                   <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
-                    Once configured, query tables using: <code>SELECT * FROM meldra_lake.default.your_table_name;</code>
+                    Then query with: <code>SELECT * FROM meldra_lake.default.your_table_name;</code>
                   </p>
                 </div>
 
-                <!-- Snowflake Guide -->
+                <!-- DuckDB Guide -->
                 <div id="guide-snowflake" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
                   <h3 style="font-family: var(--font-sans); font-size: 1.1rem; color: #fff; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-snowflake" style="color: #29B6F6;"></i> Snowflake External Iceberg Tables
+                    <i class="fa-solid fa-database" style="color: #FACC15;"></i> DuckDB — Query Iceberg Directly
                   </h3>
                   <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                    Snowflake can query your S3 Iceberg tables without copying data. Set up Snowflake to read meldra.ai metadata directly:
+                    DuckDB can query your meldra.ai Iceberg tables on S3 with zero infrastructure. Run this from Python, a notebook, or the DuckDB CLI:
                   </p>
                   <pre style="background: #02120a; border: 1px solid var(--border-glass); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.78rem; overflow-x: auto; color: #38bdf8;">
--- 1. Create External Volume pointing to your meldra.ai S3 warehouse
-CREATE OR REPLACE EXTERNAL VOLUME meldra_ext_vol
-  STORAGE_LOCATIONS = (
-    (STORAGE_PROVIDER = 'S3'
-     STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake-access-role'
-     STORAGE_BASE_URL = 's3://your-meldra-bucket/iceberg-warehouse/')
-  );
+import duckdb
 
--- 2. Map the table using the Glue Catalog metadata
-CREATE OR REPLACE ICEBERG TABLE my_snowflake_table
-  EXTERNAL_VOLUME = meldra_ext_vol
-  CATALOG = 'SNOWFLAKE'
-  BASE_LOCATION = 'default/your_table_name/';</pre>
+con = duckdb.connect()
+con.execute("INSTALL iceberg; LOAD iceberg;")
+con.execute("INSTALL aws;    LOAD aws;")
+
+# Point directly at your meldra.ai S3 warehouse
+result = con.execute("""
+  SELECT * FROM iceberg_scan(
+    's3://your-meldra-bucket/iceberg-warehouse/default/your_table_name/'
+  ) LIMIT 100;
+""").df()
+print(result)</pre>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    DuckDB reads Iceberg metadata + Parquet files in-place. No data copy, no server, no cost beyond S3 reads.
+                  </p>
                 </div>
 
                 <!-- ERP Analytics Panel -->
