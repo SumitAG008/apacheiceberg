@@ -1182,12 +1182,16 @@ const ENDPOINTS: EndpointDef[] = [
   }
 ];
 
+function copyApiBaseUrl() {
+  navigator.clipboard.writeText(API_BASE);
+  showToast("API Base URL copied to clipboard!", "success");
+}
+(window as any).copyApiBaseUrl = copyApiBaseUrl;
+
 function buildApiHelpTab() {
   const container = document.getElementById('api-endpoints-list')!;
-  const baseUrlDisplay = document.getElementById('api-base-url-display')!;
   const docsLink = document.getElementById('api-docs-link') as HTMLAnchorElement;
 
-  baseUrlDisplay.textContent = 'https://api.meldra.ai/v1';
   docsLink.href = `${API_BASE}/docs`;
 
   const tagColors: Record<string, string> = {

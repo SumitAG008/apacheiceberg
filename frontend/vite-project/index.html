@@ -2647,13 +2647,22 @@ Orchestrator:
                 <p>Complete documentation for the LakeMind backend API. All endpoints are available at your configured backend URL.</p>
               </div>
 
-              <div class="api-base-url-bar">
-                <span class="label">Base URL</span>
-                <span class="url" id="api-base-url-display">http://localhost:8000</span>
-                <span class="badge badge-green">FastAPI</span>
-                <a href="#" id="api-docs-link" target="_blank" style="color: var(--color-primary); font-size: 0.78rem; text-decoration: none; font-family: var(--font-sans);">
-                  <i class="fa-solid fa-arrow-up-right-from-square"></i> /docs
-                </a>
+              <div class="api-base-url-bar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface2); border: 1px solid var(--border-subtle); padding: 0.75rem 1.25rem; border-radius: var(--radius-md); box-sizing: border-box;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span class="label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); font-family: var(--font-sans);">API Gateway</span>
+                  <span class="url" style="font-family: var(--font-sans); font-size: 0.88rem; color: #16a34a; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-lock" style="color: #16a34a;"></i> Production Endpoint (Secured)
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <button onclick="copyApiBaseUrl()" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 6px; cursor: pointer;">
+                    <i class="fa-solid fa-copy"></i> Copy Gateway URL
+                  </button>
+                  <span class="badge badge-green">FastAPI</span>
+                  <a href="#" id="api-docs-link" target="_blank" style="color: var(--color-primary); font-size: 0.78rem; text-decoration: none; font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> /docs
+                  </a>
+                </div>
               </div>
 
               <div class="api-endpoints-list" id="api-endpoints-list">
