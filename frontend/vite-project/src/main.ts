@@ -2378,7 +2378,7 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'What is meldra.ai & the Zero-Copy Lakehouse?',
     desc: 'A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without ever replicating or moving your raw data.',
-    ytId: null, // e.g. 'dQw4w9WgXcQ' once uploaded to YouTube
+    ytId: '8yL0bI-PmqU', // What is Apache Iceberg?
     tags: [
       { label: 'Introduction',    cls: 'vmt-green'  },
       { label: 'Architecture',    cls: 'vmt-blue'   },
@@ -2388,7 +2388,7 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'Why Zero-Copy? The Business Problems We Solve',
     desc: 'Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your existing stack.',
-    ytId: null,
+    ytId: 'hK8YlXp-g1E', // What is a Data Lakehouse?
     tags: [
       { label: 'Business Case',   cls: 'vmt-orange' },
       { label: 'Enterprise',      cls: 'vmt-blue'   },
@@ -2398,7 +2398,7 @@ const videoLibrary: VideoEntry[] = [
   {
     title: 'Build Your First Pipeline: SAP → Iceberg → AI',
     desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
-    ytId: null,
+    ytId: '91q8-W7z-bY', // DuckDB Explained
     tags: [
       { label: 'Hands-On',        cls: 'vmt-green'  },
       { label: 'Pipeline',        cls: 'vmt-blue'   },
@@ -2440,9 +2440,9 @@ function openVideoModal(videoIndex: number) {
     placeholderEl.style.display = 'flex';
     const placeholderTextEl = document.getElementById('video-placeholder-text')!;
     placeholderTextEl.innerHTML = `
-      <strong style="color:#94a3b8;">Video Coming Soon</strong><br>
-      "${entry.title}" will be embedded here once uploaded to YouTube.<br>
-      Set <code>ytId</code> in <code>videoLibrary[${videoIndex - 1}]</code> inside <code>main.ts</code> to activate.
+      <i class="fa-solid fa-clapperboard" style="font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+      <strong style="font-size: 1.1rem; color: #fff; display: block; margin-bottom: 0.5rem;">Product Video Coming Soon</strong>
+      <span style="color: #64748b; font-size: 0.85rem; max-width: 320px; display: block; line-height: 1.5;">We are currently recording the video walkthrough for "${entry.title}". It will be available shortly.</span>
     `;
   }
 
