@@ -4033,18 +4033,18 @@ function renderGitCommits() {
     const isProd = prodSha === c.sha;
     
     let badges = '';
-    if (isDev) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); margin-right: 0.2rem;">DEV</span>`;
-    if (isStaging) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); margin-right: 0.2rem;">STAGE</span>`;
-    if (isProd) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); margin-right: 0.2rem;">PROD</span>`;
+    if (isDev) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(56,189,248,0.15); color: #0284c7; border: 1px solid rgba(56,189,248,0.3); margin-right: 0.2rem;">DEV</span>`;
+    if (isStaging) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(234,179,8,0.15); color: #d97706; border: 1px solid rgba(234,179,8,0.3); margin-right: 0.2rem;">STAGE</span>`;
+    if (isProd) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(34,197,94,0.15); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); margin-right: 0.2rem;">PROD</span>`;
 
     return `
-      <div style="border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.5rem; font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.5rem;">
+      <div style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family: var(--font-mono); font-weight: 700; color: #bef264;">SHA: ${c.sha}</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-accent);">SHA: ${c.sha}</span>
           <div style="display: flex;">${badges}</div>
         </div>
-        <div style="color: #fff; font-size: 0.75rem;">${c.message}</div>
-        <div style="color: var(--text-muted); font-size: 0.65rem; display: flex; justify-content: space-between;">
+        <div style="color: var(--text-main); font-size: 0.75rem; font-weight: 500;">${c.message}</div>
+        <div style="color: var(--text-dim); font-size: 0.65rem; display: flex; justify-content: space-between;">
           <span>By ${c.author}</span>
           <span>${c.time}</span>
         </div>
@@ -4977,7 +4977,7 @@ function updateWorkspaceLockState(isLocked: boolean) {
   const tabs = document.querySelectorAll('.tab-btn');
   tabs.forEach(button => {
     const targetTab = button.getAttribute('data-tab');
-    if (targetTab === 'workspace-tab' || targetTab === 'help-tab') {
+    if (targetTab === 'workspace-tab' || button.id === 'nav-help') {
       button.classList.remove('locked-nav');
     } else {
       if (isLocked) {
@@ -4988,7 +4988,7 @@ function updateWorkspaceLockState(isLocked: boolean) {
     }
   });
 
-  if (isLocked && state.activeTab !== 'workspace-tab' && state.activeTab !== 'help-tab') {
+  if (isLocked && state.activeTab !== 'workspace-tab') {
     switchTab('workspace-tab');
   }
 }

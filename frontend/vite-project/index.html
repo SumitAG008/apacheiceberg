@@ -2250,9 +2250,9 @@
             <button class="tab-btn active" data-tab="chat-tab" id="nav-chat">
               <i class="fa-solid fa-comments"></i> Chat
             </button>
-            <button class="tab-btn" data-tab="help-tab" id="nav-help">
+            <a href="https://help.meldra.ai" target="_blank" class="tab-btn" id="nav-help" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;">
               <i class="fa-solid fa-circle-question"></i> Help Guide
-            </button>
+            </a>
             <button class="tab-btn" data-tab="mcp-tab" id="nav-mcp">
               <i class="fa-solid fa-network-wired"></i> MCP Gateway
             </button>
@@ -2341,79 +2341,7 @@
 
 
 
-          <!-- TAB 8: HELP GUIDE -->
-          <div id="help-tab" class="tab-content">
-            <div class="help-container" style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem 0;">
-              
-              <div style="text-align: center; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle);">
-                <h2 style="font-family: var(--font-sans); font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #10b981, #bef264); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">📖 meldra.ai Product Help Guide</h2>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.4rem;">Understand how the Zero-Replication S3 Iceberg platform operates and learn how to integrate programmatically.</p>
-              </div>
 
-              <!-- High-level Architecture -->
-              <div class="help-section" style="background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
-                <h3 style="font-size: 1.1rem; color: #fff; margin: 0 0 0.75rem 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                  <i class="fa-solid fa-sitemap" style="color: #10b981;"></i> High-Level Architecture
-                </h3>
-                <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 1rem;">
-                  meldra.ai is a serverless, zero-replication data lakehouse platform. Instead of copying raw transaction logs or ERP records to external data warehouses, we execute queries directly against open-standard <strong>Apache Iceberg</strong> metadata stored in your S3 or Google Cloud Storage buckets.
-                </p>
-                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: 8px; font-size: 0.8rem; line-height: 1.5; color: var(--text-main); margin-bottom: 1rem;">
-                  <h4 style="margin: 0 0 0.5rem 0; color: #bef264;">How the Query Cycle Works:</h4>
-                  <ol style="margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                    <li><strong>Natural Language Input</strong>: Users query the database using plain English.</li>
-                    <li><strong>Context Grounding</strong>: The system sweeps the Postgres AGE graph schema to map columns, constraints, and relationships.</li>
-                    <li><strong>Serverless Compilation</strong>: The query compiles into optimized DuckDB SQL statements targeting S3 Parquet partitions.</li>
-                    <li><strong>Zero-Copy Execution</strong>: Manifest and metadata logs are read on-the-fly, returning results in milliseconds without cluster overhead.</li>
-                  </ol>
-                </div>
-              </div>
-
-              <!-- API & Integration Guide -->
-              <div class="help-section" style="background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
-                <h3 style="font-size: 1.1rem; color: #fff; margin: 0 0 0.75rem 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                  <i class="fa-solid fa-code" style="color: #bef264;"></i> Developer API &amp; Integration Guide
-                </h3>
-                <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 1rem;">
-                  Integrate your data pipelines directly with Meldra. The backend exposes standard REST endpoints for query execution, data ingestion, and catalog schema evolution.
-                </p>
-                
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                  <!-- Endpoint 1 -->
-                  <div style="border-left: 3px solid #10b981; padding-left: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                      <span style="font-size: 0.65rem; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">POST</span>
-                      <strong style="font-family: monospace; font-size: 0.85rem; color: #fff;">/v1/catalog/query</strong>
-                    </div>
-                    <span style="font-size: 0.78rem; color: var(--text-muted);">Execute analytical SQL queries against Iceberg tables serverless.</span>
-                  </div>
-                  
-                  <!-- Endpoint 2 -->
-                  <div style="border-left: 3px solid #a78bfa; padding-left: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                      <span style="font-size: 0.65rem; font-weight: 700; color: #a78bfa; background: rgba(167,139,250,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">POST</span>
-                      <strong style="font-family: monospace; font-size: 0.85rem; color: #fff;">/v1/ingest</strong>
-                    </div>
-                    <span style="font-size: 0.78rem; color: var(--text-muted);">Ingest CSV data payloads programmatically into partitioned tables with metadata versioning.</span>
-                  </div>
-                </div>
-
-                <h4 style="font-size: 0.85rem; color: #fff; margin: 1.25rem 0 0.5rem 0; font-weight: 600;">Example Python Integration:</h4>
-                <pre style="background: #050310; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; font-family: var(--font-mono); font-size: 0.78rem; color: #C4B5FD; overflow-x: auto; margin: 0;">import requests
-
-url = "http://localhost:8000/v1/catalog/query"
-headers = {"Authorization": "Bearer <your_access_token>"}
-payload = {
-    "sql": "SELECT dept, SUM(salary) FROM default.employees GROUP BY dept",
-    "namespace": "default"
-}
-
-response = requests.post(url, json=payload, headers=headers)
-print(response.json())</pre>
-              </div>
-
-            </div>
-          </div>
 
           <!-- TAB: MCP GATEWAY -->
           <div id="mcp-tab" class="tab-content">
@@ -2551,7 +2479,7 @@ print(response.json())</pre>
 
                   <div id="preview-section" class="preview-section" style="display: none; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">File Preview (<span id="preview-row-count">0</span> rows)</span>
+                      <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">File Preview (<span id="preview-row-count">0</span> rows)</span>
                     </div>
                     <div style="overflow: auto; flex: 1; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.15);">
                       <table class="preview-table">
@@ -2562,7 +2490,7 @@ print(response.json())</pre>
                   </div>
 
                   <div class="schema-mapping-section" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 180px;">
-                    <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">Schema Mapping Specs</span>
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">Schema Mapping Specs</span>
                     <table class="schema-mapping-table">
                       <thead>
                         <tr>
@@ -2868,7 +2796,7 @@ with DAG(
                   <!-- SUB-TAB 1: SQL CONSOLE -->
                   <div id="studio-tab-sql" class="studio-sub-tab-content active" style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Interactive SQL Console (DuckDB Engine)</h3>
+                      <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Interactive SQL Console (DuckDB Engine)</h3>
                       <button id="btn-run-sql" class="btn btn-primary btn-sm"><i class="fa-solid fa-play"></i> Run Query</button>
                     </div>
                     <textarea id="studio-sql-editor" class="input-field" style="font-family: var(--font-mono); font-size: 0.85rem; height: 120px; resize: none; background: #020c06; border-color: rgba(34,197,94,0.3); color: #bef264; padding: 0.75rem; box-sizing: border-box;" placeholder="-- Type your SQL here&#10;SELECT * FROM employees_sample LIMIT 10;"></textarea>
@@ -2929,12 +2857,12 @@ with DAG(
 
                   <!-- SUB-TAB 2: SCHEMA EVOLUTION -->
                   <div id="studio-tab-schema" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
-                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Schema Evolution (Zero-Downtime Metadata Updates)</h3>
+                    <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Schema Evolution (Zero-Downtime Metadata Updates)</h3>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Add, rename, or drop columns as metadata-only actions. Old S3 Parquet files are read dynamically without needing complete table rewrites.</p>
                     
                     <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem;">
                       <div>
-                        <h4 style="font-size: 0.8rem; font-weight: 700; color: #fff; margin-bottom: 0.6rem;">Current Schema Columns</h4>
+                        <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.6rem;">Current Schema Columns</h4>
                         <table class="preview-table" style="width: 100%; font-size: 0.8rem;">
                           <thead><tr><th>ID</th><th>Column Name</th><th>Type</th><th>Required</th><th>Actions</th></tr></thead>
                           <tbody id="studio-schema-tbody">
@@ -2944,7 +2872,7 @@ with DAG(
                       </div>
                       
                       <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">Add New Column</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;">Add New Column</h4>
                         <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                           <div>
                             <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">Column Name</label>
@@ -2970,12 +2898,12 @@ with DAG(
 
                   <!-- SUB-TAB 3: TIME TRAVEL -->
                   <div id="studio-tab-travel" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
-                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Time Travel Query Engine</h3>
+                    <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Time Travel Query Engine</h3>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Query the database state exactly as it was in the past. Select a previous transaction snapshot to inspect historical datasets.</p>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem;">
                       <div>
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem;">Transaction Snapshot History</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">Transaction Snapshot History</h4>
                         <div id="studio-travel-timeline" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto;">
                           <!-- Timelines render here -->
                         </div>
@@ -2999,14 +2927,14 @@ with DAG(
                   <!-- SUB-TAB 4: DATA QUALITY CONTRACTS -->
                   <div id="studio-tab-contracts" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Automated Data Contracts &amp; Quality Checks</h3>
+                      <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Automated Data Contracts &amp; Quality Checks</h3>
                       <button id="btn-save-contracts" class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i> Save Rules</button>
                     </div>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Establish contracts to validate incoming data. Operations verify data schemas and check rules dynamically before appending.</p>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 2rem;">
                       <div>
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem;">Quality Constraint Rules</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">Quality Constraint Rules</h4>
                         <div id="contracts-rules-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
                           <!-- Dynamic rule items -->
                         </div>
@@ -3014,7 +2942,7 @@ with DAG(
                       </div>
                       
                       <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; justify-content: space-between; align-items: center;">
                           <span>Data Observability Status</span>
                           <span style="font-size: 0.72rem; color: #22c55e; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; padding: 0.15rem 0.4rem;">HEALTHY</span>
                         </h4>
@@ -3028,7 +2956,7 @@ with DAG(
                             <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Violations Logged</div>
                           </div>
                         </div>
-                        <h5 style="font-size: 0.75rem; font-weight: 700; color: #fff; margin: 0.75rem 0 0.25rem 0;">Real-time Verification Log</h5>
+                        <h5 style="font-size: 0.75rem; font-weight: 700; color: var(--text-main); margin: 0.75rem 0 0.25rem 0;">Real-time Verification Log</h5>
                         <div id="contracts-validation-log" style="font-family: var(--font-mono); font-size: 0.7rem; color: #bef264; background: #020c06; padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(34,197,94,0.2); height: 100px; overflow-y: auto;">
                           [observability] Ingest validation: Passed schema checks.<br>
                           [observability] Ingest validation: emp_id not-null contract met.<br>
@@ -3041,7 +2969,7 @@ with DAG(
                   <!-- SUB-TAB 5: PIPELINE ORCHESTRATOR DAG -->
                   <div id="studio-tab-dag" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Medallion Pipeline Orchestrator (Bronze → Silver → Gold)</h3>
+                      <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Medallion Pipeline Orchestrator (Bronze → Silver → Gold)</h3>
                       <button id="btn-run-dag" class="btn btn-primary btn-sm"><i class="fa-solid fa-play"></i> Run Pipeline</button>
                     </div>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Visual representation of the ETL pipeline. Tracks ingestion tasks from raw files through consolidations to business tables.</p>
@@ -3050,27 +2978,27 @@ with DAG(
                     <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 2.5rem 1rem; margin-top: 1rem; position: relative;">
                       
                       <!-- Node 1: CSV Ingest -->
-                      <div id="dag-node-bronze" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
-                        <span style="font-size: 0.65rem; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">BRONZE (RAW)</span>
-                        <h4 id="dag-node-bronze-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Ingest BSEG</h4>
+                      <div id="dag-node-bronze" style="background: rgba(22,163,74,0.08); border: 1px solid #16a34a; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 2px 8px rgba(22,163,74,0.08); transition: all 0.3s ease;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #15803d; background: rgba(22,163,74,0.12); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">BRONZE (RAW)</span>
+                        <h4 id="dag-node-bronze-name" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin: 0;">Ingest BSEG</h4>
                         <div id="dag-status-bronze" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
                       
-                      <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
+                      <div style="color: var(--text-muted); font-size: 1.4rem; font-weight: bold;">➔</div>
 
                       <!-- Node 2: Deduplication -->
-                      <div id="dag-node-silver" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
-                        <span style="font-size: 0.65rem; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">SILVER (CLEAN)</span>
-                        <h4 id="dag-node-silver-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Clean Ledgers</h4>
+                      <div id="dag-node-silver" style="background: rgba(2,132,199,0.08); border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 2px 8px rgba(2,132,199,0.08); transition: all 0.3s ease;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #0369a1; background: rgba(2,132,199,0.12); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">SILVER (CLEAN)</span>
+                        <h4 id="dag-node-silver-name" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin: 0;">Clean Ledgers</h4>
                         <div id="dag-status-silver" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
 
-                      <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
+                      <div style="color: var(--text-muted); font-size: 1.4rem; font-weight: bold;">➔</div>
 
                       <!-- Node 3: Aggregate -->
-                      <div id="dag-node-gold" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
-                        <span style="font-size: 0.65rem; font-weight: 700; color: #a855f7; background: rgba(168,85,247,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">GOLD (BI)</span>
-                        <h4 id="dag-node-gold-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Ledger Summary</h4>
+                      <div id="dag-node-gold" style="background: rgba(124,58,237,0.08); border: 1px solid #7c3aed; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 2px 8px rgba(124,58,237,0.08); transition: all 0.3s ease;">
+                        <span style="font-size: 0.65rem; font-weight: 700; color: #6d28d9; background: rgba(124,58,237,0.12); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">GOLD (BI)</span>
+                        <h4 id="dag-node-gold-name" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin: 0;">Ledger Summary</h4>
                         <div id="dag-status-gold" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
 
@@ -3085,7 +3013,7 @@ with DAG(
                   <!-- SUB-TAB: RUN HISTORY & AUDITS -->
                   <div id="studio-tab-history" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Lakehouse Pipeline Run History &amp; Audits</h3>
+                      <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Lakehouse Pipeline Run History &amp; Audits</h3>
                       <div style="display: flex; gap: 0.5rem;">
                         <select id="run-history-filter-source" class="input-field" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: 140px;">
                           <option value="all">All Trigger Sources</option>
@@ -3120,7 +3048,7 @@ with DAG(
                       
                       <!-- Right column: Selected Run Details / Task Timeline / Task Logs -->
                       <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: flex; justify-content: space-between;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; justify-content: space-between;">
                           <span>Run Task-Level Execution Timeline</span>
                           <span id="active-run-id-header" style="color: #bef264; font-family: var(--font-mono); font-size: 0.75rem;">Select a run</span>
                         </h4>
@@ -3142,14 +3070,14 @@ with DAG(
                   <!-- SUB-TAB: GIT & CI/CD -->
                   <div id="studio-tab-git" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Git Integration &amp; Multi-Environment Promotions</h3>
+                      <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Git Integration &amp; Multi-Environment Promotions</h3>
                       <span class="run-status-badge success" style="font-family: var(--font-mono); font-size: 0.75rem;"><i class="fa-brands fa-github"></i> Connected: SumitAG008/apacheiceberg</span>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem;">
                       <!-- Left side: Promotion stages & Commit history -->
                       <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">Environment Promotion Pipeline</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;">Environment Promotion Pipeline</h4>
                         <div class="promo-stages">
                           <div class="promo-stage-card active" id="promo-stage-dev">
                             <div style="font-weight: 700; font-size: 0.75rem; color: #38bdf8;">DEVELOPMENT</div>
@@ -3185,7 +3113,7 @@ with DAG(
                           </div>
                         </div>
 
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0.5rem 0 0 0;">Recent Git Deploy History</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0.5rem 0 0 0;">Recent Git Deploy History</h4>
                         <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.1); padding: 0.35rem;">
                           <div id="git-commits-list" style="display: flex; flex-direction: column; gap: 0.35rem;">
                             <!-- Commits populated dynamically -->
@@ -3195,7 +3123,7 @@ with DAG(
                       
                       <!-- Right side: Promotion dry-runs and environment diffs -->
                       <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">CI Validation Stage &amp; Environment Diff</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;">CI Validation Stage &amp; Environment Diff</h4>
                         
                         <div class="git-diff-container" id="promo-diff-container">
                           <!-- Diff visualizer -->
@@ -3220,7 +3148,7 @@ with DAG(
                         </div>
                         
                         <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                          <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">CI Pre-deployment Validation Checks</span>
+                          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">CI Pre-deployment Validation Checks</span>
                           <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.75rem;" id="ci-checks-status">
                             <div style="display: flex; justify-content: space-between; align-items: center; color: #22c55e;">
                               <span><i class="fa-solid fa-circle-check"></i> SQL Linter Dry Run</span>
@@ -3246,14 +3174,14 @@ with DAG(
 
                   <!-- SUB-TAB: TRIGGERS & ALERTS -->
                   <div id="studio-tab-automation" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
-                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Automated S3/Cron Triggers &amp; Notification Alerts</h3>
+                    <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Automated S3/Cron Triggers &amp; Notification Alerts</h3>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Configure time-based and event-driven automation rules to ingest data, execute downstream transformation tasks, and broadcast failures to alerts channels.</p>
                     
                     <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 2rem;">
                       <!-- Left side: Scheduler and triggers setup -->
                       <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                         <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
-                          <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-clock" style="color: #38bdf8; margin-right: 0.35rem;"></i> Scheduled Cron Trigger Config</h4>
+                          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;"><i class="fa-solid fa-clock" style="color: #38bdf8; margin-right: 0.35rem;"></i> Scheduled Cron Trigger Config</h4>
                           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                             <label style="font-size: 0.75rem; color: var(--text-muted);">Frequency:</label>
                             <select id="cron-frequency" class="input-field" style="padding: 0.35rem; font-size: 0.75rem; width: 120px;">
@@ -3269,7 +3197,7 @@ with DAG(
                         </div>
 
                         <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
-                          <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-folder-open" style="color: #22c55e; margin-right: 0.35rem;"></i> Event-Driven Ingestion (S3 Sensor)</h4>
+                          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;"><i class="fa-solid fa-folder-open" style="color: #22c55e; margin-right: 0.35rem;"></i> Event-Driven Ingestion (S3 Sensor)</h4>
                           <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Automatically run pipelines when new CSV or JSON files land in designated S3 buckets.</p>
                           <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             <div style="display: flex; gap: 0.4rem;">
@@ -3287,7 +3215,7 @@ with DAG(
                         </div>
 
                         <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.5rem;">
-                          <span style="font-size: 0.75rem; font-weight: 700; color: #fff; display: block; margin-bottom: 0.35rem;">Active Automation Triggers</span>
+                          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">Active Automation Triggers</span>
                           <div id="active-triggers-list" style="display: flex; flex-direction: column; gap: 0.35rem;">
                             <!-- Active triggers list -->
                           </div>
@@ -3296,12 +3224,12 @@ with DAG(
                       
                       <!-- Right side: Notifications alerts Slack configuration -->
                       <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-bell" style="color: #ef4444; margin-right: 0.35rem;"></i> Alerting &amp; Incident Notifications</h4>
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0;"><i class="fa-solid fa-bell" style="color: #ef4444; margin-right: 0.35rem;"></i> Alerting &amp; Incident Notifications</h4>
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Push notifications to Slack, Email, or Webhooks immediately when task-level execution fails.</p>
                         
                         <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.5rem;">
-                            <span style="font-size: 0.8rem; color: #fff; font-weight: 600;"><i class="fa-brands fa-slack" style="color: #a855f7;"></i> Slack Integration</span>
+                            <span style="font-size: 0.8rem; color: var(--text-main); font-weight: 600;"><i class="fa-brands fa-slack" style="color: #a855f7;"></i> Slack Integration</span>
                             <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px;">
                               <input type="checkbox" id="alert-slack-toggle" checked style="opacity: 0; width: 0; height: 0;">
                               <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #475569; border-radius: 20px; transition: .4s;"></span>
@@ -3313,7 +3241,7 @@ with DAG(
                           </div>
                           
                           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.03); padding-bottom: 0.5rem; margin-top: 0.5rem;">
-                            <span style="font-size: 0.8rem; color: #fff; font-weight: 600;"><i class="fa-solid fa-envelope" style="color: #38bdf8;"></i> Email Broadcasts</span>
+                            <span style="font-size: 0.8rem; color: var(--text-main); font-weight: 600;"><i class="fa-solid fa-envelope" style="color: #38bdf8;"></i> Email Broadcasts</span>
                             <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px;">
                               <input type="checkbox" id="alert-email-toggle" style="opacity: 0; width: 0; height: 0;">
                               <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #475569; border-radius: 20px; transition: .4s;"></span>
@@ -3332,17 +3260,17 @@ with DAG(
 
                   <!-- SUB-TAB 6: MAINTENANCE -->
                   <div id="studio-tab-maintenance" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
-                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Apache Iceberg Metadata Maintenance</h3>
+                    <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0;">Apache Iceberg Metadata Maintenance</h3>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Optimize table files and manage storage to ensure consistent query performance over massive S3 objects.</p>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 0.5rem;">
                       <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.5rem;">
-                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;"><i class="fa-solid fa-compress" style="color: #22c55e; margin-right: 0.35rem;"></i> File Compaction (Optimize)</h4>
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;"><i class="fa-solid fa-compress" style="color: #22c55e; margin-right: 0.35rem;"></i> File Compaction (Optimize)</h4>
                         <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.25rem;">Merges small Parquet files into standard file size chunks to reduce storage lookups and optimize analytical query speeds.</p>
                         <button id="btn-maintenance-optimize" class="btn btn-secondary btn-sm" style="color: #22c55e;"><i class="fa-solid fa-circle-check"></i> Run Compaction</button>
                       </div>
                       <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.5rem;">
-                        <h4 style="font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;"><i class="fa-solid fa-trash-arrow-up" style="color: #ef4444; margin-right: 0.35rem;"></i> Expire Snapshots</h4>
+                        <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;"><i class="fa-solid fa-trash-arrow-up" style="color: #ef4444; margin-right: 0.35rem;"></i> Expire Snapshots</h4>
                         <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1.25rem;">Expires historical metadata snapshots older than retention periods. Frees storage space by dropping unneeded files.</p>
                         <button id="btn-maintenance-expire" class="btn btn-secondary btn-sm" style="color: #ef4444;"><i class="fa-solid fa-circle-check"></i> Expire Old Snapshots</button>
                       </div>
