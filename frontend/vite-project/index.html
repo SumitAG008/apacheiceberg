@@ -2518,127 +2518,111 @@
               </div>
             </div>
 
-            <!-- SuccessFactors Connector Panel -->
-            <div style="margin-top: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(0,112,74,0.4); border-radius: var(--radius-md); padding: 1.5rem; position: relative; overflow: hidden;">
-              <!-- SAP accent bar -->
-              <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00703C, #0070f3, #00703C);"></div>
+            <!-- Unified Cloud Connectors Panel -->
+            <div style="margin-top: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(34,197,94,0.3); border-radius: var(--radius-md); padding: 1.5rem; position: relative; overflow: hidden; margin-bottom: 2rem;">
+              <!-- Accent bar -->
+              <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #16a34a, #0284c7, #4f46e5);"></div>
 
               <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
-                <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg,#00703C,#009b55); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; color:#fff; flex-shrink:0;">SAP</div>
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg,var(--color-primary),#15803d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; color:#fff; flex-shrink:0;"><i class="fa-solid fa-cloud-arrow-down"></i></div>
                 <div>
-                  <h3 style="margin:0; font-size: 0.95rem; font-weight: 700; color: var(--text-main);">SAP SuccessFactors Connector</h3>
-                  <p style="margin:0; font-size: 0.72rem; color: var(--text-muted);">Pull HR entities from the OData v2 API directly into your Iceberg lakehouse</p>
+                  <h3 style="margin:0; font-size: 0.95rem; font-weight: 700; color: var(--text-main);">Enterprise Cloud Ingest Connectors</h3>
+                  <p style="margin:0; font-size: 0.72rem; color: var(--text-muted);">Pull raw records directly from ERP, CRM, and HR endpoints into S3 Apache Iceberg</p>
                 </div>
                 <div style="margin-left:auto;">
-                  <span id="sf-status-badge" style="font-size:0.65rem; padding: 0.2rem 0.6rem; border-radius:99px; background: rgba(100,116,139,0.15); color: var(--text-muted); font-weight:600; text-transform:uppercase;">Not Connected</span>
+                  <span id="conn-status-badge" style="font-size:0.65rem; padding: 0.2rem 0.6rem; border-radius:99px; background: rgba(100,116,139,0.15); color: var(--text-muted); font-weight:600; text-transform:uppercase;">Inactive</span>
                 </div>
               </div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
 
-                <!-- Col 1: Connection -->
+                <!-- Col 1: Connection & Discovery -->
                 <div style="display:flex; flex-direction:column; gap:0.75rem;">
                   <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">① Connection</h4>
 
                   <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Endpoint URL</label>
-                    <input type="text" id="sf-endpoint" class="input-field" placeholder="https://api4.successfactors.com" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                  </div>
-
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Company ID</label>
-                    <input type="text" id="sf-company-id" class="input-field" placeholder="e.g. ACME_CORP" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                  </div>
-
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">SF Entity / Object</label>
-                    <select id="sf-entity" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
-                      <option value="PerPersonal">PerPersonal — Employee Personal Data</option>
-                      <option value="EmpJob">EmpJob — Employee Job Information</option>
-                      <option value="EmpCompensation">EmpCompensation — Compensation Data</option>
-                      <option value="PerformanceReview">PerformanceReview — Review Ratings</option>
-                      <option value="ECTimeOff">ECTimeOff — Time Off / Absence</option>
-                      <option value="Succession">Succession — Talent Pipeline</option>
-                      <option value="Position">Position — Org Positions</option>
-                      <option value="User">User — SF User Accounts</option>
-                      <option value="custom">Custom entity name...</option>
+                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Cloud Data Source</label>
+                    <select id="conn-source-type" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
+                      <option value="sap_sf">SAP SuccessFactors (HR)</option>
+                      <option value="sap_s4">SAP S/4HANA ERP (Finance/Supply Chain)</option>
+                      <option value="salesforce">Salesforce CRM (Sales/Marketing)</option>
+                      <option value="netsuite">NetSuite ERP (Financials)</option>
+                      <option value="workday">Workday HR (Human Capital)</option>
                     </select>
-                    <input type="text" id="sf-entity-custom" class="input-field" placeholder="Enter custom entity name" style="padding:0.4rem; font-size:0.8rem; margin-top:0.4rem; display:none;">
                   </div>
 
                   <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Records per page ($top)</label>
-                    <input type="number" id="sf-top" class="input-field" value="1000" min="100" max="5000" style="padding:0.4rem; font-size:0.8rem;">
+                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Endpoint URL</label>
+                    <input type="text" id="conn-endpoint" class="input-field" placeholder="https://api4.successfactors.com" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
+                  </div>
+
+                  <div>
+                    <label id="conn-tenant-label" style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Company ID</label>
+                    <input type="text" id="conn-tenant-id" class="input-field" placeholder="e.g. ACME_CORP" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
+                  </div>
+
+                  <!-- Discover Metadata Trigger -->
+                  <button id="btn-conn-discover" class="btn btn-secondary btn-sm" style="margin-top: 0.35rem; width: 100%;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Connect &amp; Discover Metadata
+                  </button>
+
+                  <div>
+                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Target Object / Entity</label>
+                    <select id="conn-entity" class="input-field" style="padding:0.4rem; font-size:0.8rem;" disabled>
+                      <option value="">-- Click 'Discover Metadata' first --</option>
+                    </select>
+                    <input type="text" id="conn-entity-custom" class="input-field" placeholder="Enter custom entity name" style="padding:0.4rem; font-size:0.8rem; margin-top:0.4rem; display:none;">
                   </div>
                 </div>
 
-                <!-- Col 2: Authentication -->
+                <!-- Col 2: Dynamic Authentication -->
                 <div style="display:flex; flex-direction:column; gap:0.75rem;">
                   <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">② Authentication</h4>
 
                   <!-- Auth type toggle -->
-                  <div style="display:flex; gap:0; border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden;">
-                    <button id="sf-auth-basic-btn" onclick="window.sfSetAuth('basic')" style="flex:1; padding:0.4rem; font-size:0.75rem; font-weight:600; border:none; cursor:pointer; background:var(--color-primary); color:#fff; transition:all 0.2s;">🔑 Basic Auth</button>
-                    <button id="sf-auth-oauth-btn" onclick="window.sfSetAuth('oauth2')" style="flex:1; padding:0.4rem; font-size:0.75rem; font-weight:600; border:none; cursor:pointer; background:var(--bg-surface2); color:var(--text-muted); transition:all 0.2s;">🔐 OAuth 2.0</button>
+                  <div style="display:flex; gap:0; border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden;" id="conn-auth-toggle-bar">
+                    <!-- Buttons populated dynamically -->
                   </div>
 
-                  <!-- Basic Auth fields -->
-                  <div id="sf-basic-fields" style="display:flex; flex-direction:column; gap:0.6rem;">
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Username</label>
-                      <input type="text" id="sf-username" class="input-field" placeholder="john.doe" style="padding:0.4rem; font-size:0.8rem;">
-                    </div>
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Password</label>
-                      <input type="password" id="sf-password" class="input-field" placeholder="••••••••••" style="padding:0.4rem; font-size:0.8rem;">
-                    </div>
-                    <p style="font-size:0.65rem; color:var(--text-muted); margin:0; line-height:1.4;">Authenticates as <code style="background:rgba(0,0,0,0.3); padding:1px 4px; border-radius:3px;">username@CompanyID</code> per SF Basic Auth spec.</p>
-                  </div>
-
-                  <!-- OAuth2 fields -->
-                  <div id="sf-oauth-fields" style="display:none; flex-direction:column; gap:0.6rem;">
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Client ID (API Key)</label>
-                      <input type="text" id="sf-client-id" class="input-field" placeholder="oauthclientid" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                    </div>
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Client Secret</label>
-                      <input type="password" id="sf-client-secret" class="input-field" placeholder="••••••••••••••••" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                    </div>
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Token URL (optional override)</label>
-                      <input type="text" id="sf-token-url" class="input-field" placeholder="https://api4.successfactors.com/oauth/token" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                    </div>
-                    <p style="font-size:0.65rem; color:var(--text-muted); margin:0; line-height:1.4;">Uses OAuth 2.0 Client Credentials grant. Token is fetched automatically and refreshed per request.</p>
+                  <!-- Dynamic Credentials Form Panel -->
+                  <div id="conn-credentials-fields" style="display:flex; flex-direction:column; gap:0.6rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
+                    <!-- Input fields injected dynamically depending on source and auth mode -->
                   </div>
                 </div>
 
-                <!-- Col 3: Target & Run -->
+                <!-- Col 3: Target & Ingest -->
                 <div style="display:flex; flex-direction:column; gap:0.75rem;">
                   <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">③ Lakehouse Target</h4>
 
                   <div>
                     <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
-                    <input type="text" id="sf-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.8rem;">
+                    <input type="text" id="conn-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
                   <div>
                     <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Iceberg Table Name</label>
-                    <input type="text" id="sf-table-name" class="input-field" placeholder="sf_employees" style="padding:0.4rem; font-size:0.8rem;">
+                    <input type="text" id="conn-table-name" class="input-field" placeholder="sf_employees" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Write Mode</label>
-                    <select id="sf-write-mode" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
-                      <option value="overwrite">Overwrite (Full Reload)</option>
-                      <option value="append">Append (Delta Load)</option>
-                    </select>
+                  
+                  <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.5rem;">
+                    <div>
+                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Write Mode</label>
+                      <select id="conn-write-mode" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
+                        <option value="overwrite">Overwrite</option>
+                        <option value="append">Append</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">$top Limit</label>
+                      <input type="number" id="conn-top" class="input-field" value="1000" min="100" max="5000" style="padding:0.4rem; font-size:0.8rem;">
+                    </div>
                   </div>
 
-                  <button id="btn-sf-ingest" class="btn btn-primary" style="margin-top:auto; width:100%; background: linear-gradient(135deg,#00703C,#009b55); border-color:#00703C;">
+                  <button id="btn-conn-ingest" class="btn btn-primary" style="margin-top:auto; width:100%; background: linear-gradient(135deg,var(--color-primary),#15803d); border-color:#16a34a;" disabled>
                     <i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse
                   </button>
 
-                  <div id="sf-result-box" style="display:none; background:rgba(0,112,60,0.1); border:1px solid rgba(0,112,60,0.3); border-radius:6px; padding:0.75rem; font-size:0.75rem; color:var(--text-main);">
-                    <div id="sf-result-text"></div>
+                  <div id="conn-result-box" style="display:none; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:0.75rem; font-size:0.75rem; color:var(--text-main);">
+                    <div id="conn-result-text"></div>
                   </div>
                 </div>
               </div>

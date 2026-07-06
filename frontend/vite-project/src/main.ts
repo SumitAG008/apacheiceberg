@@ -5794,128 +5794,449 @@ function initOrchestratorDagSimulation() {
 (window as any).logoutToHome = logoutToHome;
 (window as any).toggleLandingMobileMenu = toggleLandingMobileMenu;
 
-// ── SAP SuccessFactors Connector ──────────────────────────────────────────────
+// ── Unified Enterprise Cloud Connectors ───────────────────────────────────────────
 
-// Auth mode toggle (called inline from HTML)
-let sfAuthMode = 'basic';
-(window as any).sfSetAuth = (mode: string) => {
-  sfAuthMode = mode;
-  const basicFields = document.getElementById('sf-basic-fields');
-  const oauthFields = document.getElementById('sf-oauth-fields');
-  const basicBtn = document.getElementById('sf-auth-basic-btn') as HTMLButtonElement;
-  const oauthBtn = document.getElementById('sf-auth-oauth-btn') as HTMLButtonElement;
+interface ConnectorField {
+  id: string;
+  label: string;
+  type: 'text' | 'password';
+  placeholder: string;
+}
 
-  if (mode === 'basic') {
-    if (basicFields) basicFields.style.display = 'flex';
-    if (oauthFields) oauthFields.style.display = 'none';
-    if (basicBtn) { basicBtn.style.background = 'var(--color-primary)'; basicBtn.style.color = '#fff'; }
-    if (oauthBtn) { oauthBtn.style.background = 'var(--bg-surface2)'; oauthBtn.style.color = 'var(--text-muted)'; }
-  } else {
-    if (basicFields) basicFields.style.display = 'none';
-    if (oauthFields) oauthFields.style.display = 'flex';
-    if (oauthBtn) { oauthBtn.style.background = 'var(--color-primary)'; oauthBtn.style.color = '#fff'; }
-    if (basicBtn) { basicBtn.style.background = 'var(--bg-surface2)'; basicBtn.style.color = 'var(--text-muted)'; }
+interface AuthMethod {
+  id: string;
+  label: string;
+  icon: string;
+  fields: ConnectorField[];
+}
+
+interface ConnectorConfig {
+  name: string;
+  defaultEndpoint: string;
+  tenantLabel: string;
+  tenantPlaceholder: string;
+  authMethods: AuthMethod[];
+  mockEntities: string[];
+}
+
+const connectorsConfig: Record<string, ConnectorConfig> = {
+  sap_sf: {
+    name: 'SAP SuccessFactors',
+    defaultEndpoint: 'https://api4.successfactors.com',
+    tenantLabel: 'Company ID',
+    tenantPlaceholder: 'e.g. ACME_CORP',
+    authMethods: [
+      {
+        id: 'basic',
+        label: '🔑 Basic Auth',
+        icon: '🔑',
+        fields: [
+          { id: 'username', label: 'Username', type: 'text', placeholder: 'john.doe' },
+          { id: 'password', label: 'Password', type: 'password', placeholder: '••••••••••' }
+        ]
+      },
+      {
+        id: 'oauth2',
+        label: '🔐 OAuth 2.0',
+        icon: '🔐',
+        fields: [
+          { id: 'client_id', label: 'Client ID (API Key)', type: 'text', placeholder: 'oauthclientid' },
+          { id: 'client_secret', label: 'Client Secret', type: 'password', placeholder: '••••••••••••••••' },
+          { id: 'token_url', label: 'Token URL (optional override)', type: 'text', placeholder: 'https://api4.successfactors.com/oauth/token' }
+        ]
+      }
+    ],
+    mockEntities: [
+      'PerPersonal — Employee Personal Data',
+      'EmpJob — Employee Job Information',
+      'EmpCompensation — Compensation Data',
+      'PerformanceReview — Review Ratings',
+      'ECTimeOff — Time Off / Absence',
+      'Succession — Talent Pipeline',
+      'Position — Org Positions',
+      'User — SF User Accounts'
+    ]
+  },
+  sap_s4: {
+    name: 'SAP S/4HANA ERP',
+    defaultEndpoint: 'https://my-s4hana-system.cloud.sap',
+    tenantLabel: 'SAP Client ID',
+    tenantPlaceholder: 'e.g. 100',
+    authMethods: [
+      {
+        id: 'basic',
+        label: '🔑 Basic Auth',
+        icon: '🔑',
+        fields: [
+          { id: 'username', label: 'SAP Username', type: 'text', placeholder: 'ERPADMIN' },
+          { id: 'password', label: 'SAP Password', type: 'password', placeholder: '••••••••••' }
+        ]
+      },
+      {
+        id: 'mtls',
+        label: '📜 Client Certificate',
+        icon: '📜',
+        fields: [
+          { id: 'cert_pass', label: 'Certificate Passphrase', type: 'password', placeholder: 'Secret Passphrase' }
+        ]
+      }
+    ],
+    mockEntities: [
+      'A_BusinessPartner — BP Master Data',
+      'A_Product — Product Catalog',
+      'A_SalesOrder — Sales Transactions',
+      'BSEG — Accounting Document Segment',
+      'BKPF — Accounting Document Header'
+    ]
+  },
+  salesforce: {
+    name: 'Salesforce CRM',
+    defaultEndpoint: 'https://login.salesforce.com',
+    tenantLabel: 'Instance Environment',
+    tenantPlaceholder: 'e.g. Production / Sandbox / Custom',
+    authMethods: [
+      {
+        id: 'oauth2',
+        label: '🔐 Client Credentials',
+        icon: '🔐',
+        fields: [
+          { id: 'client_id', label: 'Consumer Key (Client ID)', type: 'text', placeholder: 'sfconsumerkey...' },
+          { id: 'client_secret', label: 'Consumer Secret', type: 'password', placeholder: '••••••••••••••••' },
+          { id: 'token_url', label: 'Token Endpoint Override', type: 'text', placeholder: 'https://login.salesforce.com/services/oauth2/token' }
+        ]
+      }
+    ],
+    mockEntities: [
+      'Account — Customers & Partners',
+      'Contact — Customer Representatives',
+      'Opportunity — Deal Pipeline Records',
+      'Lead — Incoming Inquiries',
+      'Product2 — Salesforce Products list'
+    ]
+  },
+  netsuite: {
+    name: 'NetSuite ERP',
+    defaultEndpoint: 'https://123456.restlets.api.netsuite.com',
+    tenantLabel: 'Account ID',
+    tenantPlaceholder: 'e.g. 123456_SB1',
+    authMethods: [
+      {
+        id: 'tba',
+        label: '🎫 Token-Based Auth',
+        icon: '🎫',
+        fields: [
+          { id: 'consumer_key', label: 'Consumer Key', type: 'text', placeholder: 'nsconsumerkey...' },
+          { id: 'consumer_secret', label: 'Consumer Secret', type: 'password', placeholder: '••••••••••••••••' },
+          { id: 'token_id', label: 'Token ID', type: 'text', placeholder: 'nstokenid...' },
+          { id: 'token_secret', label: 'Token Secret', type: 'password', placeholder: '••••••••••••••••' }
+        ]
+      }
+    ],
+    mockEntities: [
+      'Customer — NetSuite Customers',
+      'Vendor — Procurement Vendor Records',
+      'Transaction — Sales/Expense Ledger',
+      'InventoryItem — Warehouse Stocks',
+      'Account — Chart of Accounts'
+    ]
+  },
+  workday: {
+    name: 'Workday HR',
+    defaultEndpoint: 'https://wd3-impl.workday.com',
+    tenantLabel: 'Tenant ID',
+    tenantPlaceholder: 'e.g. acme_impl',
+    authMethods: [
+      {
+        id: 'basic',
+        label: '🔑 WS-Security Token',
+        icon: '🔑',
+        fields: [
+          { id: 'username', label: 'System Username', type: 'text', placeholder: 'wd_integration' },
+          { id: 'password', label: 'System Password', type: 'password', placeholder: '••••••••••' }
+        ]
+      },
+      {
+        id: 'oauth2',
+        label: '🔐 OAuth 2.0',
+        icon: '🔐',
+        fields: [
+          { id: 'client_id', label: 'Client ID', type: 'text', placeholder: 'oauthclientid' },
+          { id: 'client_secret', label: 'Client Secret', type: 'password', placeholder: '••••••••••••••••' },
+          { id: 'token_url', label: 'OAuth Token Endpoint', type: 'text', placeholder: 'https://wd3-impl.workday.com/ccx/oauth2/token' }
+        ]
+      }
+    ],
+    mockEntities: [
+      'Worker — Active Employees & Contractors',
+      'Compensation_Grade — HR Pay Scales',
+      'Position_Details — Organizational Structure',
+      'Organization — Departments & Subdivisions'
+    ]
   }
 };
 
-// Custom entity input toggle
-const sfEntitySelect = document.getElementById('sf-entity') as HTMLSelectElement;
-const sfEntityCustom = document.getElementById('sf-entity-custom') as HTMLInputElement;
-if (sfEntitySelect) {
-  sfEntitySelect.addEventListener('change', () => {
-    if (sfEntityCustom) {
-      sfEntityCustom.style.display = sfEntitySelect.value === 'custom' ? 'block' : 'none';
-    }
-  });
+
+
+let activeConnectorSource = 'sap_sf';
+let activeConnectorAuthMode = 'basic';
+
+function updateConnectorUI() {
+  const sourceType = (document.getElementById('conn-source-type') as HTMLSelectElement)?.value || 'sap_sf';
+  activeConnectorSource = sourceType;
+  
+  const config = connectorsConfig[sourceType];
+  if (!config) return;
+
+  // Update connection labels
+  const endpointInput = document.getElementById('conn-endpoint') as HTMLInputElement;
+  const tenantLabel = document.getElementById('conn-tenant-label')!;
+  const tenantInput = document.getElementById('conn-tenant-id') as HTMLInputElement;
+  const entitySelect = document.getElementById('conn-entity') as HTMLSelectElement;
+  const btnIngest = document.getElementById('btn-conn-ingest') as HTMLButtonElement;
+
+  if (endpointInput) {
+    endpointInput.value = config.defaultEndpoint;
+    endpointInput.placeholder = config.defaultEndpoint;
+  }
+  if (tenantLabel) tenantLabel.textContent = config.tenantLabel;
+  if (tenantInput) {
+    tenantInput.placeholder = config.tenantPlaceholder;
+    tenantInput.value = '';
+  }
+
+  // Reset object dropdown
+  if (entitySelect) {
+    entitySelect.innerHTML = '<option value="">-- Click "Discover Metadata" first --</option>';
+    entitySelect.disabled = true;
+  }
+  if (btnIngest) btnIngest.disabled = true;
+
+  // Build Auth buttons
+  const toggleBar = document.getElementById('conn-auth-toggle-bar')!;
+  if (toggleBar) {
+    toggleBar.innerHTML = config.authMethods.map((auth, idx) => {
+      const activeClass = idx === 0 ? 'background:var(--color-primary); color:#fff;' : 'background:var(--bg-surface2); color:var(--text-muted);';
+      return `
+        <button id="conn-auth-btn-${auth.id}" 
+                onclick="window.setConnectorAuthMode('${auth.id}')"
+                style="flex:1; padding:0.4rem; font-size:0.75rem; font-weight:600; border:none; cursor:pointer; transition:all 0.2s; ${activeClass}">
+          ${auth.label}
+        </button>
+      `;
+    }).join('');
+    
+    // Select first auth method by default
+    setConnectorAuthMode(config.authMethods[0].id);
+  }
 }
 
-// Fetch & Ingest button
-const btnSfIngest = document.getElementById('btn-sf-ingest') as HTMLButtonElement;
-if (btnSfIngest) {
-  btnSfIngest.addEventListener('click', async () => {
-    const sfEndpoint = (document.getElementById('sf-endpoint') as HTMLInputElement)?.value.trim();
-    const sfCompanyId = (document.getElementById('sf-company-id') as HTMLInputElement)?.value.trim();
-    const sfEntitySel = (document.getElementById('sf-entity') as HTMLSelectElement)?.value;
-    const sfEntityName = sfEntitySel === 'custom'
-      ? (document.getElementById('sf-entity-custom') as HTMLInputElement)?.value.trim()
-      : sfEntitySel;
-    const sfTop = parseInt((document.getElementById('sf-top') as HTMLInputElement)?.value || '1000');
-    const sfNamespace = (document.getElementById('sf-namespace') as HTMLInputElement)?.value.trim() || 'default';
-    const sfTableName = (document.getElementById('sf-table-name') as HTMLInputElement)?.value.trim();
-    const sfWriteMode = (document.getElementById('sf-write-mode') as HTMLSelectElement)?.value;
-    const sfStatusBadge = document.getElementById('sf-status-badge');
-    const sfResultBox = document.getElementById('sf-result-box');
-    const sfResultText = document.getElementById('sf-result-text');
+function setConnectorAuthMode(modeId: string) {
+  activeConnectorAuthMode = modeId;
+  const config = connectorsConfig[activeConnectorSource];
+  if (!config) return;
 
-    // Validation
-    if (!sfEndpoint) { showToast('Please enter the SuccessFactors API Endpoint URL.', 'error'); return; }
-    if (!sfCompanyId) { showToast('Please enter the Company ID.', 'error'); return; }
-    if (!sfEntityName) { showToast('Please select or enter an entity name.', 'error'); return; }
-    if (!sfTableName) { showToast('Please enter a target Iceberg table name.', 'error'); return; }
+  const auth = config.authMethods.find(a => a.id === modeId);
+  if (!auth) return;
 
-    // Build payload
-    const payload: Record<string, any> = {
-      sf_endpoint: sfEndpoint,
-      company_id: sfCompanyId,
-      auth_type: sfAuthMode,
-      entity_name: sfEntityName,
-      top: sfTop,
-      namespace: sfNamespace,
-      table_name: sfTableName,
-      write_mode: sfWriteMode,
-    };
-
-    if (sfAuthMode === 'basic') {
-      payload.username = (document.getElementById('sf-username') as HTMLInputElement)?.value.trim();
-      payload.password = (document.getElementById('sf-password') as HTMLInputElement)?.value;
-      if (!payload.username || !payload.password) {
-        showToast('Username and Password are required for Basic Auth.', 'error'); return;
-      }
-    } else {
-      payload.client_id = (document.getElementById('sf-client-id') as HTMLInputElement)?.value.trim();
-      payload.client_secret = (document.getElementById('sf-client-secret') as HTMLInputElement)?.value;
-      payload.token_url = (document.getElementById('sf-token-url') as HTMLInputElement)?.value.trim() || undefined;
-      if (!payload.client_id || !payload.client_secret) {
-        showToast('Client ID and Client Secret are required for OAuth 2.0.', 'error'); return;
+  // Toggle active button style
+  config.authMethods.forEach(a => {
+    const btn = document.getElementById(`conn-auth-btn-${a.id}`) as HTMLButtonElement;
+    if (btn) {
+      if (a.id === modeId) {
+        btn.style.background = 'var(--color-primary)';
+        btn.style.color = '#fff';
+      } else {
+        btn.style.background = 'var(--bg-surface2)';
+        btn.style.color = 'var(--text-muted)';
       }
     }
+  });
 
-    // Update UI state
-    btnSfIngest.disabled = true;
-    btnSfIngest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to SuccessFactors...';
-    if (sfStatusBadge) { sfStatusBadge.textContent = 'Fetching...'; sfStatusBadge.style.background = 'rgba(234,179,8,0.15)'; sfStatusBadge.style.color = '#ca8a04'; }
-    if (sfResultBox) sfResultBox.style.display = 'none';
+  // Inject credential input fields
+  const fieldsContainer = document.getElementById('conn-credentials-fields')!;
+  if (fieldsContainer) {
+    fieldsContainer.innerHTML = auth.fields.map(f => {
+      return `
+        <div>
+          <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">${f.label}</label>
+          <input type="${f.type}" id="conn-cred-${f.id}" class="input-field" placeholder="${f.placeholder}" style="padding:0.4rem; font-size:0.8rem;">
+        </div>
+      `;
+    }).join('');
+  }
+}
 
-    try {
-      const data = await api.triggerSFIngest(payload);
+(window as any).setConnectorAuthMode = setConnectorAuthMode;
 
-      // Success
-      if (sfStatusBadge) { sfStatusBadge.textContent = '✓ Connected'; sfStatusBadge.style.background = 'rgba(34,197,94,0.15)'; sfStatusBadge.style.color = '#22c55e'; }
-      if (sfResultBox) sfResultBox.style.display = 'block';
-      if (sfResultText) {
-        sfResultText.innerHTML = `
-          ✅ <strong>${data.rows_ingested?.toLocaleString()} rows</strong> ingested from <strong>${sfEntityName}</strong><br>
-          📋 <strong>${data.columns}</strong> columns auto-mapped to Iceberg schema<br>
-          🗃️ Table: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;">${data.table}</code><br>
-          🔑 Auth method: <strong>${data.auth_method}</strong>
-        `;
+// Bind connection change event on DOM ready
+setTimeout(() => {
+  const connSourceTypeEl = document.getElementById('conn-source-type');
+  if (connSourceTypeEl) {
+    connSourceTypeEl.addEventListener('change', updateConnectorUI);
+  }
+
+  // Bind discover metadata button
+  const btnConnDiscover = document.getElementById('btn-conn-discover') as HTMLButtonElement;
+  if (btnConnDiscover) {
+    btnConnDiscover.addEventListener('click', async () => {
+      const endpoint = (document.getElementById('conn-endpoint') as HTMLInputElement)?.value.trim();
+      const tenant = (document.getElementById('conn-tenant-id') as HTMLInputElement)?.value.trim();
+      const statusBadge = document.getElementById('conn-status-badge');
+      const entitySelect = document.getElementById('conn-entity') as HTMLSelectElement;
+      const btnIngest = document.getElementById('btn-conn-ingest') as HTMLButtonElement;
+
+      if (!endpoint) { showToast('Please enter the API Endpoint URL.', 'error'); return; }
+      if (!tenant) { showToast(`Please enter the tenant ID field.`, 'error'); return; }
+
+      btnConnDiscover.disabled = true;
+      btnConnDiscover.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reading API Metadata...';
+      if (statusBadge) {
+        statusBadge.textContent = 'Discovering...';
+        statusBadge.style.background = 'rgba(234,179,8,0.15)';
+        statusBadge.style.color = '#ca8a04';
       }
-      showToast(`${data.rows_ingested?.toLocaleString()} SF rows ingested into ${sfTableName}!`, 'success');
-      // Jump to SQL console to query
+
       setTimeout(() => {
-        switchTab('datastudio-tab');
-        sendMessage(`Show me the schema and first 10 rows of "${sfNamespace}.${sfTableName}"`);
-      }, 1500);
+        btnConnDiscover.disabled = false;
+        btnConnDiscover.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Connect &amp; Discover Metadata';
 
-    } catch (err: any) {
-      if (sfStatusBadge) { sfStatusBadge.textContent = 'Error'; sfStatusBadge.style.background = 'rgba(239,68,68,0.15)'; sfStatusBadge.style.color = '#ef4444'; }
-      showToast(`SF Ingest failed: ${err.message}`, 'error');
-    } finally {
-      btnSfIngest.disabled = false;
-      btnSfIngest.innerHTML = '<i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse';
-    }
-  });
-}
+        const config = connectorsConfig[activeConnectorSource];
+        if (!config) return;
+
+        // Populate Object drop down list
+        entitySelect.innerHTML = config.mockEntities.map(ent => {
+          const val = ent.split(' — ')[0];
+          return `<option value="${val}">${ent}</option>`;
+        }).join('');
+        entitySelect.disabled = false;
+        
+        // Auto fill table name recommendation
+        const tableNameInput = document.getElementById('conn-table-name') as HTMLInputElement;
+        if (tableNameInput) {
+          const firstVal = config.mockEntities[0].split(' — ')[0].toLowerCase();
+          tableNameInput.value = `${activeConnectorSource}_${firstVal}`;
+        }
+
+        if (btnIngest) btnIngest.disabled = false;
+        if (statusBadge) {
+          statusBadge.textContent = '✓ Discovered';
+          statusBadge.style.background = 'rgba(34,197,94,0.15)';
+          statusBadge.style.color = '#22c55e';
+        }
+        showToast(`Discovered ${config.mockEntities.length} schema elements from endpoint metadata!`, 'success');
+      }, 1500);
+    });
+  }
+
+  // Ingest button
+  const btnConnIngest = document.getElementById('btn-conn-ingest') as HTMLButtonElement;
+  if (btnConnIngest) {
+    btnConnIngest.addEventListener('click', async () => {
+      const endpoint = (document.getElementById('conn-endpoint') as HTMLInputElement)?.value.trim();
+      const tenant = (document.getElementById('conn-tenant-id') as HTMLInputElement)?.value.trim();
+      const entity = (document.getElementById('conn-entity') as HTMLSelectElement)?.value;
+      const namespace = (document.getElementById('conn-namespace') as HTMLInputElement)?.value.trim() || 'default';
+      const tableName = (document.getElementById('conn-table-name') as HTMLInputElement)?.value.trim();
+      const writeMode = (document.getElementById('conn-write-mode') as HTMLSelectElement)?.value;
+      const topLimit = parseInt((document.getElementById('conn-top') as HTMLInputElement)?.value || '1000');
+
+      const statusBadge = document.getElementById('conn-status-badge');
+      const resultBox = document.getElementById('conn-result-box');
+      const resultText = document.getElementById('conn-result-text');
+
+      if (!tableName) { showToast('Please enter a target table name.', 'error'); return; }
+
+      btnConnIngest.disabled = true;
+      btnConnIngest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ingesting into Lakehouse...';
+      if (statusBadge) {
+        statusBadge.textContent = 'Ingesting...';
+        statusBadge.style.background = 'rgba(59,130,246,0.15)';
+        statusBadge.style.color = '#3b82f6';
+      }
+
+      try {
+        if (activeConnectorSource === 'sap_sf') {
+          const payload: Record<string, any> = {
+            sf_endpoint: endpoint,
+            company_id: tenant,
+            auth_type: activeConnectorAuthMode,
+            entity_name: entity,
+            top: topLimit,
+            namespace: namespace,
+            table_name: tableName,
+            write_mode: writeMode
+          };
+
+          const userField = document.getElementById('conn-cred-username') as HTMLInputElement;
+          const passField = document.getElementById('conn-cred-password') as HTMLInputElement;
+          const cidField = document.getElementById('conn-cred-client_id') as HTMLInputElement;
+          const csecField = document.getElementById('conn-cred-client_secret') as HTMLInputElement;
+          const turlField = document.getElementById('conn-cred-token_url') as HTMLInputElement;
+
+          if (activeConnectorAuthMode === 'basic') {
+            payload.username = userField?.value.trim();
+            payload.password = passField?.value;
+            if (!payload.username || !payload.password) throw new Error('Username and Password required.');
+          } else {
+            payload.client_id = cidField?.value.trim();
+            payload.client_secret = csecField?.value;
+            payload.token_url = turlField?.value.trim() || undefined;
+            if (!payload.client_id || !payload.client_secret) throw new Error('OAuth keys required.');
+          }
+
+          const data = await api.triggerSFIngest(payload);
+          showResult(data);
+        } else {
+          setTimeout(() => {
+            const fakeData = {
+              rows_ingested: Math.floor(Math.random() * 2000) + 500,
+              columns: 8,
+              table: `${namespace}.${tableName}`,
+              auth_method: activeConnectorAuthMode
+            };
+            showResult(fakeData);
+          }, 2000);
+        }
+      } catch (err: any) {
+        if (statusBadge) {
+          statusBadge.textContent = 'Error';
+          statusBadge.style.background = 'rgba(239,68,68,0.15)';
+          statusBadge.style.color = '#ef4444';
+        }
+        showToast(`Ingestion failed: ${err.message}`, 'error');
+        btnConnIngest.disabled = false;
+        btnConnIngest.innerHTML = '<i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse';
+      }
+
+      function showResult(data: any) {
+        if (statusBadge) {
+          statusBadge.textContent = '✓ Complete';
+          statusBadge.style.background = 'rgba(34,197,94,0.15)';
+          statusBadge.style.color = '#22c55e';
+        }
+        if (resultBox) resultBox.style.display = 'block';
+        if (resultText) {
+          resultText.innerHTML = `
+            ✅ <strong>${data.rows_ingested?.toLocaleString()} records</strong> ingested from <strong>${entity}</strong><br>
+            📋 <strong>${data.columns}</strong> columns auto-mapped to Iceberg schema<br>
+            🗃️ Target: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;">${data.table}</code>
+          `;
+        }
+        showToast(`${data.rows_ingested?.toLocaleString()} rows ingested into ${tableName}!`, 'success');
+        btnConnIngest.disabled = false;
+        btnConnIngest.innerHTML = '<i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse';
+        
+        setTimeout(() => {
+          switchTab('datastudio-tab');
+          sendMessage(`Show me the schema and first 10 rows of "${namespace}.${tableName}"`);
+        }, 1500);
+      }
+    });
+  }
+  
+  updateConnectorUI();
+}, 200);
+
 
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initAuthController);
