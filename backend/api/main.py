@@ -250,6 +250,54 @@ def seed_demo_data():
             table.append(pa.Table.from_pydict(data))
             print("[startup-seeder] Seeded default.orders_sample successfully.")
             
+        # 3. Seed transactions_10k
+        tx_identifier = ("default", "transactions_10k")
+        tx_exists = False
+        try:
+            catalog.load_table(tx_identifier)
+            tx_exists = True
+        except Exception:
+            pass
+            
+        if not tx_exists:
+            print("[startup-seeder] Seeding default.transactions_10k (10,000 rows)...")
+            from pyiceberg.schema import Schema
+            from pyiceberg.types import NestedField, IntegerType, StringType, DoubleType
+            import pyarrow as pa
+            import random
+            
+            schema = Schema(
+                NestedField(field_id=1, name="tx_id", field_type=IntegerType(), required=True),
+                NestedField(field_id=2, name="account_from", field_type=StringType(), required=False),
+                NestedField(field_id=3, name="account_to", field_type=StringType(), required=False),
+                NestedField(field_id=4, name="amount", field_type=DoubleType(), required=False),
+                NestedField(field_id=5, name="status", field_type=StringType(), required=False),
+                NestedField(field_id=6, name="timestamp", field_type=StringType(), required=False),
+            )
+            
+            table = catalog.create_table(tx_identifier, schema=schema)
+            
+            # Generate 10k rows of mock transaction data
+            random.seed(42)
+            status_options = ["COMPLETED", "COMPLETED", "COMPLETED", "PENDING", "FAILED"]
+            tx_ids = list(range(1, 10001))
+            accounts_from = [f"ACC-{random.randint(100, 250):03d}" for _ in range(10000)]
+            accounts_to = [f"ACC-{random.randint(150, 300):03d}" for _ in range(10000)]
+            amounts = [round(random.uniform(10.0, 50000.0), 2) for _ in range(10000)]
+            statuses = [random.choice(status_options) for _ in range(10000)]
+            timestamps = [f"2026-07-06T00:{random.randint(10, 59):02d}:{random.randint(10, 59):02d}Z" for _ in range(10000)]
+            
+            data = {
+                "tx_id": tx_ids,
+                "account_from": accounts_from,
+                "account_to": accounts_to,
+                "amount": amounts,
+                "status": statuses,
+                "timestamp": timestamps
+            }
+            table.append(pa.Table.from_pydict(data))
+            print("[startup-seeder] Seeded default.transactions_10k successfully with 10,000 records.")
+            
     except Exception as e:
         print(f"[startup-seeder] Error seeding demo data: {e}")
 

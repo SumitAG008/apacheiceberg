@@ -1940,6 +1940,55 @@ function initAuthController() {
       if (settingsEmailEl) settingsEmailEl.textContent = user.email;
     }
     bootstrapApp();
+
+    // Academy Training Playground pre-seeder
+    if (sessionStorage.getItem('meldra_academy_playground_active') === 'true') {
+      sessionStorage.removeItem('meldra_academy_playground_active');
+      setTimeout(() => {
+        // 1. Force AWS connection provider in UI (standard sandbox setup)
+        const awsTab = document.getElementById('prov-btn-aws');
+        if (awsTab) awsTab.click();
+
+        // 2. Select Developer Workspace tab
+        const navWorkspace = document.getElementById('nav-workspace');
+        if (navWorkspace) navWorkspace.click();
+
+        // 3. Pre-populate Python Notebook Sandbox Editor
+        const pyEditor = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
+        if (pyEditor) {
+          pyEditor.value = `import meldra
+
+# Initialize meldra.py engine linked to S3
+catalog = meldra.MeldraCatalog()
+
+# 1. Zero-Copy Time Travel scan on 10,000 transactions table
+arrow_table = catalog.run_time_travel_scan("default", "transactions_10k")
+df = arrow_table.to_pandas()
+print(f"[sandbox] Successfully read {len(df)} transactions from S3 Iceberg catalog.")
+
+# 2. Python manipulation: Filter out failed transfers
+clean_df = df[df["status"] == "COMPLETED"]
+print(f"[sandbox] Cleaned dataframe shape: {clean_df.shape}")
+
+# 3. Commit transactions back to metadata
+catalog.optimize_table("default", "transactions_10k")`;
+        }
+
+        // 4. Pre-populate SQL Console Editor
+        const sqlEditor = document.getElementById('studio-sql-editor') as HTMLTextAreaElement;
+        if (sqlEditor) {
+          sqlEditor.value = `-- Querying 10,000 transactions instantly
+SELECT account_from, COUNT(*) as tx_count, SUM(amount) as total_vol, AVG(amount) as avg_val
+FROM default.transactions_10k
+WHERE status = 'COMPLETED'
+GROUP BY account_from
+ORDER BY total_vol DESC
+LIMIT 10;`;
+        }
+
+        showToast('Welcome to the training playground sandbox! Pre-seeded transactions_10k table loaded.', 'success');
+      }, 500);
+    }
   }
 
   function openAuthModal(mode: 'login' | 'register') {
@@ -2418,7 +2467,7 @@ function initAuthController() {
       const lockedView = document.getElementById('academy-locked-view');
       const unlockedView = document.getElementById('academy-unlocked-view');
       
-      if (tokenStore.isLoggedIn()) {
+      if (localStorage.getItem('meldra_academy_pass_active') === 'true') {
         if (lockedView) lockedView.style.display = 'none';
         if (unlockedView) unlockedView.style.display = 'grid';
         // Select first module by default
@@ -2472,6 +2521,17 @@ function initAuthController() {
   (window as any).launchProductFromAcademy = () => {
     const academy = document.getElementById('academy-portal-page');
     if (academy) academy.style.display = 'none';
+
+    // Auto-login into a dedicated demo playground user
+    const academyEmail = localStorage.getItem('meldra_academy_email') || "playground@meldra.ai";
+    tokenStore.setTokens("mock_academy_token", "mock_academy_refresh", {
+      id: "mock-academy-user-id",
+      email: academyEmail,
+      mfa_method: "email",
+      is_verified: true
+    });
+
+    sessionStorage.setItem('meldra_academy_playground_active', 'true');
     showMainApp();
   };
 
@@ -2482,6 +2542,7 @@ function initAuthController() {
     const pwdEl = document.getElementById('academy-reg-password') as HTMLInputElement;
 
     if (!nameEl || !emailEl || !pwdEl) return;
+    const name = nameEl.value.trim();
     const email = emailEl.value.trim();
     const password = pwdEl.value;
 
@@ -2497,43 +2558,26 @@ function initAuthController() {
       submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Initializing pass...';
     }
 
-    try {
-      // 1. Call registration
-      try {
-        await api.auth.register(email, password);
-      } catch (regErr: any) {
-        console.warn("Registration returned status, attempting login fallback:", regErr);
-      }
-      // 2. Call login to fetch MFA temp_token
-      const loginRes = await api.auth.login(email, password);
-      currentTempToken = loginRes.temp_token;
-      sessionStorage.setItem('meldra_temp_token', loginRes.temp_token);
-      sessionStorage.setItem('meldra_mfa_email', email);
-      sessionStorage.setItem('meldra_academy_referral', 'true');
-      
-      otpEmailBadge.textContent = email;
-      clearOtpInputs();
-      clearError(mfaErrorEl);
-      mfaSuccessEl.classList.remove('show');
+    // Academy is purely separate - bypass backend database write & bypass MFA prompt!
+    setTimeout(() => {
+      localStorage.setItem('meldra_academy_pass_active', 'true');
+      localStorage.setItem('meldra_academy_name', name);
+      localStorage.setItem('meldra_academy_email', email);
 
-      // 3. Show MFA prompt overlay
-      overlay.style.display = 'flex';
-      overlay.classList.remove('hidden');
-      overlay.classList.add('active');
-      showScreen(screenMfa);
-      startOtpTimer(600);
-      startResendCooldown(60);
-      
-      showToast('14-Day Free Training Pass registered! Please enter the MFA code sent to your email.', 'success');
-      setTimeout(() => otpDigits[0]?.focus(), 150);
-    } catch (err: any) {
-      showToast(err.message || 'Registration failed.', 'error');
-    } finally {
+      // Instantly switch page to unlocked reader view without showing authentication cards!
+      const lockedView = document.getElementById('academy-locked-view');
+      const unlockedView = document.getElementById('academy-unlocked-view');
+      if (lockedView) lockedView.style.display = 'none';
+      if (unlockedView) unlockedView.style.display = 'grid';
+      (window as any).selectAcademyModule(1);
+
+      showToast(`Welcome, ${name}! Your 14-Day Free Academy Pass is now active.`, 'success');
+
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Register &amp; Start Free Training';
       }
-    }
+    }, 800);
   };
 }
 
