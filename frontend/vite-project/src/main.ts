@@ -3700,11 +3700,12 @@ async function initDataStudio() {
       
       const targetEl = document.getElementById(target);
       if (targetEl) {
-        if (target === 'studio-tab-sql' || target === 'studio-tab-history' || target === 'studio-tab-git' || target === 'studio-tab-automation') targetEl.style.display = 'flex';
+        if (target === 'studio-tab-sql' || target === 'studio-tab-catalog' || target === 'studio-tab-history' || target === 'studio-tab-git' || target === 'studio-tab-automation') targetEl.style.display = 'flex';
         else targetEl.style.display = 'block';
       }
       
       studioSubTab = target;
+      if (target === 'studio-tab-catalog') initDataCatalog();
       if (target === 'studio-tab-schema') renderSchemaTab();
       if (target === 'studio-tab-travel') loadTableHistory();
       if (target === 'studio-tab-contracts') loadTableContracts();
@@ -4299,6 +4300,319 @@ async function loadStudioNamespaces() {
     showToast('Failed to load namespaces catalog.', 'error');
   }
 }
+
+// ── DATA CATALOG & BUSINESS GLOSSARY SYSTEM ───────────────────────────
+const catalogGlossaryRegistry: Record<string, {
+  desc: string;
+  owner: string;
+  freshness: string;
+  tier: 'gold' | 'silver' | 'bronze';
+  certified: boolean;
+  lineage: { srcType: string; srcName: string; bronze: string; silver: string; gold: string; srcIcon: string; };
+  columns: Record<string, { definition: string; tags: string[] }>;
+}> = {
+  'vendors': {
+    desc: 'Consolidated global procurement vendor records with verified details.',
+    owner: 'Procurement Team',
+    freshness: '10 mins ago',
+    tier: 'gold',
+    certified: true,
+    lineage: {
+      srcType: 'OData Source',
+      srcName: 'SuccessFactors',
+      bronze: 'bronze.vendors_raw',
+      silver: 'silver.vendors_clean',
+      gold: 'gold.vendors',
+      srcIcon: 'fa-server'
+    },
+    columns: {
+      'vendor_id': { definition: 'Unique identifier key for the vendor entity.', tags: ['Primary Key', 'Numeric'] },
+      'vendor_name': { definition: 'Legal registered name of the vendor company.', tags: ['Required', 'String'] },
+      'category': { definition: 'Industry classification of the goods/services provided.', tags: ['Categorical'] },
+      'annual_spend': { definition: 'Aggregated total contract spend in current fiscal year.', tags: ['Financials', 'Metrics'] },
+      'compliance_rating': { definition: 'Governance and quality compliance audit rating (0-100).', tags: ['Audit', 'Score'] },
+      'tax_id': { definition: 'Corporate tax identification registry number.', tags: ['PII Masked', 'Sensitive'] },
+      'bank_account': { definition: 'Encrypted receiving corporate bank account number.', tags: ['PII Masked', 'Financials'] },
+      'routing_number': { definition: 'Standard wire transfer routing code.', tags: ['PII Masked'] }
+    }
+  },
+  'employee': {
+    desc: 'Standardized internal employee database containing role, salary, and tenure parameters.',
+    owner: 'HR Analytics Team',
+    freshness: '1 hour ago',
+    tier: 'silver',
+    certified: true,
+    lineage: {
+      srcType: 'OData Source',
+      srcName: 'SuccessFactors',
+      bronze: 'bronze.sf_employees',
+      silver: 'silver.employee',
+      gold: 'gold.headcount_mart',
+      srcIcon: 'fa-users'
+    },
+    columns: {
+      'employee_id': { definition: 'Unique global employee identifier.', tags: ['Primary Key'] },
+      'first_name': { definition: 'Legal given name of the worker.', tags: ['String'] },
+      'last_name': { definition: 'Legal surname of the worker.', tags: ['String'] },
+      'email': { definition: 'Corporate email address.', tags: ['Unique'] },
+      'salary': { definition: 'Base salary adjusted to local currency.', tags: ['Sensitive', 'Financials'] },
+      'hire_date': { definition: 'Date employee officially joined the payroll.', tags: ['Date'] }
+    }
+  },
+  'employees': {
+    desc: 'Standardized internal employee database containing role, salary, and tenure parameters.',
+    owner: 'HR Analytics Team',
+    freshness: '1 hour ago',
+    tier: 'silver',
+    certified: true,
+    lineage: {
+      srcType: 'OData Source',
+      srcName: 'SuccessFactors',
+      bronze: 'bronze.sf_employees',
+      silver: 'silver.employees',
+      gold: 'gold.headcount_mart',
+      srcIcon: 'fa-users'
+    },
+    columns: {
+      'employee_id': { definition: 'Unique global employee identifier.', tags: ['Primary Key'] },
+      'first_name': { definition: 'Legal given name of the worker.', tags: ['String'] },
+      'last_name': { definition: 'Legal surname of the worker.', tags: ['String'] },
+      'email': { definition: 'Corporate email address.', tags: ['Unique'] },
+      'salary': { definition: 'Base salary adjusted to local currency.', tags: ['Sensitive', 'Financials'] },
+      'hire_date': { definition: 'Date employee officially joined the payroll.', tags: ['Date'] }
+    }
+  },
+  'sf_employees': {
+    desc: 'Raw OData payload fetched directly from SAP SuccessFactors OData API.',
+    owner: 'HR Team',
+    freshness: '5 mins ago',
+    tier: 'bronze',
+    certified: false,
+    lineage: {
+      srcType: 'REST API',
+      srcName: 'SuccessFactors',
+      bronze: 'bronze.sf_employees',
+      silver: 'silver.employees',
+      gold: 'gold.headcount_mart',
+      srcIcon: 'fa-network-wired'
+    },
+    columns: {
+      'EmpJob': { definition: 'Raw XML/JSON embedded object mapping job data.', tags: ['Raw Object'] },
+      'PerPersonal': { definition: 'Raw XML/JSON personal information parameters.', tags: ['Raw Object'] }
+    }
+  },
+  'sales': {
+    desc: 'Validated daily transaction metrics and regional sales aggregates.',
+    owner: 'Finance Team',
+    freshness: '30 mins ago',
+    tier: 'gold',
+    certified: true,
+    lineage: {
+      srcType: 'Database',
+      srcName: 'Salesforce CRM',
+      bronze: 'bronze.sales_raw',
+      silver: 'silver.sales_clean',
+      gold: 'gold.sales',
+      srcIcon: 'fa-database'
+    },
+    columns: {
+      'transaction_id': { definition: 'Unique ledger receipt serial code.', tags: ['Primary Key'] },
+      'customer_id': { definition: 'Identifier for the corporate customer entity.', tags: ['Foreign Key'] },
+      'amount': { definition: 'Net transaction amount in transaction currency.', tags: ['Financials', 'Metrics'] }
+    }
+  }
+};
+
+let catalogTablesList: string[] = [];
+
+async function initDataCatalog() {
+  const tableListContainer = document.getElementById('catalog-table-list')!;
+  const btnColumns = document.getElementById('btn-catalog-view-columns')!;
+  const btnLineage = document.getElementById('btn-catalog-view-lineage')!;
+  const columnsSec = document.getElementById('catalog-view-columns-section')!;
+  const lineageSec = document.getElementById('catalog-view-lineage-section')!;
+  
+  // Set default tabs toggle
+  btnColumns.onclick = () => {
+    btnColumns.classList.add('active');
+    btnLineage.classList.remove('active');
+    columnsSec.style.display = 'block';
+    lineageSec.style.display = 'none';
+  };
+  
+  btnLineage.onclick = () => {
+    btnLineage.classList.add('active');
+    btnColumns.classList.remove('active');
+    columnsSec.style.display = 'none';
+    lineageSec.style.display = 'block';
+  };
+
+  // Wire search input
+  const searchInput = document.getElementById('catalog-search') as HTMLInputElement;
+  const filterTier = document.getElementById('catalog-filter-tier') as HTMLSelectElement;
+  const filterOwner = document.getElementById('catalog-filter-owner') as HTMLSelectElement;
+  
+  const refilter = () => {
+    const q = searchInput.value.toLowerCase().trim();
+    const tierVal = filterTier.value;
+    const ownerVal = filterOwner.value.toLowerCase();
+    
+    renderCatalogTablesList(catalogTablesList.filter(tbl => {
+      const meta = catalogGlossaryRegistry[tbl] || getFallbackMetadata(tbl);
+      const matchesSearch = tbl.toLowerCase().includes(q) || meta.desc.toLowerCase().includes(q);
+      const matchesTier = tierVal === 'all' || meta.tier === tierVal;
+      const matchesOwner = ownerVal === 'all' || meta.owner.toLowerCase().includes(ownerVal);
+      return matchesSearch && matchesTier && matchesOwner;
+    }));
+  };
+  
+  if (searchInput) searchInput.oninput = refilter;
+  if (filterTier) filterTier.onchange = refilter;
+  if (filterOwner) filterOwner.onchange = refilter;
+
+  try {
+    const res = await api.catalog.listTables(activeNamespace);
+    catalogTablesList = res.tables;
+    refilter();
+    
+    if (catalogTablesList.length > 0) {
+      const tblToSelect = catalogTablesList.includes(activeTableName) ? activeTableName : catalogTablesList[0];
+      selectCatalogTable(tblToSelect);
+    } else {
+      tableListContainer.innerHTML = '<div style="color:var(--text-muted); font-size:0.78rem; text-align:center; padding:1.5rem;">No tables found. Ingest data first!</div>';
+    }
+  } catch (e: any) {
+    showToast('Failed to load data catalog.', 'error');
+  }
+}
+
+function getFallbackMetadata(tblName: string) {
+  let tier: 'gold' | 'silver' | 'bronze' = 'bronze';
+  if (tblName.includes('silver') || tblName.includes('clean')) tier = 'silver';
+  if (tblName.includes('gold') || tblName.includes('analytics') || tblName.includes('summary')) tier = 'gold';
+
+  return {
+    desc: `User table containing active dataset rows and schema parameters.`,
+    owner: 'Workspace Owner',
+    freshness: 'Just now',
+    tier: tier,
+    certified: false,
+    lineage: {
+      srcType: 'File Ingest',
+      srcName: 'User File',
+      bronze: `bronze.${tblName}_raw`,
+      silver: `silver.${tblName}_clean`,
+      gold: `gold.${tblName}`,
+      srcIcon: 'fa-file-csv'
+    },
+    columns: {} as Record<string, { definition: string; tags: string[] }>
+  };
+}
+
+function renderCatalogTablesList(list: string[]) {
+  const container = document.getElementById('catalog-table-list')!;
+  if (list.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:1rem;">No matching tables found.</div>';
+    return;
+  }
+  
+  container.innerHTML = list.map(tbl => {
+    const meta = catalogGlossaryRegistry[tbl] || getFallbackMetadata(tbl);
+    let badgeClass = 'badge-secondary';
+    if (meta.tier === 'gold') badgeClass = 'badge-green';
+    else if (meta.tier === 'silver') badgeClass = 'badge-blue';
+    else if (meta.tier === 'bronze') badgeClass = 'badge-orange';
+    
+    return `
+      <div class="catalog-table-item" style="padding:0.6rem 0.75rem; border-radius:6px; background:var(--bg-surface); border:1px solid var(--border-subtle); cursor:pointer; display:flex; flex-direction:column; gap:0.25rem; transition:all 0.18s;" onclick="selectCatalogTable('${tbl}')">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-family:var(--font-mono); font-size:0.78rem; font-weight:700; color:var(--text-main);">${tbl}</span>
+          <span class="badge ${badgeClass}" style="font-size:0.55rem; padding:0.1rem 0.3rem; text-transform:uppercase;">${meta.tier}</span>
+        </div>
+        <div style="font-size:0.68rem; color:var(--text-muted); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${meta.desc}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function selectCatalogTable(tblName: string) {
+  const items = document.querySelectorAll('.catalog-table-item');
+  items.forEach(el => {
+    const nameEl = el.querySelector('span');
+    if (nameEl && nameEl.textContent === tblName) {
+      el.setAttribute('style', 'padding:0.6rem 0.75rem; border-radius:6px; background:rgba(255,255,255,0.04); border-color:var(--border-glass); cursor:pointer; display:flex; flex-direction:column; gap:0.25rem;');
+    } else {
+      el.setAttribute('style', 'padding:0.6rem 0.75rem; border-radius:6px; background:var(--bg-surface); border:1px solid var(--border-subtle); cursor:pointer; display:flex; flex-direction:column; gap:0.25rem;');
+    }
+  });
+
+  const detailName = document.getElementById('catalog-detail-name')!;
+  const detailDesc = document.getElementById('catalog-detail-desc')!;
+  const detailOwner = document.getElementById('catalog-detail-owner')!;
+  const detailFreshness = document.getElementById('catalog-detail-freshness')!;
+  const detailBadge = document.getElementById('catalog-detail-badge')!;
+  const columnsTbody = document.getElementById('catalog-columns-tbody')!;
+
+  const meta = catalogGlossaryRegistry[tblName] || getFallbackMetadata(tblName);
+
+  detailName.textContent = `${activeNamespace}.${tblName}`;
+  detailDesc.textContent = meta.desc;
+  detailOwner.textContent = meta.owner;
+  detailFreshness.textContent = meta.freshness;
+  detailBadge.textContent = meta.tier;
+  detailBadge.className = `badge ${meta.tier === 'gold' ? 'badge-green' : meta.tier === 'silver' ? 'badge-blue' : 'badge-orange'}`;
+
+  // Render lineage properties
+  const linSrcIcon = document.getElementById('lineage-src-icon')!;
+  const linSrcType = document.getElementById('lineage-src-type')!;
+  const linSrcName = document.getElementById('lineage-src-name')!;
+  const linBronzeName = document.getElementById('lineage-bronze-name')!;
+  const linSilverName = document.getElementById('lineage-silver-name')!;
+  const linGoldName = document.getElementById('lineage-gold-name')!;
+
+  if (linSrcIcon) linSrcIcon.className = `fa-solid ${meta.lineage.srcIcon}`;
+  if (linSrcType) linSrcType.textContent = meta.lineage.srcType;
+  if (linSrcName) linSrcName.textContent = meta.lineage.srcName;
+  if (linBronzeName) linBronzeName.textContent = meta.lineage.bronze;
+  if (linSilverName) linSilverName.textContent = meta.lineage.silver;
+  if (linGoldName) linGoldName.textContent = meta.lineage.gold;
+
+  try {
+    const details = await api.catalog.getTableDetails(activeNamespace, tblName);
+    if (!details.schema || details.schema.length === 0) {
+      columnsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No schema attributes discovered.</td></tr>';
+      return;
+    }
+
+    columnsTbody.innerHTML = details.schema.map((col: any) => {
+      const colGlossary = meta.columns[col.name] || {
+        definition: 'System database field properties.',
+        tags: col.required ? ['Required'] : ['Optional']
+      };
+
+      const tagSpans = colGlossary.tags.map(t => {
+        let tagStyle = 'background:rgba(255,255,255,0.04); color:var(--text-muted);';
+        if (t === 'Primary Key') tagStyle = 'background:rgba(34,197,94,0.1); color:#22c55e; font-weight:700;';
+        if (t === 'PII Masked' || t === 'Sensitive') tagStyle = 'background:rgba(239,68,68,0.1); color:#ef4444;';
+        if (t === 'Financials') tagStyle = 'background:rgba(234,179,8,0.1); color:#eab308;';
+        return `<span style="font-size:0.6rem; padding:0.1rem 0.35rem; border-radius:3px; margin-right:0.25rem; text-transform:uppercase; ${tagStyle}">${t}</span>`;
+      }).join('');
+
+      return `
+        <tr>
+          <td style="font-family:var(--font-mono); font-size:0.78rem; font-weight:600; color:var(--text-main);">${col.name}</td>
+          <td><code style="font-size:0.7rem; color:var(--color-primary);">${col.type}</code></td>
+          <td><div style="display:flex; flex-wrap:wrap; gap:0.2rem;">${tagSpans}</div></td>
+          <td style="font-size:0.75rem; color:var(--text-muted); line-height:1.35;">${colGlossary.definition}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (e) {
+    columnsTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Failed to query schema fields from catalog.</td></tr>';
+  }
+}
+(window as any).selectCatalogTable = selectCatalogTable;
 
 async function loadStudioTables() {
   const container = document.getElementById('studio-table-list')!;
