@@ -2250,8 +2250,8 @@
             <button class="tab-btn active" data-tab="chat-tab" id="nav-chat">
               <i class="fa-solid fa-comments"></i> Chat
             </button>
-            <button class="tab-btn" data-tab="architecture-tab" id="nav-architecture">
-              <i class="fa-solid fa-sitemap"></i> Architecture
+            <button class="tab-btn" data-tab="help-tab" id="nav-help">
+              <i class="fa-solid fa-circle-question"></i> Help Guide
             </button>
             <button class="tab-btn" data-tab="mcp-tab" id="nav-mcp">
               <i class="fa-solid fa-network-wired"></i> MCP Gateway
@@ -2261,9 +2261,6 @@
             </button>
             <button class="tab-btn" data-tab="graph-tab" id="nav-graph">
               <i class="fa-solid fa-circle-nodes"></i> Graph
-            </button>
-            <button class="tab-btn" data-tab="api-tab" id="nav-api">
-              <i class="fa-solid fa-book-open"></i> API Help
             </button>
             <button class="tab-btn" data-tab="workspace-tab" id="nav-workspace">
               <i class="fa-solid fa-layer-group"></i> Workspace
@@ -2344,907 +2341,80 @@
 
 
 
-          <!-- TAB 8: ARCHITECTURE -->
-          <div id="architecture-tab" class="tab-content">
-            <div class="blog-portal" style="max-width: 100%; margin: 0;">
+          <!-- TAB 8: HELP GUIDE -->
+          <div id="help-tab" class="tab-content">
+            <div class="help-container" style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem 0;">
               
-              <!-- Left side: Blog Navigation List -->
-              <div class="blog-nav-list">
-                <div style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; padding: 0.25rem 0.5rem; margin-bottom: 0.25rem;">Architecture</div>
-                <div class="blog-nav-item active" data-article="grounded-context">
-                  <span class="blog-nav-domain" style="color: #6366f1;">Semantic Architecture</span>
-                  <h4>AI Agents Grounded in Context</h4>
-                  <span>Zero-Copy semantic grounding vs. data replication.</span>
-                </div>
-                <div class="blog-nav-item" data-article="spark-tax">
-                  <span class="blog-nav-domain" style="color: #0052cc;">Infrastructure</span>
-                  <h4>Bypassing the Spark Tax</h4>
-                  <span>Zero-Copy Databricks &amp; Snowflake integrations.</span>
-                </div>
-                <div class="blog-nav-item" data-article="fintech-graph">
-                  <span class="blog-nav-domain" style="color: #16a34a;">Fintech</span>
-                  <h4>Agentic Audits &amp; Loop Reconciliation</h4>
-                  <span>Postgres AGE graph audits for general ledgers.</span>
-                </div>
-                <div class="blog-nav-item" data-article="supply-chain-cdc">
-                  <span class="blog-nav-domain" style="color: #ea580c;">Supply Chain</span>
-                  <h4>CDC Lineage &amp; Order-to-Cash</h4>
-                  <span>Real-time logistics sync &amp; stockout alerts.</span>
-                </div>
-                <div class="blog-nav-item" data-article="hr-sf">
-                  <span class="blog-nav-domain" style="color: #9333ea;">HR &amp; Identity</span>
-                  <h4>SuccessFactors A2A Sync Protocols</h4>
-                  <span>Automated provisioning &amp; role security audits.</span>
-                </div>
+              <div style="text-align: center; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle);">
+                <h2 style="font-family: var(--font-sans); font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #10b981, #bef264); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">📖 meldra.ai Product Help Guide</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.4rem;">Understand how the Zero-Replication S3 Iceberg platform operates and learn how to integrate programmatically.</p>
+              </div>
 
-                <div style="font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; padding: 0.5rem 0.5rem 0.25rem; margin-top: 0.5rem; border-top: 1px solid #e2e8f0;">MCP Scenarios</div>
-
-                <div class="blog-nav-item" data-article="mcp-iceberg">
-                  <span class="blog-nav-domain" style="color: #0284c7;">MCP · Data Lake</span>
-                  <h4>Iceberg Catalog MCP Server</h4>
-                  <span>Natural language to Iceberg via MCP tools.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-sap">
-                  <span class="blog-nav-domain" style="color: #b45309;">MCP · ERP</span>
-                  <h4>SAP BAPI &amp; RFC MCP Agent</h4>
-                  <span>Trigger SAP business transactions via Claude.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-snowflake">
-                  <span class="blog-nav-domain" style="color: #0ea5e9;">MCP · Analytics</span>
-                  <h4>Snowflake Zero-Copy MCP</h4>
-                  <span>AI-driven warehouse queries, no SQL needed.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-compliance">
-                  <span class="blog-nav-domain" style="color: #dc2626;">MCP · Compliance</span>
-                  <h4>Real-Time Audit Trail MCP</h4>
-                  <span>SOX/SOC2 audit writes on every agent action.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-procurement">
-                  <span class="blog-nav-domain" style="color: #ea580c;">MCP · Supply Chain</span>
-                  <h4>Autonomous Procurement MCP</h4>
-                  <span>Stock breach → PR raised in SAP MM automatically.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-iam">
-                  <span class="blog-nav-domain" style="color: #9333ea;">MCP · Identity</span>
-                  <h4>Zero-Trust IAM Provisioning MCP</h4>
-                  <span>Hire/terminate events auto-sync access credentials.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-fraud">
-                  <span class="blog-nav-domain" style="color: #be123c;">MCP · Risk</span>
-                  <h4>Fraud Ring Detection MCP</h4>
-                  <span>Graph traversal catches payment ring fraud in ms.</span>
-                </div>
-                <div class="blog-nav-item" data-article="mcp-multiagent">
-                  <span class="blog-nav-domain" style="color: #7c3aed;">MCP · Orchestration</span>
-                  <h4>Multi-Agent A2A Orchestration</h4>
-                  <span>MCP server mediating between specialist agents.</span>
+              <!-- High-level Architecture -->
+              <div class="help-section" style="background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; color: #fff; margin: 0 0 0.75rem 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fa-solid fa-sitemap" style="color: #10b981;"></i> High-Level Architecture
+                </h3>
+                <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 1rem;">
+                  meldra.ai is a serverless, zero-replication data lakehouse platform. Instead of copying raw transaction logs or ERP records to external data warehouses, we execute queries directly against open-standard <strong>Apache Iceberg</strong> metadata stored in your S3 or Google Cloud Storage buckets.
+                </p>
+                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: 8px; font-size: 0.8rem; line-height: 1.5; color: var(--text-main); margin-bottom: 1rem;">
+                  <h4 style="margin: 0 0 0.5rem 0; color: #bef264;">How the Query Cycle Works:</h4>
+                  <ol style="margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                    <li><strong>Natural Language Input</strong>: Users query the database using plain English.</li>
+                    <li><strong>Context Grounding</strong>: The system sweeps the Postgres AGE graph schema to map columns, constraints, and relationships.</li>
+                    <li><strong>Serverless Compilation</strong>: The query compiles into optimized DuckDB SQL statements targeting S3 Parquet partitions.</li>
+                    <li><strong>Zero-Copy Execution</strong>: Manifest and metadata logs are read on-the-fly, returning results in milliseconds without cluster overhead.</li>
+                  </ol>
                 </div>
               </div>
 
-              <!-- Right side: Blog Reader Panel -->
-              <div class="blog-reader-panel">
+              <!-- API & Integration Guide -->
+              <div class="help-section" style="background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; color: #fff; margin: 0 0 0.75rem 0; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fa-solid fa-code" style="color: #bef264;"></i> Developer API &amp; Integration Guide
+                </h3>
+                <p style="font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 1rem;">
+                  Integrate your data pipelines directly with Meldra. The backend exposes standard REST endpoints for query execution, data ingestion, and catalog schema evolution.
+                </p>
                 
-                <!-- Article 0: Grounded Context Zero-Copy -->
-                <div id="art-grounded-context" class="blog-article-content active">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">Semantic Architecture</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Grounded Context Without Replication: The Zero-Copy AI Agent</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra AI Architecture Team · 7 Min Read</div>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                  <!-- Endpoint 1 -->
+                  <div style="border-left: 3px solid #10b981; padding-left: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                      <span style="font-size: 0.65rem; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">POST</span>
+                      <strong style="font-family: monospace; font-size: 0.85rem; color: #fff;">/v1/catalog/query</strong>
+                    </div>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Execute analytical SQL queries against Iceberg tables serverless.</span>
                   </div>
                   
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>
-                      Enterprise AI agents frequently fail in production due to a lack of precise business context. Large Language Models (LLMs) cannot accurately answer queries like <em>"What is our outstanding liability for Vendor A?"</em> if they cannot securely inspect raw schemas, active transaction snapshops, and double-entry mappings.
-                    </p>
-                    <p>
-                      Traditional data warehouses like <strong>Snowflake</strong> (with features like Cortex Sense) and <strong>Databricks</strong> address this by building proprietary semantic search indexes. However, this model has a major flaw: <strong>it requires data replication</strong>. To ground the AI, you must first build complex ETL pipelines to extract your ERP records (such as SAP BSEG tables) and ingest them into their proprietary cloud systems, paying heavy compute and storage fees along the way.
-                    </p>
-                    
-                    <div style="background: rgba(99, 102, 241, 0.03); border-left: 4px solid #6366f1; padding: 1.2rem; border-radius: 6px; margin: 0.5rem 0;">
-                      <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">The Meldra Approach: Grounding-in-Place</h4>
-                      <p style="margin: 0;">
-                        <strong>meldra.ai</strong> solves the context gap without moving a single byte of data. By leveraging open-standard <strong>Apache Iceberg</strong> metadata and serverless compiles, our agents gain semantic context directly from your raw data lake.
-                      </p>
+                  <!-- Endpoint 2 -->
+                  <div style="border-left: 3px solid #a78bfa; padding-left: 1rem; background: rgba(0,0,0,0.15); padding: 0.75rem 1rem; border-radius: 0 6px 6px 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                      <span style="font-size: 0.65rem; font-weight: 700; color: #a78bfa; background: rgba(167,139,250,0.15); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">POST</span>
+                      <strong style="font-family: monospace; font-size: 0.85rem; color: #fff;">/v1/ingest</strong>
                     </div>
-
-                    <!-- Diagram of Zero-Copy Grounding Loop -->
-                    <div class="architecture-diagram-container" style="border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; background: #f8fafc; margin: 1rem 0;">
-                      <h4 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 0.95rem; font-weight: 800; color: #0f172a; text-align: center;">Meldra Zero-Copy Grounding Loop</h4>
-                      <div class="arch-flow" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <div class="arch-node" style="flex: 1.2; text-align: center; background: #fff; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #0f172a;">User Question</h5>
-                          <span style="font-size: 0.65rem; color: #64748b;">Natural Language Prompt</span>
-                        </div>
-                        <div class="arch-connector" style="color: #6366f1;"><i class="fa-solid fa-arrow-right"></i></div>
-                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(99, 102, 241, 0.05); padding: 0.6rem; border: 1px solid #6366f1; border-radius: 6px;">
-                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #6366f1;">Semantic AGE Graph</h5>
-                          <span style="font-size: 0.65rem; color: #6366f1;">Resolves Relationships &amp; Columns</span>
-                        </div>
-                        <div class="arch-connector" style="color: #16a34a;"><i class="fa-solid fa-arrow-right"></i></div>
-                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(22, 163, 74, 0.05); padding: 0.6rem; border: 1px solid #16a34a; border-radius: 6px;">
-                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #16a34a;">DuckDB Serverless Compile</h5>
-                          <span style="font-size: 0.65rem; color: #16a34a;">Local Query Execution</span>
-                        </div>
-                        <div class="arch-connector" style="color: #0052cc;"><i class="fa-solid fa-arrow-right"></i></div>
-                        <div class="arch-node" style="flex: 1.2; text-align: center; background: rgba(0, 82, 204, 0.05); padding: 0.6rem; border: 1px solid #0052cc; border-radius: 6px;">
-                          <h5 style="margin:0 0 2px 0; font-size: 0.8rem; font-weight: 700; color: #0052cc;">S3 Iceberg Table</h5>
-                          <span style="font-size: 0.65rem; color: #0052cc;">Durable Raw Storage</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">How Our Architecture Differs</h4>
-                    
-                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">1. Hybrid Knowledge Graph Routing</h5>
-                    <p style="margin-top: 0;">
-                      Instead of running expensive vector searches across every table schema, meldra.ai uses a **Postgres AGE graph layer** to map query history, table dependencies, and transactional links. When a user asks a question, the agent runs a fast graph sweep to resolve the exact tables and columns required, eliminating query-time latency and hallucination.
-                    </p>
-
-                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">2. Open-Standard Model Context Protocol (MCP)</h5>
-                    <p style="margin-top: 0;">
-                      Snowflake and Databricks lock you into their respective LLM ecosystems. meldra.ai is built on the **Model Context Protocol (MCP)**. We expose an open-standard gateway, meaning you can plug in any state-of-the-art model (such as Claude 3.5 Sonnet, GPT-4o, or local Llama models) and it will instantly receive grounded data lake context via standardized tool schemas.
-                    </p>
-                    
-                    <h5 style="color: #0f172a; font-weight: 700; margin-bottom: 0.25rem;">3. DuckDB-Powered Serverless Compilation</h5>
-                    <p style="margin-top: 0;">
-                      We compile natural language queries directly into optimized DuckDB operations that target raw S3 Parquet partitions. This bypasses the heavy compute clusters, keeping your monthly infrastructure cost serverless and highly performant.
-                    </p>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Agentic Execution Example</h4>
-                    <p>
-                      Below is the semantic schema resolution pattern our agent uses to map transactional relationships before issuing the local serverless compile.
-                    </p>
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
-# Meldra AI Agent context routing payload
-{
-  "semantic_context": {
-    "target_catalog": "inventory_catalog",
-    "target_namespace": "default",
-    "primary_table": "sap_bseg",
-    "dependencies": ["bkpf_headers", "vendor_registry"],
-    "relationship_graph_path": "a:Account-[:TRANSFERS]->b:Account"
-  },
-  "duckdb_compile_params": {
-    "engine": "duckdb_iceberg_reader",
-    "s3_path": "s3://meldra-warehouse/default.db/sap_bseg"
-  }
-}</pre>
+                    <span style="font-size: 0.78rem; color: var(--text-muted);">Ingest CSV data payloads programmatically into partitioned tables with metadata versioning.</span>
                   </div>
                 </div>
 
-                <!-- Article 1: Spark Tax & Config Guides -->
-                <div id="art-spark-tax" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(0, 82, 204, 0.1); color: #0052cc;">Infrastructure Design</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Why meldra.ai Bypasses the Databricks &amp; Snowflake Spark Tax</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Infrastructure Team · 6 Min Read</div>
-                  </div>
-                  
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>
-                      Traditional cloud data warehouses (like <strong>Databricks</strong> or <strong>Snowflake</strong>) force teams to spin up heavy virtual machine clusters (Spark nodes) just to handle simple queries or basic ingestion pipelines. This results in thousands of dollars of idle server costs every single month.
-                    </p>
-                    <p>
-                      <strong>meldra.ai</strong> completely eliminates this "Spark Tax". By compiling natural language questions directly into optimized <strong>DuckDB SQL</strong>, our architecture queries <strong>S3 Apache Iceberg</strong> files locally and serverless on-the-fly. There is no warm cluster compute node kept running, meaning your monthly compute idle cost is exactly <strong>$0</strong>.
-                    </p>
+                <h4 style="font-size: 0.85rem; color: #fff; margin: 1.25rem 0 0.5rem 0; font-weight: 600;">Example Python Integration:</h4>
+                <pre style="background: #050310; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; font-family: var(--font-mono); font-size: 0.78rem; color: #C4B5FD; overflow-x: auto; margin: 0;">import requests
 
-                    <!-- In-App Architecture Flowchart -->
-                    <div class="architecture-diagram-container" style="border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; background: #f8fafc; margin: 1rem 0;">
-                      <h4 style="margin-top: 0; margin-bottom: 1rem; font-size: 0.95rem; font-weight: 800; color: #0f172a; text-align: center;">Meldra Data Flow System</h4>
-                      <div class="arch-flow" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                        <div class="arch-node" style="flex: 1; text-align: center; background: #fff; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px;">
-                          <h5 style="margin:0; font-size: 0.8rem; font-weight: 700; color: #0f172a;">ERP Source</h5>
-                          <span style="font-size: 0.68rem; color: #64748b;">SAP / SF JSON</span>
-                        </div>
-                        <div class="arch-connector" style="color: #64748b;"><i class="fa-solid fa-arrow-right"></i></div>
-                        <div class="arch-node featured" style="flex: 1; text-align: center; background: rgba(22, 163, 74, 0.05); padding: 0.5rem; border: 1px solid #16a34a; border-radius: 6px;">
-                          <h5 style="margin:0; font-size: 0.8rem; font-weight: 700; color: #16a34a;">meldra.ai Engine</h5>
-                          <span style="font-size: 0.68rem; color: #16a34a;">DuckDB / Serverless</span>
-                        </div>
-                        <div class="arch-connector" style="color: #64748b;"><i class="fa-solid fa-arrow-right"></i></div>
-                        <div class="arch-node S3" style="flex: 1; text-align: center; background: rgba(0, 82, 204, 0.05); padding: 0.5rem; border: 1px solid #0052cc; border-radius: 6px;">
-                          <h5 style="margin:0; font-size: 0.8rem; font-weight: 700; color: #0052cc;">AWS S3</h5>
-                          <span style="font-size: 0.68rem; color: #0052cc;">Apache Iceberg</span>
-                        </div>
-                      </div>
-                    </div>
+url = "http://localhost:8000/v1/catalog/query"
+headers = {"Authorization": "Bearer <your_access_token>"}
+payload = {
+    "sql": "SELECT dept, SUM(salary) FROM default.employees GROUP BY dept",
+    "namespace": "default"
+}
 
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">1. Databricks Zero-Copy Interoperability Guide</h4>
-                    <p>
-                      Because <strong>meldra.ai</strong> writes S3 data files using open-standard <strong>Apache Iceberg</strong> metadata and Parquet rows, <strong>Databricks</strong> can read these tables directly from your S3 bucket without requiring you to export, copy, or transfer a single byte of data.
-                    </p>
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
-# Spark SQL Catalog configuration for AWS Glue
-spark.sql.extensions                  org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
-spark.sql.catalog.meldra_catalog      org.apache.iceberg.spark.SparkCatalog
-spark.sql.catalog.meldra_catalog.type  hive
-spark.sql.catalog.meldra_catalog.uri   thrift://glue-metastore.eu-west-2.amazonaws.com:9083</pre>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">2. Snowflake Zero-Copy Interoperability Guide</h4>
-                    <p>
-                      Configure Snowflake to read the Apache Iceberg tables generated by meldra.ai by setting up an <strong>External Volume</strong> and an <strong>Iceberg Table definition</strong> inside your Snowflake worksheet.
-                    </p>
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
-CREATE OR REPLACE EXTERNAL VOLUME meldra_ext_vol
-  STORAGE_LOCATIONS = (
-    (
-      STORAGE_PROVIDER = 'S3'
-      STORAGE_BASE_URL = 's3://your-bucket-name/iceberg-warehouse/'
-      STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake-access-role'
-    )
-  );</pre>
-                  </div>
-                </div>
-
-                <!-- Article 2: Fintech agentic loops -->
-                <div id="art-fintech-graph" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(22, 163, 74, 0.1); color: #16a34a;">Fintech &amp; Compliance</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Real-Time Financial Audit Loop Detection via Serverless Graphs</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Financial Systems Team · 7 Min Read</div>
-                  </div>
-
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>
-                      <strong>The Business Problem:</strong> Financial audit teams and compliance officers face a significant bottleneck when inspecting transaction ledgers (like SAP's BSEG general ledger table, BKPF headers, and sub-ledgers). In modern multi-entity corporations, identifying transaction anomalies—specifically **circular transaction loops** designed to inflate book revenues or hide embezzled payments—requires looking at relationships between thousands of accounts.
-                    </p>
-                    <p>
-                      Using traditional relational SQL warehouses, searching for loops requires complex recursive Common Table Expressions (CTEs) or deep nested `JOIN` queries. As ledger sizes grow, these queries either run for hours on massive compute clusters or crash due to memory exhaustion. This makes real-time compliance checking impossible.
-                    </p>
-                    
-                    <div style="background: #f8fafc; border-left: 4px solid #16a34a; padding: 1rem; border-radius: 4px; margin: 0.5rem 0;">
-                      <h5 style="margin: 0 0 0.5rem 0; color: #0f172a; font-weight: 700;">The Meldra Solution: Hybrid Lake-Graph Architecture</h5>
-                      <p style="margin: 0;">
-                        We stream ledger updates directly to **S3 Apache Iceberg** for durable storage. In parallel, a background sync pipeline writes transaction edges (`TRANSFERS`) between account vertices (`Account`) inside a **Postgres AGE Relational Graph**.
-                      </p>
-                    </div>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Autonomous Agentic Audit Protocols</h4>
-                    <p>
-                      Instead of relying on manual audit batches, an **Agentic Protocol** constantly monitors the incoming transaction stream. The compliance agent executes lightweight recursive Cypher queries on the Postgres graph to search for loops and reconcile double-entry paths automatically:
-                    </p>
-                    
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
--- Query to detect circular financial loops (3 to 6 hops deep)
-SELECT * FROM cypher('finance_graph', $$
-  MATCH path = (a:Account)-[:TRANSFERS*3..6]->(a)
-  WHERE a.status = 'active'
-  RETURN path
-$$) as (path gtype);</pre>
-                    
-                    <p>
-                      When a loop is detected, the agent immediately initiates an **A2A (Application-to-Application)** webhook, placing a temporary holds flag on the target accounts in the ERP ledger database and alerting the internal auditing team. This cuts audit latency from **30 days to sub-second real-time detection**.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Article 3: Supply chain CDC -->
-                <div id="art-supply-chain-cdc" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(234, 88, 12, 0.1); color: #ea580c;">Supply Chain</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Eliminating Supply Chain Silos: Real-Time CDC &amp; O2C Lineage</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Logistics Team · 8 Min Read</div>
-                  </div>
-
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>
-                      <strong>The Business Problem:</strong> Modern supply chains suffer from disjointed operational data. Inbound logistics, warehouse inventory ledgers, and customer Order-to-Cash (O2C) records reside in completely separate databases. 
-                    </p>
-                    <p>
-                      When unexpected disruptions occur (e.g. stockouts, shipping delays, customs blocks), inventory planners are blind. Because joining these tables requires extracting data from legacy ERP logs, stockout alerts are usually delayed by **12 to 24 hours**, resulting in missed order deadlines, customer cancellations, and chargebacks.
-                    </p>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Real-Time CDC Ingestion with Serverless Compiles</h4>
-                    <p>
-                      Meldra.ai implements lightweight Change Data Capture (CDC) pipelines. Instead of spinning up permanent Spark processing nodes to ingest stream partitions, we write transaction changes directly to S3. Meldra compiles these incremental logs on-the-fly using DuckDB:
-                    </p>
-
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
--- Incremental Merge of warehouse stock changes into S3 Iceberg
-MERGE INTO inventory_catalog.default.stock_levels t
-USING (SELECT * FROM read_parquet('s3://warehouse-cdc/delta/*.parquet')) s
-ON t.sku_id = s.sku_id
-WHEN MATCHED THEN UPDATE SET t.quantity = s.quantity, t.last_updated = s.event_time
-WHEN NOT MATCHED THEN INSERT (sku_id, quantity, last_updated) VALUES (s.sku_id, s.quantity, s.event_time);</pre>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Automated A2A Procurement Triggers</h4>
-                    <p>
-                      Our agentic protocol monitors these serverless merges. If an inventory merge indicates that stock levels for a critical part drop below safety limits, the agent runs a dependency scan on the S3 graph of suppliers. 
-                    </p>
-                    <p>
-                      It automatically invokes a secure **A2A API webhook** directly back into your ERP's procurement module (e.g., SAP Material Management), drafting a Purchase Requisition (PR) to replenish stock from the fastest supplier, completely bypassing manual procurement delays.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Article 4: HR successfactors -->
-                <div id="art-hr-sf" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(147, 51, 234, 0.1); color: #9333ea;">HR &amp; IT Automation</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Zero-Trust Employee Lifecycle Sync via SuccessFactors Agentic Protocols</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Published by Meldra Identity Architecture Team · 7 Min Read</div>
-                  </div>
-
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <p>
-                      <strong>The Business Problem:</strong> Employee role changes and system onboarding represent a massive operational security risk. When an employee is hired, changes departments, or is terminated in **SAP SuccessFactors**, these changes must immediately propagate to downstream directories, financial ledgers, and identity access managers.
-                    </p>
-                    <p>
-                      Typically, this synchronization is handled by manual spreadsheets or batch schedules that run overnight. During the latency window, former employees can retain access to sensitive financial environments (zombie accounts), representing a severe compliance breach under SOC2 and SOX.
-                    </p>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Serverless IAM Audit Mappings</h4>
-                    <p>
-                      Meldra streams SuccessFactors event logs into the central `employees` Iceberg table on S3, mapping current role descriptors to organizational trees inside the Postgres graph database. This lets security agents execute instant graph sweeps:
-                    </p>
-
-                    <pre style="background: #0f172a; color: #34d399; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0.5rem 0;">
--- Scan to identify access privileges mismatching the HR organizational tree
-SELECT * FROM cypher('org_graph', $$
-  MATCH (e:Employee)-[:ASSIGNED_TO]->(r:Role)
-  MATCH (e)-[:MEMBER_OF]->(d:Department)
-  WHERE r.tier > d.max_allowed_tier
-  RETURN e.name, r.name, d.name
-$$) as (emp_name gtype, role_name gtype, dept_name gtype);</pre>
-
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 1rem;">Zero-Trust A2A Access Provisioning</h4>
-                    <p>
-                      The **Agentic Protocol** acts as an autonomous administrator. The moment a role change event updates S3, the agent detects department changes (e.g. Sales to Finance), maps the allowed system permissions, and executes automated **A2A API callbacks** to the IAM provider. 
-                    </p>
-                    <p>
-                      It immediately revokes the old tokens, provisions the new corporate credentials, and logs the entire action in the **Audit Timeline**, guaranteeing absolute security compliance in less than **2 seconds** from the initial HR action.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- ═══════════════════════════════════════════════
-                     MCP ARTICLES
-                     ═══════════════════════════════════════════════ -->
-
-                <!-- MCP 1: Iceberg Catalog MCP -->
-                <div id="art-mcp-iceberg" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(2, 132, 199, 0.1); color: #0284c7;">MCP · Data Lake</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Building an Apache Iceberg Catalog MCP Server for Natural Language Data Ops</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Data Platform Engineering · 9 Min Read · MCP Scenario #1</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #f0f9ff; border-left: 4px solid #0284c7; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> A Data Architect wants to enable their entire data team (including non-SQL-fluent business analysts) to create, query, and evolve Apache Iceberg tables on S3 using plain English. No Spark cluster, no SQL IDE, no infrastructure knowledge required.
-                    </div>
-                    <p><strong>The MCP Design:</strong> Meldra exposes an <strong>MCP (Model Context Protocol) Server</strong> that declares a catalogue of structured tools (like <code>create_table</code>, <code>query_data</code>, <code>ingest_csv</code>, <code>list_tables</code>, <code>drop_column</code>). Claude — acting as the orchestrating AI — selects the right tool based on natural language intent.</p>
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 0.5rem;">MCP Tool Manifest</h4>
-                    <pre style="background: #0f172a; color: #38bdf8; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># mcp_server.py — Meldra Iceberg MCP Tool Declarations
-tools = [
-  MCPTool(
-    name="create_iceberg_table",
-    description="Create a new Apache Iceberg table on S3 with a given schema",
-    input_schema={"namespace": "str", "table_name": "str", "schema_json": "list"}
-  ),
-  MCPTool(
-    name="query_iceberg_data",
-    description="Run a SQL SELECT query on an existing Iceberg table via DuckDB",
-    input_schema={"namespace": "str", "table_name": "str", "sql_query": "str"}
-  ),
-  MCPTool(
-    name="ingest_csv_to_iceberg",
-    description="Parse and ingest a CSV file into an Iceberg table on S3",
-    input_schema={"csv_path": "str", "namespace": "str", "table_name": "str"}
-  ),
-  MCPTool(
-    name="list_iceberg_tables",
-    description="List all Iceberg tables in a namespace from the Glue Catalog",
-    input_schema={"namespace": "str"}
-  )
-]</pre>
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 0.5rem;">User Interaction Flow</h4>
-                    <p>A business analyst types: <em>"Show me all tables in the finance namespace and preview the first 5 rows of sap_bseg."</em></p>
-                    <p>Claude invokes <code>list_iceberg_tables({"namespace": "finance"})</code>, receives the table catalog, then chains <code>query_iceberg_data({..., "sql_query": "SELECT * FROM iceberg_table LIMIT 5"})</code> — entirely without the user touching SQL or knowing about S3 paths.</p>
-                    <p><strong>Why This Matters:</strong> Traditional ETL tools require dedicated data engineers to write bespoke pipelines for every new query or table evolution. This MCP server collapses the 3-day turnaround to a 3-second Claude conversation.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 2: SAP BAPI/RFC -->
-                <div id="art-mcp-sap" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(180, 83, 9, 0.1); color: #b45309;">MCP · ERP Integration</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Triggering SAP BAPIs and RFC Calls via an AI-Native MCP Gateway</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra ERP Connector Team · 8 Min Read · MCP Scenario #2</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #fffbeb; border-left: 4px solid #b45309; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> An enterprise operations manager needs to approve a Purchase Requisition (PR) in SAP Material Management, release a billing document block, and update a vendor payment term — all from a single AI conversation, without knowing SAP transaction codes (T-Codes) or navigating SAP GUI.
-                    </div>
-                    <p><strong>The MCP Design:</strong> A Meldra MCP Gateway wraps the SAP PyRFC Python library behind MCP tool declarations. Each tool maps a business intent to a specific BAPI call with pre-validated input schemas.</p>
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 0.5rem;">MCP Tool → SAP BAPI Mapping</h4>
-                    <pre style="background: #0f172a; color: #fcd34d; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># SAP MCP Tool Definitions
-MCPTool(
-  name="approve_purchase_requisition",
-  description="Release a SAP Purchase Requisition (PR) for procurement approval",
-  sap_bapi="BAPI_PR_CHANGE",
-  input_schema={"pr_number": "str", "release_code": "str"}
-)
-MCPTool(
-  name="release_billing_block",
-  description="Remove a billing block from a SAP sales order",
-  sap_bapi="BAPI_SALESORDER_CHANGE",
-  input_schema={"sales_order": "str", "billing_block": "str"}
-)
-MCPTool(
-  name="update_vendor_payment_term",
-  description="Update the payment term for a SAP vendor in FI-AP",
-  sap_bapi="BAPI_VENDOR_CHANGE",
-  input_schema={"vendor_id": "str", "payment_term": "str", "company_code": "str"}
-)</pre>
-                    <h4 style="color: #0f172a; font-weight: 800; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 0.35rem; margin-top: 0.5rem;">Business Impact</h4>
-                    <p>An AP clerk types: <em>"Approve PR 4500012345 with release code A1 and update vendor V10001's payment term to NT60."</em> The MCP agent sequences the two BAPI calls, validates the business key formats, executes on the SAP RFC layer, and returns structured confirmation — without the user touching SAP GUI once.</p>
-                    <p>This eliminates the SAP training cost and reduces procurement cycle time from <strong>2-3 days</strong> (waiting for an SAP-literate administrator) to <strong>under 10 seconds</strong>.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 3: Snowflake Zero-Copy -->
-                <div id="art-mcp-snowflake" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;">MCP · Analytics Platform</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Snowflake Warehouse MCP: Conversational BI Without SQL Knowledge</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Analytics Team · 7 Min Read · MCP Scenario #3</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> A CFO wants to ask monthly revenue trend questions, run cost-centre variance analysis, and drill down into SAP-synced financial snapshots stored in Snowflake — from a conversational interface, with zero SQL knowledge.
-                    </div>
-                    <p><strong>The MCP Design:</strong> The Meldra Snowflake MCP Server exposes tools that accept business-level parameters (not raw SQL). Claude translates the business intent into structured parameters, invokes the tool, and formats the results as rich summaries or tables for the user.</p>
-                    <pre style="background: #0f172a; color: #38bdf8; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># Snowflake MCP Tool Examples
-MCPTool(
-  name="revenue_trend_by_period",
-  description="Get monthly revenue totals grouped by cost centre",
-  snowflake_table="finance.fact_revenue",
-  input_schema={"period_from": "str", "period_to": "str", "cost_centre": "str"}
-)
-MCPTool(
-  name="variance_analysis",
-  description="Compare actual vs planned spend for a department",
-  snowflake_tables=["finance.actuals", "finance.budget_plan"],
-  input_schema={"department_id": "str", "fiscal_year": "int"}
-)
-MCPTool(
-  name="top_vendors_by_spend",
-  description="Rank vendors by total AP invoice spend in a fiscal period",
-  snowflake_table="finance.ap_invoices",
-  input_schema={"top_n": "int", "fiscal_quarter": "str"}
-)</pre>
-                    <p>The Snowflake query results are cached in the S3 Iceberg layer as read-optimised snapshots using Meldra's serverless compile engine — so repeated questions resolve from warm S3 metadata reads rather than burning expensive Snowflake warehouse credits.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 4: Compliance Audit Trail -->
-                <div id="art-mcp-compliance" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(220, 38, 38, 0.1); color: #dc2626;">MCP · Compliance</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">SOX &amp; SOC2 Audit Trail MCP: Every Agent Action Becomes an Immutable Log</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Compliance Engineering · 8 Min Read · MCP Scenario #4</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #fff1f2; border-left: 4px solid #dc2626; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> Financial services firms under SOX Section 404 must maintain an immutable, timestamped record of every data access, table modification, and agentic decision that touches financial records. Traditional logs stored in mutable databases fail audits because they can be altered.
-                    </div>
-                    <p><strong>The MCP Design:</strong> Every tool invocation through the Meldra MCP server automatically fires a <code>log_audit_event</code> side-effect. This writes an immutable, append-only record to an S3 Iceberg partition with snapshot isolation — meaning the log itself can never be retroactively altered, deleted, or overwritten.</p>
-                    <pre style="background: #0f172a; color: #f87171; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># Audit MCP interceptor — fires on every tool call
-@mcp_tool_middleware
-async def audit_interceptor(tool_name, args, user_id, result):
-    await write_iceberg_audit(
-        table="compliance.audit_log",
-        record={
-            "event_id":    str(uuid4()),
-            "timestamp":   datetime.utcnow().isoformat(),
-            "user_id":     user_id,
-            "tool":        tool_name,
-            "args_hash":   sha256(json.dumps(args)).hexdigest(),
-            "result_hash": sha256(str(result)).hexdigest(),
-            "outcome":     "success" if result else "failure"
-        }
-    )
-    # Iceberg's snapshot isolation guarantees immutability</pre>
-                    <p>During a SOX audit, the compliance team runs a simple MCP query: <em>"Show me all financial table modifications in Q3 by user svc-etl-agent."</em> The agent scans the Iceberg audit partition and returns a structured, verifiable log — ready for the external auditor's review.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 5: Procurement Trigger -->
-                <div id="art-mcp-procurement" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(234, 88, 12, 0.1); color: #ea580c;">MCP · Supply Chain</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Autonomous Procurement MCP: Stock Breach → Purchase Requisition in Seconds</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Logistics Intelligence · 9 Min Read · MCP Scenario #5</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #fff7ed; border-left: 4px solid #ea580c; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> A manufacturing plant's warehouse management system writes stock movements to S3 as Iceberg CDC records every 60 seconds. When a critical component (e.g., printed circuit board PCB-44A) falls below its safety stock threshold, an autonomous procurement agent must detect the breach and raise a Purchase Requisition in SAP Material Management — without waiting for a human planner.
-                    </div>
-                    <p><strong>The MCP Orchestration Chain:</strong></p>
-                    <pre style="background: #0f172a; color: #fb923c; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># 1. Stock Monitor Agent detects breach via Iceberg query
-breach = mcp.invoke("query_iceberg_data", {
-    "namespace": "supply_chain",
-    "table_name": "stock_levels",
-    "sql_query": "SELECT sku, qty, safety_stock FROM iceberg_table WHERE qty &lt; safety_stock"
-})
-
-# 2. Supplier Ranking Agent selects fastest supplier via Graph query
-best_supplier = mcp.invoke("query_supplier_graph", {
-    "sku": breach["sku"],
-    "strategy": "fastest_lead_time"
-})
-
-# 3. Procurement Agent raises PR in SAP MM via BAPI
-pr_result = mcp.invoke("create_purchase_requisition", {
-    "material": breach["sku"],
-    "quantity": breach["reorder_qty"],
-    "vendor": best_supplier["vendor_id"],
-    "delivery_date": best_supplier["lead_time_days"]
-})
-
-# 4. Audit Agent logs the autonomous decision chain
-mcp.invoke("log_audit_event", {"chain": [breach, best_supplier, pr_result]})</pre>
-                    <p>The entire 4-step chain — detect → rank → procure → audit — completes in under <strong>8 seconds</strong>, compared to the standard 48-hour human procurement cycle.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 6: IAM Provisioning -->
-                <div id="art-mcp-iam" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(147, 51, 234, 0.1); color: #9333ea;">MCP · Identity &amp; Access</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Zero-Trust IAM MCP: SuccessFactors Lifecycle Events → Instant Access Provisioning</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Identity Architecture · 8 Min Read · MCP Scenario #6</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #faf5ff; border-left: 4px solid #9333ea; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> When a new employee joins (or a role changes, or an employee is terminated) in SAP SuccessFactors, their access credentials to financial reporting platforms, data lakes, and internal tooling must be provisioned or revoked within seconds — not 3 days via an IT helpdesk ticket.
-                    </div>
-                    <p><strong>The MCP Design:</strong> Meldra's IAM MCP Server listens to the SuccessFactors OData event stream (or polling the S3 employee Iceberg table for new snapshots). It exposes structured tools that map HR events to IAM API actions across Okta, Azure AD, and AWS IAM simultaneously.</p>
-                    <pre style="background: #0f172a; color: #c084fc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># IAM MCP Tool Chain for Employee Termination
-
-# Step 1: Detect termination event in Iceberg employee table
-term_event = mcp.invoke("query_iceberg_data", {
-    "sql_query": "SELECT * FROM iceberg_table WHERE event_type='TERMINATION' AND processed=false"
-})
-
-# Step 2: Revoke Okta SSO session tokens
-mcp.invoke("okta_revoke_user_sessions", {"user_email": term_event["email"]})
-
-# Step 3: Disable Azure AD account
-mcp.invoke("azure_ad_disable_account", {"upn": term_event["email"]})
-
-# Step 4: Remove from all AWS IAM groups
-mcp.invoke("aws_iam_remove_all_groups", {"aws_username": term_event["aws_user"]})
-
-# Step 5: Write immutable audit record
-mcp.invoke("log_audit_event", {"action": "TERMINATION_SYNC", "user": term_event["email"], "status": "complete"})</pre>
-                    <p>Complete termination propagation — Okta, Azure AD, AWS IAM, and the audit trail — completes in <strong>under 5 seconds</strong>, eliminating the zombie account security window that SOC2 Type II auditors flag as a critical finding.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 7: Fraud Ring Detection -->
-                <div id="art-mcp-fraud" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(190, 18, 60, 0.1); color: #be123c;">MCP · Risk &amp; Fraud</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Fraud Ring Detection MCP: Graph Traversal Catches Payment Collusion in Milliseconds</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Financial Crime Unit · 10 Min Read · MCP Scenario #7</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #fff1f2; border-left: 4px solid #be123c; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> A multinational bank processes 4 million inter-bank payment instructions per day. Fraud analysts need to detect <em>payment ring schemes</em> — where groups of seemingly unrelated accounts circulate funds to create artificial transaction histories before executing a large withdrawal. Traditional rule-based systems miss these patterns because they require multi-hop relationship traversal across the full payment graph, which is computationally prohibitive in SQL.
-                    </div>
-                    <p><strong>The MCP Design:</strong> Meldra's Fraud Detection MCP Server exposes a <code>detect_payment_rings</code> tool that triggers a recursive Cypher graph traversal in the Postgres AGE transaction graph. It checks every incoming payment batch for loops of 3–8 hops, flagging any cycle above a configurable velocity threshold.</p>
-                    <pre style="background: #0f172a; color: #fb7185; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;">-- Fraud Ring Detection Cypher Query (executed via MCP tool)
-SELECT * FROM cypher('payments_graph', $$
-  MATCH cycle = (a:Account)-[:SENT_TO*3..8]->(a)
-  WHERE ALL(r IN relationships(cycle)
-    WHERE r.amount > 10000
-    AND r.timestamp > NOW() - INTERVAL '24 hours'
-  )
-  WITH a, cycle, length(cycle) AS hops
-  WHERE hops >= 3
-  RETURN a.account_id, hops, [n IN nodes(cycle) | n.account_id] AS ring_members
-  ORDER BY hops DESC
-$$) as (account_id gtype, hops gtype, ring_members gtype);
-
-# When a ring is found, the MCP agent auto-escalates:
-mcp.invoke("freeze_accounts",       {"account_ids": ring_members})
-mcp.invoke("notify_fraud_team",      {"severity": "CRITICAL", "ring": ring_members})
-mcp.invoke("log_sar_filing_request", {"ring": ring_members, "evidence": cycle})</pre>
-                    <p>The full detection-to-freeze pipeline runs in <strong>under 200ms</strong> per batch — making real-time payment block feasible at scale. Traditional BSS/OSS fraud systems running on nightly batch reports would have missed the same ring until the next business day.</p>
-                  </div>
-                </div>
-
-                <!-- MCP 8: Multi-Agent Orchestration -->
-                <div id="art-mcp-multiagent" class="blog-article-content">
-                  <div class="blog-header">
-                    <span class="blog-tag" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">MCP · Multi-Agent</span>
-                    <h3 class="blog-title" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0;">Multi-Agent A2A Orchestration via MCP: Specialist Agents Collaborating Without Human Handoffs</h3>
-                    <div class="blog-meta" style="color: #64748b; font-size: 0.78rem;">Meldra Agentic Platform · 10 Min Read · MCP Scenario #8</div>
-                  </div>
-                  <div class="blog-body" style="display: flex; flex-direction: column; gap: 1.15rem; font-size: 0.88rem; line-height: 1.6; color: #334155;">
-                    <div style="background: #f5f3ff; border-left: 4px solid #7c3aed; padding: 1rem; border-radius: 4px;">
-                      <strong>Scenario:</strong> An enterprise month-end financial close process involves 6 separate specialist tasks: ledger reconciliation, currency revaluation, intercompany elimination, tax provision calculation, management reporting pack generation, and audit trail submission. Historically this requires 6 different teams working in sequence over 5 days. With MCP multi-agent orchestration, this collapses to a parallel automated pipeline.
-                    </div>
-                    <p><strong>The MCP Design:</strong> Meldra runs a central <strong>Orchestrator Agent</strong> that acts as the MCP client. It delegates each specialist task to a dedicated sub-agent via structured MCP tool calls. Each sub-agent is itself an MCP server exposing the domain expertise it owns.</p>
-                    <pre style="background: #0f172a; color: #a78bfa; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;"># Month-End Close Orchestration via MCP
-Orchestrator:
-  ├── mcp.invoke("ledger_reconciliation_agent",      {"period": "2026-06", "company_codes": ["1000", "2000"]})
-  │      └── Reads SAP BSEG from Iceberg, reconciles debits/credits, flags variance
-  │
-  ├── mcp.invoke("fx_revaluation_agent",             {"currencies": ["USD", "EUR", "GBP"], "rate_date": "2026-06-30"})
-  │      └── Fetches ECB rates via MCP web-fetch tool, revalues open items
-  │
-  ├── mcp.invoke("intercompany_elimination_agent",   {"entity_graph": "corporate_structure"})
-  │      └── Traverses org graph, eliminates IC transactions via Cypher
-  │
-  ├── mcp.invoke("tax_provision_agent",              {"jurisdiction": "all", "period": "2026-06"})
-  │      └── Applies jurisdiction-specific tax rules, writes provision entries
-  │
-  ├── mcp.invoke("management_reporting_agent",       {"pack": "board_pack_june_2026"})
-  │      └── Queries Snowflake, generates MD&amp;A narrative using Claude, exports to PDF
-  │
-  └── mcp.invoke("audit_submission_agent",           {"trail_table": "compliance.audit_log"})
-         └── Packages Iceberg audit snapshots, submits to external auditor portal</pre>
-                    <p>Each agent runs in parallel where dependencies allow. The orchestrator monitors completion, handles exceptions (e.g., retries a failed FX fetch with a fallback rate source), and assembles the final consolidated close package — reducing the 5-day process to <strong>under 4 hours</strong> of fully autonomous execution.</p>
-                  </div>
-                </div>
-
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())</pre>
               </div>
+
             </div>
           </div>
-
-          <!-- TAB: MCP GATEWAY -->
-          <div id="mcp-tab" class="tab-content">
-            <div class="mcp-tab-layout" style="display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.5rem; height: 100%; max-width: 1300px; margin: 0 auto; padding: 0.5rem 0;">
-              
-              <!-- Left side: MCP Servers list -->
-              <div class="mcp-servers-sidebar" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                  <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-server" style="color: var(--color-primary);"></i> MCP Registry
-                  </h3>
-                  <span class="badge" style="background: rgba(22, 163, 74, 0.15); color: #16a34a; font-size: 0.65rem; border: 1px solid rgba(22, 163, 74, 0.25);">8 Active</span>
-                </div>
-                
-                <div class="mcp-server-list blog-nav-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                  <!-- Dynamically populated in main.ts -->
-                </div>
-              </div>
-              
-              <!-- Right side: MCP Inspector & Tool Playground -->
-              <div class="blog-reader-panel mcp-playground-panel" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                  <h2 id="mcp-selected-server-name" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.25rem 0;">Iceberg Catalog MCP Server</h2>
-                  <p id="mcp-selected-server-desc" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Interact with the Apache Iceberg Glue Catalog to list, create, and query data tables.</p>
-                </div>
-                
-                <!-- Tool Selector and Input -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                  <!-- Left side: Choose Tool and Params -->
-                  <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div>
-                      <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Select Tool</label>
-                      <select id="mcp-tool-select" class="input-field" style="width: 100%; padding: 0.65rem;"></select>
-                    </div>
-                    
-                    <div>
-                      <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Tool Description</label>
-                      <p id="mcp-tool-desc" style="font-size: 0.8rem; color: var(--text-main); margin: 0; background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; line-height: 1.4; min-height: 50px;">Create a new Apache Iceberg table on S3 with a given schema</p>
-                    </div>
-                    
-                    <div>
-                      <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Arguments (JSON)</label>
-                      <textarea id="mcp-tool-arguments" class="input-field" style="width: 100%; height: 160px; font-family: var(--font-mono); font-size: 0.8rem; padding: 0.75rem; background: #0f172a; border: 1px solid var(--border-subtle); color: #34d399; resize: none; line-height: 1.5;"></textarea>
-                    </div>
-                    
-                    <button id="btn-execute-mcp-tool" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem;">
-                      <i class="fa-solid fa-play"></i> Execute Tool Call
-                    </button>
-                  </div>
-                  
-                  <!-- Right side: Execution Trace Output -->
-                  <div style="display: flex; flex-direction: column; gap: 0.75rem; height: 100%;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 0;">Execution Console Output</label>
-                      <span id="mcp-duration-badge" class="badge" style="background: rgba(22, 163, 74, 0.15); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.25); display: none;">0ms</span>
-                    </div>
-                    
-                    <!-- Execution Logs terminal -->
-                    <div id="mcp-execution-logs" style="flex: 1; min-height: 160px; background: #0b0f19; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.6; color: #94a3b8; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem;">
-                      <span style="color: #64748b;">Ready. Select a tool and execute to see trace logs.</span>
-                    </div>
-                    
-                    <div>
-                      <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Returned Value (JSON)</label>
-                      <pre id="mcp-execution-result" style="width: 100%; height: 140px; margin: 0; background: #0b0f19; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; font-family: var(--font-mono); font-size: 0.75rem; color: #e2e8f0; overflow-y: auto; line-height: 1.4;">{}</pre>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-          </div>
-
-          <!-- TAB 3: INGEST -->
-          <div id="ingest-tab" class="tab-content">
-            <div class="ingest-container" style="position: relative;">
-              <!-- Column A -->
-              <div class="ingest-panel">
-                <div class="ingest-panel-header">
-                  <i class="fa-solid fa-file-csv" style="color: var(--color-primary);"></i>
-                  <h3>1️⃣ Upload CSV Dataset</h3>
-                </div>
-
-                <div class="drop-zone" id="drop-zone">
-                  <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
-                  <span class="drop-zone-text">Drag &amp; drop your CSV file here</span>
-                  <span class="drop-zone-sub">or click to browse (Max 50MB)</span>
-                  <input type="file" id="csv-file-input" accept=".csv">
-                </div>
-
-                <div id="upload-status" style="margin-top: 1rem; display: none;"></div>
-
-                <div id="preview-section" class="ingest-preview-container" style="display: none; margin-top: 1.25rem;">
-                  <div class="preview-title">
-                    <span>Data Preview (First 5 Rows)</span>
-                    <span id="preview-row-count" class="badge badge-purple">0 rows</span>
-                  </div>
-                  <div class="preview-table-wrapper">
-                    <table class="preview-table" id="csv-preview-table">
-                      <thead><tr id="preview-thead-tr"></tr></thead>
-                      <tbody id="preview-tbody"></tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div class="sample-csv-options" style="margin-top: 1.25rem;">
-                  <h4 style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.6rem;">💡 Need sample data?</h4>
-                  <div class="sample-csv-buttons">
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-employees"><i class="fa-solid fa-users"></i> Employees</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-orders"><i class="fa-solid fa-basket-shopping"></i> Orders</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-traffic"><i class="fa-solid fa-chart-line"></i> Web Traffic</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Column B -->
-              <div class="ingest-panel">
-                <div class="ingest-panel-header">
-                  <i class="fa-solid fa-gears" style="color: var(--color-primary);"></i>
-                  <h3>2️⃣ Configure Target Schema</h3>
-                </div>
-
-                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1.1rem;">
-                  <div class="form-group">
-                    <label for="ingest-namespace">Namespace (Database)</label>
-                    <input type="text" id="ingest-namespace" class="input-field" placeholder="default">
-                  </div>
-                  <div class="form-group">
-                    <label for="ingest-table-name">Target Table Name</label>
-                    <input type="text" id="ingest-table-name" class="input-field" placeholder="employees_data">
-                  </div>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <div class="form-group">
-                      <label for="ingest-write-mode">Write Mode</label>
-                      <select id="ingest-write-mode" class="input-field" style="padding:0.4rem;">
-                        <option value="append">Append Rows</option>
-                        <option value="overwrite">Overwrite Table</option>
-                        <option value="upsert">Upsert (Merge)</option>
-                      </select>
-                    </div>
-                    <div class="form-group">
-                      <label for="ingest-merge-key">Merge Key (Upsert)</label>
-                      <input type="text" id="ingest-merge-key" class="input-field" placeholder="e.g. emp_id" style="padding:0.4rem;">
-                    </div>
-                  </div>
-                  <div class="preview-title">Detected Columns &amp; Types</div>
-                  <div class="preview-table-wrapper" style="max-height: 240px;">
-                    <table class="schema-config-table">
-                      <thead>
-                        <tr>
-                          <th>Column</th>
-                          <th>Iceberg Type</th>
-                        </tr>
-                      </thead>
-                      <tbody id="schema-config-tbody">
-                        <tr>
-                          <td colspan="2" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Upload a CSV to view schema</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <button id="btn-do-ingest" class="btn btn-primary btn-block" style="margin-top: auto;" disabled>
-                    <i class="fa-solid fa-rocket"></i> Create Table &amp; Ingest Data
-                  </button>
-                </div>
-              </div>
-
-              <div id="ingest-loading-overlay" class="ingest-loading-overlay">
-                <div class="ingest-spinner"></div>
-                <h3 style="color: #fff;" id="ingest-loading-text">Writing files to S3...</h3>
-                <p style="color: var(--text-muted); font-size: 0.83rem;">Creating Iceberg metadata snapshots</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 4: GRAPH -->
-          <div id="graph-tab" class="tab-content">
-            <div class="graph-container">
-              <div class="chat-stat-grid" id="graph-status-cards">
-                <div class="stat-card">
-                  <div class="stat-card-number" id="graph-stat-nodes">-</div>
-                  <div class="stat-card-label">Nodes in Graph</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-card-number" id="graph-stat-edges">-</div>
-                  <div class="stat-card-label">Edges in Graph</div>
-                </div>
-                <div class="stat-card">
-                  <div class="stat-card-number" id="graph-stat-active">-</div>
-                  <div class="stat-card-label">Active Database</div>
-                </div>
-              </div>
-
-              <div class="cypher-editor-panel">
-                <h3 class="section-title"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
-                <textarea id="cypher-query-input" class="cypher-textarea">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10</textarea>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 0.79rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-circle-question"></i> Example: <code>MATCH (p:Person) RETURN p.name LIMIT 10</code>
-                  </span>
-                  <button id="btn-execute-cypher" class="btn btn-primary">
-                    <i class="fa-solid fa-play"></i> Execute Query
-                  </button>
-                </div>
-              </div>
-
-              <div class="graph-results-panel">
-                <h3 class="section-title"><i class="fa-solid fa-table-list"></i> Query Output</h3>
-                <div class="graph-results-table-wrapper">
-                  <table class="preview-table" id="graph-results-table">
-                    <thead><tr id="graph-results-thead-tr"></tr></thead>
-                    <tbody id="graph-results-tbody">
-                      <tr><td style="text-align: center; color: var(--text-muted); padding: 2rem;">Run a Cypher query above to see results</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB 5: API HELP -->
-          <div id="api-tab" class="tab-content">
-            <div class="api-help-container">
-              <div class="api-help-header">
-                <h2>⚡ REST API Reference</h2>
-                <p>Complete documentation for the LakeMind backend API. All endpoints are available at your configured backend URL.</p>
-              </div>
-
-              <div class="api-base-url-bar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface2); border: 1px solid var(--border-subtle); padding: 0.75rem 1.25rem; border-radius: var(--radius-md); box-sizing: border-box;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span class="label" style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); font-family: var(--font-sans);">API Gateway</span>
-                  <span class="url" style="font-family: var(--font-sans); font-size: 0.88rem; color: #16a34a; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
-                    <i class="fa-solid fa-lock" style="color: #16a34a;"></i> Production Endpoint (Secured)
-                  </span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                  <button onclick="copyApiBaseUrl()" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; border-radius: 6px; cursor: pointer;">
-                    <i class="fa-solid fa-copy"></i> Copy Gateway URL
-                  </button>
-                  <span class="badge badge-green">FastAPI</span>
-                  <a href="#" id="api-docs-link" target="_blank" style="color: var(--color-primary); font-size: 0.78rem; text-decoration: none; font-family: var(--font-sans); display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600;">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> /docs
-                  </a>
-                </div>
-              </div>
-
-              <div class="api-endpoints-list" id="api-endpoints-list">
-                <!-- Injected by main.ts -->
-              </div>
-            </div>
-          </div>
-
+          
           <!-- TAB 6: DEVELOPER WORKSPACE -->
           <div id="workspace-tab" class="tab-content">
             <div style="max-width: 100%; margin: 0; width: 100%; display: flex; flex-direction: column; gap: 1.5rem;">
@@ -3447,15 +2617,56 @@ with DAG(
                     </div>
                     <textarea id="studio-sql-editor" class="input-field" style="font-family: var(--font-mono); font-size: 0.85rem; height: 120px; resize: none; background: #020c06; border-color: rgba(34,197,94,0.3); color: #bef264; padding: 0.75rem; box-sizing: border-box;" placeholder="-- Type your SQL here&#10;SELECT * FROM employees_sample LIMIT 10;"></textarea>
                     <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: rgba(0,0,0,0.2);">
-                      <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1rem; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle);">
-                        <span>QUERY RESULTS</span>
+                      <div style="background: rgba(255,255,255,0.02); padding: 0.5rem 1rem; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.35rem; align-items: center;">
+                          <button class="results-sub-tab-btn active" id="btn-result-view-table"><i class="fa-solid fa-table"></i> Table View</button>
+                          <button class="results-sub-tab-btn" id="btn-result-view-chart"><i class="fa-solid fa-chart-bar"></i> Chart View</button>
+                          <button class="results-sub-tab-btn" id="btn-result-view-profile"><i class="fa-solid fa-chart-pie"></i> Data Profile</button>
+                        </div>
                         <span id="studio-sql-stats">0 rows returned in 0ms</span>
                       </div>
-                      <div style="flex: 1; overflow: auto; padding: 0.5rem;">
-                        <table class="preview-table" id="studio-sql-results-table" style="width: 100%; font-size: 0.8rem;">
-                          <thead><tr id="studio-sql-thead"><th>No active query</th></tr></thead>
-                          <tbody id="studio-sql-tbody"><tr><td style="color: var(--text-muted); font-style: italic;">Run a query to populate results.</td></tr></tbody>
-                        </table>
+                      <div style="flex: 1; overflow: auto; padding: 0.5rem; position: relative;">
+                        <!-- Table View Container -->
+                        <div id="studio-sql-table-view" style="display: block; width: 100%;">
+                          <table class="preview-table" id="studio-sql-results-table" style="width: 100%; font-size: 0.8rem;">
+                            <thead><tr id="studio-sql-thead"><th>No active query</th></tr></thead>
+                            <tbody id="studio-sql-tbody"><tr><td style="color: var(--text-muted); font-style: italic;">Run a query to populate results.</td></tr></tbody>
+                          </table>
+                        </div>
+
+                        <!-- Chart View Container -->
+                        <div id="studio-sql-chart-view" style="display: none; width: 100%;">
+                          <div class="svg-chart-container">
+                            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; width: 100%; justify-content: center; flex-wrap: wrap;">
+                              <div style="display:flex; align-items:center; gap:0.35rem;">
+                                <label style="font-size:0.75rem; color:var(--text-muted);">X-Axis:</label>
+                                <select id="chart-select-x" class="input-field" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:120px;"></select>
+                              </div>
+                              <div style="display:flex; align-items:center; gap:0.35rem;">
+                                <label style="font-size:0.75rem; color:var(--text-muted);">Y-Axis:</label>
+                                <select id="chart-select-y" class="input-field" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:120px;"></select>
+                              </div>
+                              <div style="display:flex; align-items:center; gap:0.35rem;">
+                                <label style="font-size:0.75rem; color:var(--text-muted);">Type:</label>
+                                <select id="chart-select-type" class="input-field" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:100px;">
+                                  <option value="bar">Bar Chart</option>
+                                  <option value="line">Line Chart</option>
+                                </select>
+                              </div>
+                            </div>
+                            <svg id="studio-sql-svg-chart" width="550" height="250" style="background: rgba(0,0,0,0.1); border-radius: 6px;"></svg>
+                            <div class="chart-tooltip" id="chart-tooltip-el"></div>
+                          </div>
+                        </div>
+
+                        <!-- Data Profile Container -->
+                        <div id="studio-sql-profile-view" style="display: none; width: 100%;">
+                          <div class="profile-card-grid" id="profile-cards-container">
+                            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem 0;">
+                              Run a query to generate data profiling metrics.
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3573,37 +2784,45 @@ with DAG(
 
                   <!-- SUB-TAB 5: PIPELINE ORCHESTRATOR DAG -->
                   <div id="studio-tab-dag" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
-                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Medallion Pipeline Orchestrator (Bronze → Silver → Gold)</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Medallion Pipeline Orchestrator (Bronze → Silver → Gold)</h3>
+                      <button id="btn-run-dag" class="btn btn-primary btn-sm"><i class="fa-solid fa-play"></i> Run Pipeline</button>
+                    </div>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Visual representation of the ETL pipeline. Tracks ingestion tasks from raw files through consolidations to business tables.</p>
                     
                     <!-- DAG Grid visual representation -->
                     <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 2.5rem 1rem; margin-top: 1rem; position: relative;">
                       
                       <!-- Node 1: CSV Ingest -->
-                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                      <div id="dag-node-bronze" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
                         <span style="font-size: 0.65rem; font-weight: 700; color: #22c55e; background: rgba(34,197,94,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">BRONZE (RAW)</span>
                         <h4 id="dag-node-bronze-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Ingest BSEG</h4>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                        <div id="dag-status-bronze" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
                       
                       <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
 
                       <!-- Node 2: Deduplication -->
-                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                      <div id="dag-node-silver" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
                         <span style="font-size: 0.65rem; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">SILVER (CLEAN)</span>
                         <h4 id="dag-node-silver-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Clean Ledgers</h4>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                        <div id="dag-status-silver" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
 
                       <div style="color: #22c55e; font-size: 1.4rem; font-weight: bold;">➔</div>
 
                       <!-- Node 3: Aggregate -->
-                      <div style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15);">
+                      <div id="dag-node-gold" style="background: rgba(34,197,94,0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 1rem; text-align: center; width: 140px; box-shadow: 0 0 15px rgba(34,197,94,0.15); transition: all 0.3s ease;">
                         <span style="font-size: 0.65rem; font-weight: 700; color: #a855f7; background: rgba(168,85,247,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">GOLD (BI)</span>
                         <h4 id="dag-node-gold-name" style="font-size: 0.8rem; color: #fff; margin: 0;">Ledger Summary</h4>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
+                        <div id="dag-status-gold" style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">● Success (🟢)</div>
                       </div>
 
+                    </div>
+                    
+                    <!-- Live DAG Logs terminal -->
+                    <div style="background: #020c06; border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.75rem; color: #bef264; height: 120px; overflow-y: auto;" id="dag-terminal-logs">
+                      [orchestrator] Ready to run Medallion ETL pipeline execution. Click 'Run Pipeline' above.
                     </div>
                   </div>
 
@@ -3704,6 +2923,45 @@ with DAG(
         </section>
       </main>
     </div>  <!-- .app-container -->
+
+    <!-- Create Table Choice Modal -->
+    <div id="create-table-modal-overlay" class="settings-modal-overlay" style="z-index: 10005;">
+      <div class="settings-modal-box" style="max-width: 460px;">
+        <div class="settings-modal-header">
+          <h3 class="settings-modal-title"><i class="fa-solid fa-circle-plus" style="color: var(--color-primary);"></i> Create Iceberg Table</h3>
+          <button class="settings-modal-close" id="btn-close-create-table-modal" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="settings-modal-body" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+            Select your preferred method to register a new Apache Iceberg table in the catalog namespace.
+          </p>
+          
+          <!-- Option 1: Ingest via CSV -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.15rem; cursor: pointer; transition: all 0.2s;" 
+               class="create-tbl-option" id="opt-create-csv">
+            <h4 style="margin: 0 0 0.35rem 0; font-size: 0.9rem; color: #bef264; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fa-solid fa-file-csv"></i> Ingest via CSV Upload (Recommended)
+            </h4>
+            <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.35;">
+              Upload your dataset file, customize headers/schema formats, and commit files directly to your S3 bucket.
+            </p>
+          </div>
+
+          <!-- Option 2: SQL DDL Statement -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.15rem; cursor: pointer; transition: all 0.2s;" 
+               class="create-tbl-option" id="opt-create-sql">
+            <h4 style="margin: 0 0 0.35rem 0; font-size: 0.9rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fa-solid fa-terminal"></i> Create via SQL Prompt (DDL)
+            </h4>
+            <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.35;">
+              Open the interactive console and execute a standard <code>CREATE TABLE</code> SQL script to initialize table structures.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ── USER SETTINGS MODAL ── -->
     <div id="settings-modal-overlay" class="settings-modal-overlay">

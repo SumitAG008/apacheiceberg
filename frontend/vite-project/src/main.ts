@@ -120,7 +120,13 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'succes
 // TABS SWITCHING
 // ─────────────────────────────────────────
 tabButtons.forEach(button => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', (e) => {
+    if (button.classList.contains('locked-nav')) {
+      e.preventDefault();
+      e.stopPropagation();
+      showToast('Please connect your S3 data lake warehouse in the Workspace tab to unlock all features!', 'info');
+      return;
+    }
     const targetTab = button.getAttribute('data-tab');
     if (!targetTab) return;
     
@@ -288,13 +294,19 @@ async function loadAWSConfig() {
     const wsS3 = document.getElementById('workspace-s3-display');
     const wsRegion = document.getElementById('workspace-region-display');
     const wsStatus = document.getElementById('workspace-status-badge');
+    const wsBucketUriInput = document.getElementById('workspace-bucket-uri') as HTMLInputElement;
+    const wsCloudRegionInput = document.getElementById('workspace-cloud-region') as HTMLInputElement;
+    const wsCloudKeyInput = document.getElementById('workspace-cloud-key') as HTMLInputElement;
 
     if (config.s3_warehouse_uri) {
       awsRegionInput.value = config.region;
       awsS3UriInput.value = config.s3_warehouse_uri;
+      if (wsBucketUriInput) wsBucketUriInput.value = config.s3_warehouse_uri;
+      if (wsCloudRegionInput) wsCloudRegionInput.value = config.region;
       
       if (config.access_key_id_set) {
         awsAccessKeyInput.value = '••••••••••••••••';
+        if (wsCloudKeyInput) wsCloudKeyInput.value = '••••••••••••••••';
       }
       if (config.secret_access_key_set) {
         awsSecretKeyInput.value = '••••••••••••••••';
@@ -314,6 +326,7 @@ async function loadAWSConfig() {
         wsStatus.textContent = 'CONNECTED';
         wsStatus.className = 'badge badge-green';
       }
+      updateWorkspaceLockState(false);
     } else {
       customAwsToggle.checked = false;
       awsConfigForm.style.display = 'none';
@@ -326,6 +339,7 @@ async function loadAWSConfig() {
         wsStatus.textContent = 'DEMO MODE';
         wsStatus.className = 'badge badge-blue';
       }
+      updateWorkspaceLockState(true);
     }
   } catch (error) {
     console.error('Failed to load AWS configuration:', error);
@@ -3014,6 +3028,9 @@ function bootstrapApp() {
   } catch (e) { console.error("Error binding test handlers:", e); }
 
   try { initUserControls(); } catch (e) { console.error("Error initializing user controls:", e); }
+  try { initCreateTableModal(); } catch (e) { console.error("Error initializing Create Table Modal:", e); }
+  try { initSqlResultsSwitcher(); } catch (e) { console.error("Error initializing SQL Results Switcher:", e); }
+  try { initOrchestratorDagSimulation(); } catch (e) { console.error("Error initializing DAG simulation:", e); }
 }
 
 function initUserControls() {
@@ -3669,8 +3686,8 @@ async function initDataStudio() {
   const btnCreateTable = document.getElementById('btn-create-table-studio') as HTMLButtonElement;
   if (btnCreateTable) {
     btnCreateTable.onclick = () => {
-      switchTab('ingest-tab');
-      showToast('Upload a CSV file to define and create your Iceberg table.', 'info');
+      const modal = document.getElementById('create-table-modal-overlay');
+      if (modal) modal.classList.add('active');
     };
   }
 
@@ -3851,11 +3868,31 @@ async function executeStudioSQL() {
       }).join('');
     }
     showToast('SQL query completed.');
+
+    // Save to state for visualizers
+    (state as any).queryColumns = res.columns;
+    (state as any).queryRows = res.rows;
+
+    // Reset axis selectors so they rebuild on next draw
+    const selectX = document.getElementById('chart-select-x') as HTMLSelectElement;
+    if (selectX) selectX.innerHTML = '';
+
+    // If Chart View or Data Profile are currently selected, update them immediately
+    const btnChart = document.getElementById('btn-result-view-chart');
+    const btnProfile = document.getElementById('btn-result-view-profile');
+    if (btnChart && btnChart.classList.contains('active')) {
+      drawSvgChart();
+    } else if (btnProfile && btnProfile.classList.contains('active')) {
+      renderDataProfile();
+    }
   } catch (e: any) {
     showToast(e.message, 'error');
     // Display error message directly in table
     const tbody = document.getElementById('studio-sql-tbody')!;
     tbody.innerHTML = `<tr><td style="color:#ef4444; font-family:var(--font-mono); font-size:0.75rem; text-align:left;">Error executing SQL:<br>${e.message}</td></tr>`;
+    
+    (state as any).queryColumns = [];
+    (state as any).queryRows = [];
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-play"></i> Run Query';
@@ -4324,6 +4361,450 @@ function initDeveloperWorkspace() {
   // Set default provider view
   selectCloudProvider(activeCloudProvider as any);
 }
+(window as any).initDeveloperWorkspace = initDeveloperWorkspace;
+
+// ─────────────────────────────────────────
+// MELDRA UX UPGRADES IMPLEMENTATION
+// ─────────────────────────────────────────
+
+function updateWorkspaceLockState(isLocked: boolean) {
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(button => {
+    const targetTab = button.getAttribute('data-tab');
+    if (targetTab === 'workspace-tab' || targetTab === 'help-tab') {
+      button.classList.remove('locked-nav');
+    } else {
+      if (isLocked) {
+        button.classList.add('locked-nav');
+      } else {
+        button.classList.remove('locked-nav');
+      }
+    }
+  });
+
+  if (isLocked && state.activeTab !== 'workspace-tab' && state.activeTab !== 'help-tab') {
+    switchTab('workspace-tab');
+  }
+}
+
+function initCreateTableModal() {
+  const overlay = document.getElementById('create-table-modal-overlay') as HTMLDivElement;
+  const btnClose = document.getElementById('btn-close-create-table-modal');
+  const optCsv = document.getElementById('opt-create-csv');
+  const optSql = document.getElementById('opt-create-sql');
+
+  if (!overlay) return;
+
+  if (btnClose) {
+    btnClose.onclick = () => {
+      overlay.classList.remove('active');
+    };
+  }
+
+  if (optCsv) {
+    optCsv.onclick = () => {
+      overlay.classList.remove('active');
+      switchTab('ingest-tab');
+      showToast('Upload a CSV file to define and create your Iceberg table.', 'info');
+    };
+  }
+
+  if (optSql) {
+    optSql.onclick = () => {
+      overlay.classList.remove('active');
+      switchTab('studio-tab');
+      
+      // Select the SQL Console subtab
+      const sqlTabBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-sql"]') as HTMLButtonElement;
+      if (sqlTabBtn) sqlTabBtn.click();
+
+      // Pre-fill SQL DDL template
+      const sqlEditor = document.getElementById('studio-sql-editor') as HTMLTextAreaElement;
+      if (sqlEditor) {
+        sqlEditor.value = `-- Create a new Iceberg table manually via DDL\nCREATE TABLE default.new_table (\n  id INTEGER,\n  name VARCHAR,\n  salary DOUBLE,\n  department VARCHAR\n);`;
+        sqlEditor.focus();
+      }
+      showToast('Pre-filled DDL template. Customize and click "Run Query".', 'info');
+    };
+  }
+
+  // Click outside to close
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('active');
+    }
+  });
+}
+
+function initSqlResultsSwitcher() {
+  const btnTable = document.getElementById('btn-result-view-table') as HTMLButtonElement;
+  const btnChart = document.getElementById('btn-result-view-chart') as HTMLButtonElement;
+  const btnProfile = document.getElementById('btn-result-view-profile') as HTMLButtonElement;
+
+  const viewTable = document.getElementById('studio-sql-table-view')!;
+  const viewChart = document.getElementById('studio-sql-chart-view')!;
+  const viewProfile = document.getElementById('studio-sql-profile-view')!;
+
+  const buttons = [btnTable, btnChart, btnProfile];
+  const views = [viewTable, viewChart, viewProfile];
+
+  buttons.forEach((btn, idx) => {
+    if (!btn) return;
+    btn.onclick = () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      views.forEach(v => v.style.display = 'none');
+
+      btn.classList.add('active');
+      views[idx].style.display = 'block';
+
+      if (btn === btnChart) {
+        drawSvgChart();
+      } else if (btn === btnProfile) {
+        renderDataProfile();
+      }
+    };
+  });
+}
+
+function drawSvgChart() {
+  const svg = document.getElementById('studio-sql-svg-chart') as any;
+  const selectX = document.getElementById('chart-select-x') as HTMLSelectElement;
+  const selectY = document.getElementById('chart-select-y') as HTMLSelectElement;
+  const selectType = document.getElementById('chart-select-type') as HTMLSelectElement;
+  const tooltip = document.getElementById('chart-tooltip-el')!;
+
+  if (!svg) return;
+  svg.innerHTML = ''; // Clear SVG
+
+  const cols = (state as any).queryColumns || [];
+  const rows = (state as any).queryRows || [];
+
+  if (cols.length === 0 || rows.length === 0) {
+    svg.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="var(--text-muted)" font-size="0.85rem">Execute a query first to visualize data</text>`;
+    return;
+  }
+
+  // Populate selectors if empty
+  if (selectX.options.length === 0) {
+    cols.forEach((c: string) => {
+      const optX = document.createElement('option');
+      optX.value = c;
+      optX.textContent = c;
+      selectX.appendChild(optX);
+
+      const optY = document.createElement('option');
+      optY.value = c;
+      optY.textContent = c;
+      selectY.appendChild(optY);
+    });
+
+    // Smart defaults: find string/date for X, numeric for Y
+    let defaultX = cols[0];
+    let defaultY = cols[cols.length - 1];
+
+    for (let c of cols) {
+      const firstRowVal = rows[0][c];
+      if (typeof firstRowVal === 'string') {
+        defaultX = c;
+        break;
+      }
+    }
+    for (let c of cols) {
+      const firstRowVal = rows[0][c];
+      if (typeof firstRowVal === 'number') {
+        defaultY = c;
+        break;
+      }
+    }
+
+    selectX.value = defaultX;
+    selectY.value = defaultY;
+
+    // Bind change triggers to redraw
+    selectX.onchange = drawSvgChart;
+    selectY.onchange = drawSvgChart;
+    selectType.onchange = drawSvgChart;
+  }
+
+  const xCol = selectX.value;
+  const yCol = selectY.value;
+  const chartType = selectType.value;
+
+  // Render Chart
+  const svgWidth = 550;
+  const svgHeight = 250;
+  const paddingLeft = 60;
+  const paddingBottom = 40;
+  const paddingTop = 20;
+  const paddingRight = 20;
+
+  const chartWidth = svgWidth - paddingLeft - paddingRight;
+  const chartHeight = svgHeight - paddingTop - paddingBottom;
+
+  // Extract values
+  const yValues = rows.map((r: any) => Number(r[yCol] || 0));
+
+  const yMax = Math.max(...yValues, 1) * 1.15; // padding top
+  const yMin = 0;
+
+  // Draw grid lines & axes
+  let svgContent = '';
+  
+  // Y Axis Grid lines
+  for (let i = 0; i <= 4; i++) {
+    const yVal = yMin + (yMax - yMin) * (i / 4);
+    const yPos = svgHeight - paddingBottom - (yVal / yMax) * chartHeight;
+    svgContent += `
+      <line x1="${paddingLeft}" y1="${yPos}" x2="${svgWidth - paddingRight}" y2="${yPos}" stroke="rgba(255,255,255,0.05)" stroke-width="1"></line>
+      <text x="${paddingLeft - 8}" y="${yPos + 4}" fill="var(--text-muted)" font-size="0.65rem" text-anchor="end">${yVal.toFixed(0)}</text>
+    `;
+  }
+
+  // Draw Bars or Line path
+  const numPoints = rows.length;
+  const barSpacing = chartWidth / numPoints;
+
+  if (chartType === 'bar') {
+    rows.forEach((row: any, i: number) => {
+      const valX = String(row[xCol] !== null ? row[xCol] : 'NULL');
+      const valY = Number(row[yCol] || 0);
+      const barHeight = (valY / yMax) * chartHeight;
+      const xPos = paddingLeft + (i * barSpacing) + (barSpacing * 0.15);
+      const yPos = svgHeight - paddingBottom - barHeight;
+      const barW = barSpacing * 0.7;
+
+      svgContent += `
+        <rect class="svg-bar" x="${xPos}" y="${yPos}" width="${barW}" height="${barHeight}" rx="3"
+          data-x="${valX}" data-y="${valY}" data-col="${yCol}"
+        ></rect>
+        <text x="${xPos + barW/2}" y="${svgHeight - paddingBottom + 16}" fill="var(--text-muted)" font-size="0.65rem" text-anchor="middle">
+          ${valX.substring(0, 10)}
+        </text>
+      `;
+    });
+  } else {
+    // Line chart
+    let points: string[] = [];
+    rows.forEach((row: any, i: number) => {
+      const valY = Number(row[yCol] || 0);
+      const xPos = paddingLeft + (i * barSpacing) + (barSpacing * 0.5);
+      const yPos = svgHeight - paddingBottom - (valY / yMax) * chartHeight;
+      points.push(`${xPos},${yPos}`);
+    });
+
+    svgContent += `
+      <path class="svg-line" d="M ${points.join(' L ')}"></path>
+    `;
+
+    // Draw dots and x labels
+    rows.forEach((row: any, i: number) => {
+      const valX = String(row[xCol] !== null ? row[xCol] : 'NULL');
+      const valY = Number(row[yCol] || 0);
+      const xPos = paddingLeft + (i * barSpacing) + (barSpacing * 0.5);
+      const yPos = svgHeight - paddingBottom - (valY / yMax) * chartHeight;
+
+      svgContent += `
+        <circle class="svg-dot" cx="${xPos}" cy="${yPos}" r="4" data-x="${valX}" data-y="${valY}" data-col="${yCol}"></circle>
+        <text x="${xPos}" y="${svgHeight - paddingBottom + 16}" fill="var(--text-muted)" font-size="0.65rem" text-anchor="middle">
+          ${valX.substring(0, 10)}
+        </text>
+      `;
+    });
+  }
+
+  // Draw X & Y Main Axis Lines
+  svgContent += `
+    <line x1="${paddingLeft}" y1="${svgHeight - paddingBottom}" x2="${svgWidth - paddingRight}" y2="${svgHeight - paddingBottom}" stroke="var(--border-subtle)" stroke-width="1.5"></line>
+    <line x1="${paddingLeft}" y1="${paddingTop}" x2="${paddingLeft}" y2="${svgHeight - paddingBottom}" stroke="var(--border-subtle)" stroke-width="1.5"></line>
+  `;
+
+  svg.innerHTML = svgContent;
+
+  // Add event listeners for tooltips
+  const hoverElements = svg.querySelectorAll('.svg-bar, .svg-dot');
+  hoverElements.forEach((el: any) => {
+    el.addEventListener('mousemove', (e: MouseEvent) => {
+      const xVal = el.getAttribute('data-x');
+      const yVal = el.getAttribute('data-y');
+      const col = el.getAttribute('data-col');
+      
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `<strong>${xVal}</strong><br><span style="color:#bef264;">${col}: ${Number(yVal).toLocaleString()}</span>`;
+      
+      const bounds = svg.getBoundingClientRect();
+      tooltip.style.left = `${e.clientX - bounds.left + 15}px`;
+      tooltip.style.top = `${e.clientY - bounds.top - 40}px`;
+    });
+
+    el.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+  });
+}
+
+function renderDataProfile() {
+  const container = document.getElementById('profile-cards-container')!;
+  if (!container) return;
+
+  const cols = (state as any).queryColumns || [];
+  const rows = (state as any).queryRows || [];
+
+  if (cols.length === 0 || rows.length === 0) {
+    container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-style: italic; padding: 2rem 0;">Execute a query to generate data profiling metrics.</div>`;
+    return;
+  }
+
+  container.innerHTML = cols.map((colName: string) => {
+    // Analyze rows for this column
+    const vals = rows.map((r: any) => r[colName]);
+    const total = vals.length;
+    const nulls = vals.filter((v: any) => v === null || v === undefined).length;
+    const nullPct = (nulls / total) * 100;
+    
+    // Distinct check
+    const distinctSet = new Set(vals.filter((v: any) => v !== null && v !== undefined));
+    const distinctCount = distinctSet.size;
+    const uniquePct = total > 0 ? (distinctCount / total) * 100 : 0;
+
+    // Detect type
+    const nonNulls = vals.filter((v: any) => v !== null && v !== undefined);
+    let typeTag = 'String';
+    let minVal = 'N/A';
+    let maxVal = 'N/A';
+    let avgVal = 'N/A';
+
+    if (nonNulls.length > 0) {
+      const firstVal = nonNulls[0];
+      if (typeof firstVal === 'number') {
+        typeTag = Number.isInteger(firstVal) ? 'Integer' : 'Float';
+        const numVals = nonNulls as number[];
+        minVal = Math.min(...numVals).toLocaleString();
+        maxVal = Math.max(...numVals).toLocaleString();
+        const sum = numVals.reduce((acc, curr) => acc + curr, 0);
+        avgVal = (sum / numVals.length).toFixed(2);
+      } else if (typeof firstVal === 'boolean') {
+        typeTag = 'Boolean';
+      }
+    }
+
+    const nullBarColor = nullPct === 0 ? '#22c55e' : nullPct < 20 ? '#eab308' : '#ef4444';
+
+    return `
+      <div class="column-profile-card">
+        <div class="column-profile-header">
+          <span class="column-profile-title">${colName}</span>
+          <span class="column-profile-type">${typeTag}</span>
+        </div>
+        
+        <div class="column-stat-row">
+          <span>Distinct Values:</span>
+          <span class="column-stat-val">${distinctCount} (${uniquePct.toFixed(0)}%)</span>
+        </div>
+        
+        <div class="column-stat-row" style="margin-top: 0.25rem;">
+          <span>Null Values:</span>
+          <span class="column-stat-val" style="color: ${nullBarColor};">${nulls} (${nullPct.toFixed(0)}%)</span>
+        </div>
+        
+        <div style="background: rgba(255,255,255,0.06); height: 4px; border-radius: 10px; overflow: hidden; margin-top: 0.15rem;">
+          <div style="background: ${nullBarColor}; width: ${100 - nullPct}%; height: 100%;"></div>
+        </div>
+
+        ${typeTag === 'Integer' || typeTag === 'Float' ? `
+          <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.06); display: flex; flex-direction: column; gap: 0.2rem;">
+            <div class="column-stat-row"><span>Min:</span><span class="column-stat-val">${minVal}</span></div>
+            <div class="column-stat-row"><span>Max:</span><span class="column-stat-val">${maxVal}</span></div>
+            <div class="column-stat-row"><span>Avg:</span><span class="column-stat-val">${avgVal}</span></div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function initOrchestratorDagSimulation() {
+  const btnRun = document.getElementById('btn-run-dag') as HTMLButtonElement;
+  const terminal = document.getElementById('dag-terminal-logs')!;
+
+  const nodeBronze = document.getElementById('dag-node-bronze');
+  const nodeSilver = document.getElementById('dag-node-silver');
+  const nodeGold = document.getElementById('dag-node-gold');
+
+  const statusBronze = document.getElementById('dag-status-bronze');
+  const statusSilver = document.getElementById('dag-status-silver');
+  const statusGold = document.getElementById('dag-status-gold');
+
+  if (!btnRun) return;
+
+  btnRun.onclick = () => {
+    btnRun.disabled = true;
+    btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+    terminal.innerHTML = `[orchestrator] Medallion ETL pipeline triggered...`;
+    
+    // Clear styles
+    [nodeBronze, nodeSilver, nodeGold].forEach(n => {
+      if (n) {
+        n.classList.remove('dag-node-glowing');
+        n.classList.remove('dag-node-processing');
+      }
+    });
+    
+    if (statusBronze) statusBronze.textContent = '● Processing';
+    if (statusSilver) statusSilver.textContent = '● Ready';
+    if (statusGold) statusGold.textContent = '● Ready';
+
+    // Step 1: Bronze
+    if (nodeBronze) nodeBronze.classList.add('dag-node-processing');
+    
+    setTimeout(() => {
+      if (nodeBronze) {
+        nodeBronze.classList.remove('dag-node-processing');
+        nodeBronze.classList.add('dag-node-glowing');
+      }
+      if (statusBronze) statusBronze.innerHTML = '● Success (🟢)';
+      terminal.innerHTML += `<br>[Bronze] Ingestion raw data read from CSV logs completed.`;
+      terminal.innerHTML += `<br>[Bronze] Committing 1,250 rows to S3 raw manifest files.`;
+      terminal.scrollTop = terminal.scrollHeight;
+      
+      // Step 2: Silver
+      if (statusSilver) statusSilver.textContent = '● Processing';
+      if (nodeSilver) nodeSilver.classList.add('dag-node-processing');
+    }, 1200);
+
+    setTimeout(() => {
+      if (nodeSilver) {
+        nodeSilver.classList.remove('dag-node-processing');
+        nodeSilver.classList.add('dag-node-glowing');
+      }
+      if (statusSilver) statusSilver.innerHTML = '● Success (🟢)';
+      terminal.innerHTML += `<br>[Silver] Schema validated against S3 metadata specifications.`;
+      terminal.innerHTML += `<br>[Silver] Data quality contracts check: 0 validation checks failed.`;
+      terminal.innerHTML += `<br>[Silver] Deduplication clean: Materialized employees_sample (Silver table).`;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Step 3: Gold
+      if (statusGold) statusGold.textContent = '● Processing';
+      if (nodeGold) nodeGold.classList.add('dag-node-processing');
+    }, 2800);
+
+    setTimeout(() => {
+      if (nodeGold) {
+        nodeGold.classList.remove('dag-node-processing');
+        nodeGold.classList.add('dag-node-glowing');
+      }
+      if (statusGold) statusGold.innerHTML = '● Success (🟢)';
+      terminal.innerHTML += `<br>[Gold] Running DuckDB serverless summary aggregates.`;
+      terminal.innerHTML += `<br>[Gold] Compacted manifesting logs updated. Gold analytics tables synced.`;
+      terminal.innerHTML += `<br>[orchestrator] Medallion ETL pipeline finished successfully in 4350ms!`;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      btnRun.disabled = false;
+      btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Pipeline';
+      showToast('Medallion ETL Pipeline run completed successfully!', 'success');
+    }, 4500);
+  };
+}
+
 (window as any).initDeveloperWorkspace = initDeveloperWorkspace;
 
 

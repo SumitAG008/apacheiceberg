@@ -1788,3 +1788,203 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   }
 }
 
+/* ─────────────────────────────────────────
+   MELDRA CUSTOM UX STYLES & UPGRADES
+   ───────────────────────────────────────── */
+
+/* Workspace Locked State for Navigation Tabs */
+.tab-btn.locked-nav {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  position: relative;
+}
+.tab-btn.locked-nav::after {
+  content: " \f023"; /* FontAwesome Lock icon code */
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.72rem;
+  margin-left: 0.35rem;
+  color: #eab308;
+}
+
+/* SQL Console Results Tab Selector */
+.results-sub-tab-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.results-sub-tab-btn:hover {
+  background: var(--bg-surface2);
+  color: var(--text-main);
+  border-color: var(--border-glass);
+}
+.results-sub-tab-btn.active {
+  background: rgba(139,92,246,0.15);
+  color: #bef264;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* SVG Chart Styles */
+.svg-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+.chart-tooltip {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border-glass);
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #fff;
+  pointer-events: none;
+  display: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.svg-bar {
+  fill: var(--color-primary);
+  opacity: 0.85;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.svg-bar:hover {
+  fill: #bef264;
+  opacity: 1;
+  filter: drop-shadow(0px 0px 6px var(--color-primary));
+}
+.svg-line {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+}
+.svg-dot {
+  fill: #bef264;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r 0.2s ease;
+}
+.svg-dot:hover {
+  r: 6;
+}
+
+/* Column Profile Dashboard Card Grid */
+.profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  padding: 0.5rem;
+}
+.column-profile-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.column-profile-card:hover {
+  border-color: var(--border-glass);
+  background: rgba(139, 92, 246, 0.02);
+}
+.column-profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+.column-profile-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  font-family: var(--font-mono);
+}
+.column-profile-type {
+  font-size: 0.65rem;
+  background: rgba(255,255,255,0.06);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.column-stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.column-stat-val {
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+}
+
+/* DAG Simulator Glowing Outline */
+.dag-node-glowing {
+  animation: dagNodeGlow 1.5s infinite alternate;
+}
+@keyframes dagNodeGlow {
+  from {
+    border-color: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+  }
+  to {
+    border-color: #bef264;
+    box-shadow: 0 0 22px rgba(190, 242, 100, 0.6);
+  }
+}
+.dag-node-processing {
+  animation: dagProcessing 1s infinite alternate;
+}
+@keyframes dagProcessing {
+  from {
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
+  }
+  to {
+    border-color: #a78bfa;
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.6);
+  }
+}
+
+/* Help Guide Accordion & Layout styles */
+.help-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  color: var(--text-main);
+}
+.help-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+.help-section h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  color: #fff;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+}
+
+
