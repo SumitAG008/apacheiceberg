@@ -2635,8 +2635,14 @@
                     </div>
 
                     <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;" id="label-auth-key">AWS Access Key ID / IAM Role</label>
-                      <input type="text" id="workspace-cloud-key" class="input-field" placeholder="AKIAIOSFODNN7EXAMPLE" style="padding: 0.4rem; font-size: 0.8rem;">
+                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;" id="label-auth-key">AWS Access Key ID</label>
+                      <input type="text" id="workspace-cloud-key" class="input-field" placeholder="AKIAIOSFODNN7EXAMPLE" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                    </div>
+
+                    <div>
+                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">AWS Secret Access Key</label>
+                      <input type="password" id="workspace-cloud-secret" class="input-field" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                      <span style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">🔒 Stored encrypted server-side. Never shared.</span>
                     </div>
                     
                     <button class="btn btn-secondary btn-sm" id="btn-save-workspace-config" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> Apply Connection Parameters</button>

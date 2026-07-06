@@ -310,6 +310,8 @@ async function loadAWSConfig() {
       }
       if (config.secret_access_key_set) {
         awsSecretKeyInput.value = '••••••••••••••••';
+        const wsCloudSecretInput = document.getElementById('workspace-cloud-secret') as HTMLInputElement;
+        if (wsCloudSecretInput) wsCloudSecretInput.value = '••••••••••••••••';
       }
 
       customAwsToggle.checked = true;
@@ -4865,11 +4867,14 @@ function initDeveloperWorkspace() {
       btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Applying...';
       
       try {
+        const secretInput = document.getElementById('workspace-cloud-secret') as HTMLInputElement;
+        const secret = secretInput ? secretInput.value.trim() : '';
+
         await api.updateAWSConfig({
           region,
           s3_warehouse_uri: bucket,
           access_key_id: key || undefined,
-          secret_access_key: undefined
+          secret_access_key: secret || undefined
         });
         
         showToast(`Meldra Connection Parameters applied for ${activeCloudProvider.toUpperCase()} (${region}) targeting bucket: ${bucket}`, 'success');
