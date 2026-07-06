@@ -299,27 +299,27 @@ async function loadAWSConfig() {
     const wsCloudKeyInput = document.getElementById('workspace-cloud-key') as HTMLInputElement;
 
     if (config.s3_warehouse_uri) {
-      awsRegionInput.value = config.region;
-      awsS3UriInput.value = config.s3_warehouse_uri;
+      if (awsRegionInput) awsRegionInput.value = config.region;
+      if (awsS3UriInput) awsS3UriInput.value = config.s3_warehouse_uri;
       if (wsBucketUriInput) wsBucketUriInput.value = config.s3_warehouse_uri;
       if (wsCloudRegionInput) wsCloudRegionInput.value = config.region;
       
       if (config.access_key_id_set) {
-        awsAccessKeyInput.value = '••••••••••••••••';
+        if (awsAccessKeyInput) awsAccessKeyInput.value = '••••••••••••••••';
         if (wsCloudKeyInput) wsCloudKeyInput.value = '••••••••••••••••';
       }
       if (config.secret_access_key_set) {
-        awsSecretKeyInput.value = '••••••••••••••••';
+        if (awsSecretKeyInput) awsSecretKeyInput.value = '••••••••••••••••';
         const wsCloudSecretInput = document.getElementById('workspace-cloud-secret') as HTMLInputElement;
         if (wsCloudSecretInput) wsCloudSecretInput.value = '••••••••••••••••';
       }
 
-      customAwsToggle.checked = true;
-      awsConfigForm.style.display = 'flex';
-      awsDemoInfo.style.display = 'none';
+      if (customAwsToggle) customAwsToggle.checked = true;
+      if (awsConfigForm) awsConfigForm.style.display = 'flex';
+      if (awsDemoInfo) awsDemoInfo.style.display = 'none';
       
       // Pre-fill target namespace default in ingestion tab
-      ingestNamespace.value = 'default';
+      if (ingestNamespace) ingestNamespace.value = 'default';
 
       // Update Workspace Details Panel
       if (wsS3) wsS3.textContent = config.s3_warehouse_uri;
@@ -330,9 +330,9 @@ async function loadAWSConfig() {
       }
       updateWorkspaceLockState(false);
     } else {
-      customAwsToggle.checked = false;
-      awsConfigForm.style.display = 'none';
-      awsDemoInfo.style.display = 'block';
+      if (customAwsToggle) customAwsToggle.checked = false;
+      if (awsConfigForm) awsConfigForm.style.display = 'none';
+      if (awsDemoInfo) awsDemoInfo.style.display = 'block';
 
       // Update Workspace Details Panel for Demo mode
       if (wsS3) wsS3.textContent = 'Local sandbox (SQLite fallback)';
@@ -356,7 +356,7 @@ document.getElementById('btn-goto-snowflake')?.addEventListener('click', () => {
   document.getElementById('guide-snowflake')?.scrollIntoView({ behavior: 'smooth' });
 });
 
-customAwsToggle.addEventListener('change', () => {
+customAwsToggle?.addEventListener('change', () => {
   if (customAwsToggle.checked) {
     awsConfigForm.style.display = 'flex';
     awsDemoInfo.style.display = 'none';
@@ -366,7 +366,7 @@ customAwsToggle.addEventListener('change', () => {
   }
 });
 
-btnConnectAws.addEventListener('click', async () => {
+btnConnectAws?.addEventListener('click', async () => {
   const region = awsRegionInput.value.trim();
   const s3_warehouse_uri = awsS3UriInput.value.trim();
   let access_key_id = awsAccessKeyInput.value.trim();
@@ -495,14 +495,14 @@ async function sendMessage(text: string) {
   }
 }
 
-btnSendMessage.addEventListener('click', () => {
+btnSendMessage?.addEventListener('click', () => {
   const prompt = chatInputText.value.trim();
   if (!prompt) return;
   chatInputText.value = '';
   sendMessage(prompt);
 });
 
-chatInputText.addEventListener('keydown', (e) => {
+chatInputText?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const prompt = chatInputText.value.trim();
     if (!prompt) return;
@@ -511,7 +511,7 @@ chatInputText.addEventListener('keydown', (e) => {
   }
 });
 
-btnClearChat.addEventListener('click', () => {
+btnClearChat?.addEventListener('click', () => {
   initChat();
   showToast('Chat history cleared.', 'info');
 });
@@ -675,20 +675,20 @@ function buildLessonsDeck() {
 
 // Drag and drop events
 ['dragenter', 'dragover'].forEach(eventName => {
-  dropZone.addEventListener(eventName, (e) => {
+  dropZone?.addEventListener(eventName, (e) => {
     e.preventDefault();
     dropZone.classList.add('dragover');
   }, false);
 });
 
 ['dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, (e) => {
+  dropZone?.addEventListener(eventName, (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
   }, false);
 });
 
-dropZone.addEventListener('drop', (e) => {
+dropZone?.addEventListener('drop', (e) => {
   const dt = e.dataTransfer;
   if (!dt) return;
   const files = dt.files;
@@ -697,11 +697,11 @@ dropZone.addEventListener('drop', (e) => {
   }
 });
 
-dropZone.addEventListener('click', () => {
+dropZone?.addEventListener('click', () => {
   csvFileInput.click();
 });
 
-csvFileInput.addEventListener('change', () => {
+csvFileInput?.addEventListener('change', () => {
   if (csvFileInput.files && csvFileInput.files.length > 0) {
     handleCSVFile(csvFileInput.files[0]);
   }
@@ -804,7 +804,7 @@ async function handleCSVFile(file: File) {
 }
 
 // Ingestion Execution
-btnDoIngest.addEventListener('click', async () => {
+btnDoIngest?.addEventListener('click', async () => {
   const namespace = ingestNamespace.value.trim() || 'default';
   const table_name = ingestTableName.value.trim();
   
@@ -879,7 +879,7 @@ function downloadCSVFile(filename: string, content: string) {
   document.body.removeChild(link);
 }
 
-btnSampleEmployees.addEventListener('click', () => {
+btnSampleEmployees?.addEventListener('click', () => {
   const content = `emp_id,name,department,salary,hire_date
 1,Alice Smith,Engineering,85000,2020-01-15
 2,Bob Jones,Marketing,72000,2019-03-22
@@ -895,7 +895,7 @@ btnSampleEmployees.addEventListener('click', () => {
   showToast('Generated employees_sample.csv', 'info');
 });
 
-btnSampleOrders.addEventListener('click', () => {
+btnSampleOrders?.addEventListener('click', () => {
   const content = `order_id,product,quantity,price,order_date
 1001,Laptop,1,999.99,2024-01-10
 1002,Mouse,2,29.99,2024-01-11
@@ -911,7 +911,7 @@ btnSampleOrders.addEventListener('click', () => {
   showToast('Generated orders_sample.csv', 'info');
 });
 
-btnSampleTraffic.addEventListener('click', () => {
+btnSampleTraffic?.addEventListener('click', () => {
   const content = `page,visits,bounces,date
 /home,4521,1230,2024-01-15
 /about,1203,432,2024-01-15
@@ -1030,7 +1030,7 @@ async function runCypherQuery() {
   }
 }
 
-btnExecuteCypher.addEventListener('click', runCypherQuery);
+btnExecuteCypher?.addEventListener('click', runCypherQuery);
 
 
 // ─────────────────────────────────────────
@@ -1098,7 +1098,7 @@ async function loadAuditLogs() {
   }
 }
 
-btnRefreshAudit.addEventListener('click', loadAuditLogs);
+btnRefreshAudit?.addEventListener('click', loadAuditLogs);
 
 
 // ─────────────────────────────────────────
