@@ -1038,7 +1038,17 @@ async function loadAuditLogs() {
   auditTimeline.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2.5rem;"><i class="fa-solid fa-arrows-spin fa-spin" style="font-size: 1.5rem; color: var(--color-primary);"></i> Loading system audit timeline...</div>';
   
   try {
-    const logs = await api.getAuditLogs();
+    let logs = await api.getAuditLogs();
+    
+    // Merge local session storage logs
+    const localLogsStr = sessionStorage.getItem('meldra_local_audit_logs');
+    if (localLogsStr) {
+      try {
+        const localLogs = JSON.parse(localLogsStr);
+        logs = [...localLogs, ...logs];
+      } catch (e) {}
+    }
+    
     auditTimeline.innerHTML = '';
     
     if (logs.length === 0) {
@@ -3688,7 +3698,7 @@ async function initDataStudio() {
       
       const targetEl = document.getElementById(target);
       if (targetEl) {
-        if (target === 'studio-tab-sql') targetEl.style.display = 'flex';
+        if (target === 'studio-tab-sql' || target === 'studio-tab-history' || target === 'studio-tab-git' || target === 'studio-tab-automation') targetEl.style.display = 'flex';
         else targetEl.style.display = 'block';
       }
       
@@ -3696,6 +3706,9 @@ async function initDataStudio() {
       if (target === 'studio-tab-schema') renderSchemaTab();
       if (target === 'studio-tab-travel') loadTableHistory();
       if (target === 'studio-tab-contracts') loadTableContracts();
+      if (target === 'studio-tab-history') renderRunHistoryTable();
+      if (target === 'studio-tab-git') { renderGitCommits(); renderPromoStages(); }
+      if (target === 'studio-tab-automation') renderActiveTriggers();
     };
   });
 
@@ -3784,6 +3797,484 @@ async function initDataStudio() {
 
   // Initialize data
   await loadStudioNamespaces();
+  
+  // Bind premium Studio upgrades (Run History, Git, Triggers)
+  initPremiumStudioFeatures();
+}
+
+// ── PREMIUM RUN HISTORY AND AUTOMATION VARIABLES ──
+interface TaskStep {
+  name: string;
+  status: 'success' | 'running' | 'failed' | 'queued';
+  duration: string;
+  retryCount: number;
+  logs: string;
+}
+interface PipelineRun {
+  id: string;
+  dagName: string;
+  actor: string;
+  source: string;
+  status: 'success' | 'running' | 'failed' | 'queued';
+  duration: string;
+  time: string;
+  tasks: TaskStep[];
+}
+interface GitCommit {
+  sha: string;
+  author: string;
+  message: string;
+  time: string;
+}
+
+let activeRunId = '#1005';
+let devSha = '7b39223';
+let stagingSha = 'b0a488b';
+let prodSha = 'b0a488b';
+
+let pipelineRuns: PipelineRun[] = [
+  {
+    id: '#1005',
+    dagName: 'Ingest BSEG',
+    actor: 'sumit@company.com',
+    source: 'manual',
+    status: 'success',
+    duration: '45s',
+    time: '5 mins ago',
+    tasks: [
+      { name: 'Fetch Raw Parquet', status: 'success', duration: '12s', retryCount: 0, logs: '[task] S3 download complete. Found 2 files (1.4MB).' },
+      { name: 'Check Data Contracts', status: 'success', duration: '8s', retryCount: 0, logs: '[task] Schema mapping verified. Constraints passed.' },
+      { name: 'Commit Metadata Snapshot', status: 'success', duration: '25s', retryCount: 0, logs: '[task] Transaction log committed. Snapshot #25281923 active.' }
+    ]
+  },
+  {
+    id: '#1004',
+    dagName: 'Clean Ledgers',
+    actor: 'system-agent@cron',
+    source: 'cron',
+    status: 'success',
+    duration: '1m 12s',
+    time: '2 hours ago',
+    tasks: [
+      { name: 'Load Bronze Ingests', status: 'success', duration: '20s', retryCount: 0, logs: '[task] Bronze partition scan done. Found 1,250 raw rows.' },
+      { name: 'Deduplicate Accounts', status: 'success', duration: '40s', retryCount: 0, logs: '[task] Partition hashing complete. 0 duplicate records pruned.' },
+      { name: 'Sync Iceberg Silver Manifest', status: 'success', duration: '12s', retryCount: 0, logs: '[task] Catalog manifest tree updated.' }
+    ]
+  },
+  {
+    id: '#1003',
+    dagName: 'Ledger Summary',
+    actor: 'ci-pipeline@github',
+    source: 'git',
+    status: 'success',
+    duration: '32s',
+    time: '5 hours ago',
+    tasks: [
+      { name: 'Scan Silver Schema', status: 'success', duration: '10s', retryCount: 0, logs: '[task] Silver table read complete.' },
+      { name: 'Calculate Aggregates', status: 'success', duration: '15s', retryCount: 0, logs: '[task] SQL query execution complete. Aggregates matched.' },
+      { name: 'Materialize Gold Views', status: 'success', duration: '7s', retryCount: 0, logs: '[task] Gold view partition commit complete.' }
+    ]
+  },
+  {
+    id: '#1002',
+    dagName: 'Ingest BSEG',
+    actor: 's3-webhook-sensor',
+    source: 'webhook',
+    status: 'success',
+    duration: '58s',
+    time: '1 day ago',
+    tasks: [
+      { name: 'Fetch Raw Parquet', status: 'success', duration: '18s', retryCount: 0, logs: '[task] S3 sensor triggered download.' },
+      { name: 'Check Data Contracts', status: 'success', duration: '15s', retryCount: 0, logs: '[task] Data contracts validated.' },
+      { name: 'Commit Metadata Snapshot', status: 'success', duration: '25s', retryCount: 0, logs: '[task] Catalog manifest tree updated.' }
+    ]
+  },
+  {
+    id: '#1001',
+    dagName: 'Clean Ledgers',
+    actor: 'api-key-sumit-prod',
+    source: 'manual',
+    status: 'failed',
+    duration: '1m 45s',
+    time: '2 days ago',
+    tasks: [
+      { name: 'Load Bronze Ingests', status: 'success', duration: '15s', retryCount: 0, logs: '[task] Bronze raw scan completed.' },
+      { name: 'Deduplicate Accounts', status: 'failed', duration: '90s', retryCount: 3, logs: '[error] Java Heap Memory exhausted (OOM) while sorting partition values. Retrying task (3/3)... failed.' },
+      { name: 'Sync Iceberg Silver Manifest', status: 'queued', duration: '--', retryCount: 0, logs: '[task] Blocked by upstream failure.' }
+    ]
+  }
+];
+
+let gitCommits: GitCommit[] = [
+  { sha: '7b39223', author: 'sumit@company.com', message: 'fix: make auth overlay controller and DOM event listeners null-safe for landing page', time: '15 mins ago' },
+  { sha: 'b0a488b', author: 'sumit@company.com', message: 'feat: implement premium Data Studio upgrades, workspace lock, and help guide', time: '2 hours ago' },
+  { sha: '8912009', author: 'sumit@company.com', message: 'feat: initial commit for apache iceberg catalog interface', time: '3 days ago' }
+];
+
+let activeTriggersList = [
+  { id: 't1', type: 'Cron Schedule', rule: '*/5 * * * * (Every 5 minutes)', target: 'All DAGs' },
+  { id: 't2', type: 'S3 Event Sensor', rule: 's3://meldra-lakehouse-raw/data/*.csv', target: 'Ingest BSEG' }
+];
+
+function addManualAuditLog(action: string, details: string, status: 'success' | 'failed' = 'success') {
+  const localLogsStr = sessionStorage.getItem('meldra_local_audit_logs');
+  const localLogs = localLogsStr ? JSON.parse(localLogsStr) : [];
+  
+  const newLog = {
+    action,
+    details,
+    status,
+    timestamp: new Date().toISOString(),
+    tier: 'Admin',
+    user_id: 'sumit@company.com'
+  };
+  
+  localLogs.unshift(newLog);
+  sessionStorage.setItem('meldra_local_audit_logs', JSON.stringify(localLogs));
+  
+  // Trigger audit timeline refresh
+  const btnRefresh = document.getElementById('btn-refresh-audit');
+  if (btnRefresh) btnRefresh.click();
+}
+
+function renderRunHistoryTable() {
+  const filterEl = document.getElementById('run-history-filter-source') as HTMLSelectElement;
+  const filter = filterEl ? filterEl.value : 'all';
+  const tbody = document.getElementById('tbody-run-history');
+  if (!tbody) return;
+
+  const filtered = pipelineRuns.filter(r => filter === 'all' || r.source === filter);
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); font-style: italic;">No pipeline runs matched filter.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    let icon = 'fa-circle-play';
+    if (r.source === 'cron') icon = 'fa-clock';
+    if (r.source === 'git') icon = 'fa-code-branch';
+    if (r.source === 'webhook') icon = 'fa-cloud-arrow-up';
+
+    const statusBadge = `<span class="run-status-badge ${r.status}">● ${r.status.toUpperCase()}</span>`;
+    return `
+      <tr class="${r.id === activeRunId ? 'active' : ''}" style="cursor: pointer;" onclick="window.selectRunItem('${r.id}')">
+        <td style="font-family: var(--font-mono); font-weight: 700; color: #bef264;">${r.id}</td>
+        <td>${r.actor}</td>
+        <td><i class="fa-solid ${icon}" style="margin-right: 0.35rem; color: var(--color-primary);"></i>${r.source}</td>
+        <td>${statusBadge}</td>
+        <td>${r.duration}</td>
+        <td style="color: var(--text-muted);">${r.time}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const activeRun = pipelineRuns.find(r => r.id === activeRunId);
+  if (activeRun) {
+    renderRunTimeline(activeRun);
+  }
+}
+
+function renderRunTimeline(run: PipelineRun) {
+  const header = document.getElementById('active-run-id-header');
+  if (header) header.textContent = `Run ID: ${run.id} (${run.dagName})`;
+
+  const stepsContainer = document.getElementById('run-timeline-steps');
+  if (!stepsContainer) return;
+
+  stepsContainer.innerHTML = run.tasks.map((t, idx) => {
+    let dotColor = 'queued';
+    if (t.status === 'success') dotColor = 'success';
+    if (t.status === 'running') dotColor = 'running';
+    if (t.status === 'failed') dotColor = 'failed';
+
+    return `
+      <div class="timeline-step-item" style="cursor: pointer; margin-bottom: 0.35rem;" onclick="window.showTaskStepLogs('${run.id}', ${idx})">
+        <div class="timeline-step-info">
+          <span class="timeline-step-dot ${dotColor}"></span>
+          <span style="font-weight: 600; color: #fff; font-size: 0.8rem;">${t.name}</span>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; gap: 0.5rem;">
+          <span>Retries: ${t.retryCount}</span>
+          <span style="color: #bef264;">${t.duration}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  showTaskStepLogs(run.id, 0);
+}
+
+function showTaskStepLogs(runId: string, taskIdx: number) {
+  const run = pipelineRuns.find(r => r.id === runId);
+  const logEl = document.getElementById('run-task-terminal-logs');
+  if (run && run.tasks[taskIdx] && logEl) {
+    const task = run.tasks[taskIdx];
+    logEl.innerHTML = `[${task.name.toUpperCase()}] status: ${task.status.toUpperCase()}<br>${task.logs}`;
+  }
+}
+
+// Bind timeline actions to window context
+(window as any).selectRunItem = (runId: string) => {
+  activeRunId = runId;
+  renderRunHistoryTable();
+};
+
+(window as any).showTaskStepLogs = (runId: string, taskIdx: number) => {
+  showTaskStepLogs(runId, taskIdx);
+};
+
+function renderGitCommits() {
+  const list = document.getElementById('git-commits-list');
+  if (!list) return;
+
+  list.innerHTML = gitCommits.map(c => {
+    const isDev = devSha === c.sha;
+    const isStaging = stagingSha === c.sha;
+    const isProd = prodSha === c.sha;
+    
+    let badges = '';
+    if (isDev) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); margin-right: 0.2rem;">DEV</span>`;
+    if (isStaging) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); margin-right: 0.2rem;">STAGE</span>`;
+    if (isProd) badges += `<span class="pill pill-success" style="font-size: 0.6rem; background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); margin-right: 0.2rem;">PROD</span>`;
+
+    return `
+      <div style="border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.5rem; font-size: 0.72rem; display: flex; flex-direction: column; gap: 0.2rem; margin-bottom: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-family: var(--font-mono); font-weight: 700; color: #bef264;">SHA: ${c.sha}</span>
+          <div style="display: flex;">${badges}</div>
+        </div>
+        <div style="color: #fff; font-size: 0.75rem;">${c.message}</div>
+        <div style="color: var(--text-muted); font-size: 0.65rem; display: flex; justify-content: space-between;">
+          <span>By ${c.author}</span>
+          <span>${c.time}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPromoStages() {
+  const devBadge = document.getElementById('promo-dev-sha');
+  const stagingBadge = document.getElementById('promo-staging-sha');
+  const prodBadge = document.getElementById('promo-prod-sha');
+  if (devBadge) devBadge.textContent = `SHA: ${devSha}`;
+  if (stagingBadge) stagingBadge.textContent = `SHA: ${stagingSha}`;
+  if (prodBadge) prodBadge.textContent = `SHA: ${prodSha}`;
+  
+  const cardStaging = document.getElementById('promo-stage-staging');
+  const cardProd = document.getElementById('promo-stage-prod');
+  if (cardStaging) {
+    if (stagingSha === devSha) {
+      cardStaging.classList.add('active');
+    } else {
+      cardStaging.classList.remove('active');
+    }
+  }
+  if (cardProd) {
+    if (prodSha === devSha) {
+      cardProd.classList.add('active');
+    } else {
+      cardProd.classList.remove('active');
+    }
+  }
+}
+
+function renderActiveTriggers() {
+  const list = document.getElementById('active-triggers-list');
+  if (!list) return;
+
+  list.innerHTML = activeTriggersList.map(t => `
+    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.72rem; margin-bottom: 0.35rem;">
+      <div>
+        <span style="font-weight: 700; color: #fff;">${t.type}:</span>
+        <span style="color: var(--text-muted); font-family: var(--font-mono); margin-left: 0.25rem;">${t.rule}</span>
+        <span style="background: rgba(34,197,94,0.1); color: #bef264; border-radius: 4px; padding: 0.1rem 0.3rem; margin-left: 0.4rem; font-size: 0.65rem;">➔ ${t.target}</span>
+      </div>
+      <button onclick="window.removeTriggerItem('${t.id}')" class="btn btn-secondary btn-sm" style="color: #ef4444; border: none; padding: 0.15rem 0.3rem;" title="Delete rule"><i class="fa-solid fa-trash-can"></i></button>
+    </div>
+  `).join('');
+}
+
+(window as any).removeTriggerItem = (id: string) => {
+  activeTriggersList = activeTriggersList.filter(t => t.id !== id);
+  renderActiveTriggers();
+  showToast('Trigger rule deleted successfully.');
+};
+
+function initPremiumStudioFeatures() {
+  // Bind run history source filter dropdown
+  const filterSource = document.getElementById('run-history-filter-source') as HTMLSelectElement;
+  if (filterSource) {
+    filterSource.onchange = () => renderRunHistoryTable();
+  }
+
+  // Refresh history button
+  const btnRefreshHistory = document.getElementById('btn-refresh-run-history');
+  if (btnRefreshHistory) {
+    btnRefreshHistory.onclick = () => {
+      showToast('Run history refreshed.', 'info');
+      renderRunHistoryTable();
+    };
+  }
+
+  // Git staging promotion button
+  const btnPromoteStaging = document.getElementById('btn-promo-staging');
+  if (btnPromoteStaging) {
+    btnPromoteStaging.onclick = () => {
+      if (stagingSha === devSha) {
+        showToast('Staging is already synchronized with local Development (SHA ' + devSha + ').', 'info');
+        return;
+      }
+      showToast('CI Pipeline check initiated for staging promotion...', 'info');
+      setTimeout(() => {
+        stagingSha = devSha;
+        renderPromoStages();
+        renderGitCommits();
+        showToast('Dev version ' + devSha + ' successfully promoted to Staging namespace!', 'success');
+        addManualAuditLog('Promote Staging Namespace', 'Successfully promoted Staging to dev build (SHA ' + devSha + ') after passing 3 automated checks.', 'success');
+      }, 1000);
+    };
+  }
+
+  // Git production promotion button
+  const btnPromoteProd = document.getElementById('btn-promo-prod');
+  const approvalGateCard = document.getElementById('approval-gate-card');
+  if (btnPromoteProd) {
+    btnPromoteProd.onclick = () => {
+      if (prodSha === devSha) {
+        showToast('Production is already synchronized with local Development (SHA ' + devSha + ').', 'info');
+        return;
+      }
+      if (approvalGateCard) {
+        approvalGateCard.style.display = 'block';
+        showToast('Review gate triggered. Approval required to promote to Production.', 'info');
+      }
+    };
+  }
+
+  const btnApprovePromo = document.getElementById('btn-approve-promo');
+  const inputApprover = document.getElementById('input-approval-approver') as HTMLInputElement;
+  if (btnApprovePromo) {
+    btnApprovePromo.onclick = () => {
+      const approver = inputApprover ? inputApprover.value.trim() : '';
+      if (!approver) {
+        showToast('Please specify the admin approver signature to proceed.', 'error');
+        return;
+      }
+      showToast('CI Verification checks running for Production environment...', 'info');
+      setTimeout(() => {
+        prodSha = devSha;
+        if (approvalGateCard) approvalGateCard.style.display = 'none';
+        if (inputApprover) inputApprover.value = '';
+        renderPromoStages();
+        renderGitCommits();
+        showToast('Dev version ' + devSha + ' successfully promoted to Production (Approved by ' + approver + ')!', 'success');
+        addManualAuditLog('Promote Production Namespace', 'Successfully promoted Production build to ' + devSha + ' (Signature: ' + approver + ').', 'success');
+      }, 1200);
+    };
+  }
+
+  // Rollback production button
+  const btnGitRollback = document.getElementById('btn-git-rollback');
+  if (btnGitRollback) {
+    btnGitRollback.onclick = () => {
+      if (prodSha === 'b0a488b') {
+        showToast('Production is already at the target rollback version (SHA b0a488b).', 'info');
+        return;
+      }
+      const confirmRoll = confirm('Are you sure you want to perform a one-click rollback on Production environment to version b0a488b?');
+      if (!confirmRoll) return;
+
+      prodSha = 'b0a488b';
+      renderPromoStages();
+      renderGitCommits();
+      showToast('One-click rollback complete. Reverted Production namespace to version b0a488b.', 'success');
+      addManualAuditLog('Rollback Production Namespace', 'Triggered one-click rollback. Reverted Production environment namespace to SHA b0a488b.', 'success');
+    };
+  }
+
+  // CI Dry-run trigger
+  const btnRunCIDryrun = document.getElementById('btn-run-ci-dryrun');
+  if (btnRunCIDryrun) {
+    btnRunCIDryrun.onclick = () => {
+      showToast('Triggering CI linting and data validation dry-run checks...', 'info');
+      setTimeout(() => {
+        showToast('Lint validation results: 0 warnings, 0 compatibility issues.', 'success');
+      }, 800);
+    };
+  }
+
+  // Save cron schedule config
+  const btnSaveCron = document.getElementById('btn-save-cron');
+  const cronExpressionInput = document.getElementById('cron-expression-input') as HTMLInputElement;
+  if (btnSaveCron) {
+    btnSaveCron.onclick = () => {
+      const exp = cronExpressionInput ? cronExpressionInput.value.trim() : '';
+      if (!exp) return;
+      
+      const target = 'All DAGs';
+      const existing = activeTriggersList.find(t => t.type === 'Cron Schedule');
+      if (existing) {
+        existing.rule = exp;
+      } else {
+        activeTriggersList.push({ id: 't_' + Date.now(), type: 'Cron Schedule', rule: exp, target });
+      }
+      renderActiveTriggers();
+      showToast('Scheduled Cron trigger rule saved: ' + exp);
+      addManualAuditLog('Configure Cron Trigger', 'Saved schedule trigger rule with pattern: ' + exp, 'success');
+    };
+  }
+
+  // Add S3 folder arrival trigger
+  const btnAddEventTrigger = document.getElementById('btn-add-event-trigger');
+  const triggerS3Path = document.getElementById('trigger-s3-path') as HTMLInputElement;
+  const triggerTargetDag = document.getElementById('trigger-target-dag') as HTMLSelectElement;
+  if (btnAddEventTrigger) {
+    btnAddEventTrigger.onclick = () => {
+      const path = triggerS3Path ? triggerS3Path.value.trim() : '';
+      const dag = triggerTargetDag ? triggerTargetDag.value : 'Ingest BSEG';
+      if (!path) {
+        showToast('Please enter an S3 bucket path first.', 'error');
+        return;
+      }
+      activeTriggersList.push({
+        id: 't_' + Date.now(),
+        type: 'S3 Event Sensor',
+        rule: path,
+        target: dag === 'bronze' ? 'Ingest BSEG' : (dag === 'silver' ? 'Clean Ledgers' : 'Ledger Summary')
+      });
+      if (triggerS3Path) triggerS3Path.value = '';
+      renderActiveTriggers();
+      showToast('S3 Event Trigger added for ' + path);
+      addManualAuditLog('Configure Event Trigger', 'Added S3 folder arrival trigger on S3 path: ' + path, 'success');
+    };
+  }
+
+  // Simulate file arrival drop
+  const btnSimulateS3Upload = document.getElementById('btn-simulate-s3-upload');
+  if (btnSimulateS3Upload) {
+    btnSimulateS3Upload.onclick = () => {
+      const csvFiles = ['sap_bseg_20260706.csv', 'general_ledger_new.csv', 'accounts_receivable_v2.csv'];
+      const file = csvFiles[Math.floor(Math.random() * csvFiles.length)];
+      
+      showToast('S3 event detected: New file landed at s3://meldra-lakehouse-raw/data/' + file, 'info');
+      runPipelineSimulation('webhook', 's3-webhook-sensor');
+    };
+  }
+
+  // Test webhook alerts config
+  const btnTestWebhookAlert = document.getElementById('btn-test-webhook-alert');
+  const alertSlackUrl = document.getElementById('alert-slack-url') as HTMLInputElement;
+  if (btnTestWebhookAlert) {
+    btnTestWebhookAlert.onclick = () => {
+      const url = alertSlackUrl ? alertSlackUrl.value : '';
+      showToast('Sending test notification alert webhook payload to ' + url + '...', 'info');
+      setTimeout(() => {
+        showToast('Slack Alert Webhook notification sent successfully!', 'success');
+        addManualAuditLog('Test Alert Channel', 'Dispatched alert webhook broadcast to channel integration point.', 'success');
+      }, 1000);
+    };
+  }
 }
 
 async function loadStudioNamespaces() {
@@ -4779,7 +5270,7 @@ function renderDataProfile() {
   }).join('');
 }
 
-function initOrchestratorDagSimulation() {
+function runPipelineSimulation(triggerSource = 'manual', actor = 'sumit@company.com') {
   const btnRun = document.getElementById('btn-run-dag') as HTMLButtonElement;
   const terminal = document.getElementById('dag-terminal-logs')!;
 
@@ -4791,74 +5282,129 @@ function initOrchestratorDagSimulation() {
   const statusSilver = document.getElementById('dag-status-silver');
   const statusGold = document.getElementById('dag-status-gold');
 
+  if (btnRun) {
+    btnRun.disabled = true;
+    btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+  }
+  terminal.innerHTML = `[orchestrator] Medallion ETL pipeline triggered via ${triggerSource.toUpperCase()}...`;
+  
+  // Create a new run record
+  const runId = '#' + (1000 + pipelineRuns.length + 1);
+  const newRun: PipelineRun = {
+    id: runId,
+    dagName: 'Ingest BSEG',
+    actor: actor,
+    source: triggerSource,
+    status: 'queued',
+    duration: 'running',
+    time: 'Just now',
+    tasks: [
+      { name: 'Fetch Raw Parquet', status: 'queued', duration: '--', retryCount: 0, logs: '[task] Awaiting execution.' },
+      { name: 'Check Data Contracts', status: 'queued', duration: '--', retryCount: 0, logs: '[task] Awaiting execution.' },
+      { name: 'Commit Metadata Snapshot', status: 'queued', duration: '--', retryCount: 0, logs: '[task] Awaiting execution.' }
+    ]
+  };
+  pipelineRuns.unshift(newRun);
+  activeRunId = runId;
+  renderRunHistoryTable();
+
+  // Clear styles
+  [nodeBronze, nodeSilver, nodeGold].forEach(n => {
+    if (n) {
+      n.classList.remove('dag-node-glowing');
+      n.classList.remove('dag-node-processing');
+    }
+  });
+  
+  if (statusBronze) statusBronze.textContent = '● Processing';
+  if (statusSilver) statusSilver.textContent = '● Ready';
+  if (statusGold) statusGold.textContent = '● Ready';
+
+  // Step 1: Bronze
+  if (nodeBronze) nodeBronze.classList.add('dag-node-processing');
+  newRun.status = 'running';
+  newRun.tasks[0].status = 'running';
+  newRun.tasks[0].logs = '[task] Pulling raw files from S3 directory bucket...';
+  renderRunHistoryTable();
+  
+  setTimeout(() => {
+    if (nodeBronze) {
+      nodeBronze.classList.remove('dag-node-processing');
+      nodeBronze.classList.add('dag-node-glowing');
+    }
+    if (statusBronze) statusBronze.innerHTML = '● Success (🟢)';
+    terminal.innerHTML += `<br>[Bronze] Ingestion raw data read from CSV logs completed.`;
+    terminal.innerHTML += `<br>[Bronze] Committing 1,250 rows to S3 raw manifest files.`;
+    terminal.scrollTop = terminal.scrollHeight;
+
+    newRun.tasks[0].status = 'success';
+    newRun.tasks[0].duration = '12s';
+    newRun.tasks[0].logs = '[task] Bronze raw import success. Ingested 1,250 records.';
+    newRun.tasks[1].status = 'running';
+    newRun.tasks[1].logs = '[task] Processing schema validations and data quality constraint checks...';
+    renderRunHistoryTable();
+    
+    // Step 2: Silver
+    if (statusSilver) statusSilver.textContent = '● Processing';
+    if (nodeSilver) nodeSilver.classList.add('dag-node-processing');
+  }, 1200);
+
+  setTimeout(() => {
+    if (nodeSilver) {
+      nodeSilver.classList.remove('dag-node-processing');
+      nodeSilver.classList.add('dag-node-glowing');
+    }
+    if (statusSilver) statusSilver.innerHTML = '● Success (🟢)';
+    terminal.innerHTML += `<br>[Silver] Schema validated against S3 metadata specifications.`;
+    terminal.innerHTML += `<br>[Silver] Data quality contracts check: 0 validation checks failed.`;
+    terminal.innerHTML += `<br>[Silver] Deduplication clean: Materialized employees_sample (Silver table).`;
+    terminal.scrollTop = terminal.scrollHeight;
+
+    newRun.tasks[1].status = 'success';
+    newRun.tasks[1].duration = '15s';
+    newRun.tasks[1].logs = '[task] Silver deduplication succeeded. Cleaned accounts rows materialized.';
+    newRun.tasks[2].status = 'running';
+    newRun.tasks[2].logs = '[task] Initializing serverless aggregates and compacting Iceberg manifest files...';
+    renderRunHistoryTable();
+
+    // Step 3: Gold
+    if (statusGold) statusGold.textContent = '● Processing';
+    if (nodeGold) nodeGold.classList.add('dag-node-processing');
+  }, 2800);
+
+  setTimeout(() => {
+    if (nodeGold) {
+      nodeGold.classList.remove('dag-node-processing');
+      nodeGold.classList.add('dag-node-glowing');
+    }
+    if (statusGold) statusGold.innerHTML = '● Success (🟢)';
+    terminal.innerHTML += `<br>[Gold] Running DuckDB serverless summary aggregates.`;
+    terminal.innerHTML += `<br>[Gold] Compacted manifesting logs updated. Gold analytics tables synced.`;
+    terminal.innerHTML += `<br>[orchestrator] Medallion ETL pipeline finished successfully in 4350ms!`;
+    terminal.scrollTop = terminal.scrollHeight;
+
+    newRun.status = 'success';
+    newRun.duration = '45s';
+    newRun.tasks[2].status = 'success';
+    newRun.tasks[2].duration = '18s';
+    newRun.tasks[2].logs = '[task] Gold aggregates created. Iceberg catalog transaction sync committed.';
+    renderRunHistoryTable();
+
+    if (btnRun) {
+      btnRun.disabled = false;
+      btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Pipeline';
+    }
+    showToast('Medallion ETL Pipeline run completed successfully!', 'success');
+    addManualAuditLog('Execute Medallion Pipeline', `Successfully ran pipeline execution ${runId} (Trigger: ${triggerSource.toUpperCase()}).`, 'success');
+  }, 4500);
+}
+
+function initOrchestratorDagSimulation() {
+  const btnRun = document.getElementById('btn-run-dag') as HTMLButtonElement;
   if (!btnRun) return;
 
   btnRun.onclick = () => {
-    btnRun.disabled = true;
-    btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-    terminal.innerHTML = `[orchestrator] Medallion ETL pipeline triggered...`;
-    
-    // Clear styles
-    [nodeBronze, nodeSilver, nodeGold].forEach(n => {
-      if (n) {
-        n.classList.remove('dag-node-glowing');
-        n.classList.remove('dag-node-processing');
-      }
-    });
-    
-    if (statusBronze) statusBronze.textContent = '● Processing';
-    if (statusSilver) statusSilver.textContent = '● Ready';
-    if (statusGold) statusGold.textContent = '● Ready';
-
-    // Step 1: Bronze
-    if (nodeBronze) nodeBronze.classList.add('dag-node-processing');
-    
-    setTimeout(() => {
-      if (nodeBronze) {
-        nodeBronze.classList.remove('dag-node-processing');
-        nodeBronze.classList.add('dag-node-glowing');
-      }
-      if (statusBronze) statusBronze.innerHTML = '● Success (🟢)';
-      terminal.innerHTML += `<br>[Bronze] Ingestion raw data read from CSV logs completed.`;
-      terminal.innerHTML += `<br>[Bronze] Committing 1,250 rows to S3 raw manifest files.`;
-      terminal.scrollTop = terminal.scrollHeight;
-      
-      // Step 2: Silver
-      if (statusSilver) statusSilver.textContent = '● Processing';
-      if (nodeSilver) nodeSilver.classList.add('dag-node-processing');
-    }, 1200);
-
-    setTimeout(() => {
-      if (nodeSilver) {
-        nodeSilver.classList.remove('dag-node-processing');
-        nodeSilver.classList.add('dag-node-glowing');
-      }
-      if (statusSilver) statusSilver.innerHTML = '● Success (🟢)';
-      terminal.innerHTML += `<br>[Silver] Schema validated against S3 metadata specifications.`;
-      terminal.innerHTML += `<br>[Silver] Data quality contracts check: 0 validation checks failed.`;
-      terminal.innerHTML += `<br>[Silver] Deduplication clean: Materialized employees_sample (Silver table).`;
-      terminal.scrollTop = terminal.scrollHeight;
-
-      // Step 3: Gold
-      if (statusGold) statusGold.textContent = '● Processing';
-      if (nodeGold) nodeGold.classList.add('dag-node-processing');
-    }, 2800);
-
-    setTimeout(() => {
-      if (nodeGold) {
-        nodeGold.classList.remove('dag-node-processing');
-        nodeGold.classList.add('dag-node-glowing');
-      }
-      if (statusGold) statusGold.innerHTML = '● Success (🟢)';
-      terminal.innerHTML += `<br>[Gold] Running DuckDB serverless summary aggregates.`;
-      terminal.innerHTML += `<br>[Gold] Compacted manifesting logs updated. Gold analytics tables synced.`;
-      terminal.innerHTML += `<br>[orchestrator] Medallion ETL pipeline finished successfully in 4350ms!`;
-      terminal.scrollTop = terminal.scrollHeight;
-
-      btnRun.disabled = false;
-      btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Pipeline';
-      showToast('Medallion ETL Pipeline run completed successfully!', 'success');
-    }, 4500);
+    runPipelineSimulation('manual', 'sumit@company.com');
   };
 }
 

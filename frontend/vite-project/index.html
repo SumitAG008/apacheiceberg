@@ -2603,6 +2603,9 @@ with DAG(
                   <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-travel"><i class="fa-solid fa-clock-rotate-left"></i> Time Travel</button>
                   <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-contracts"><i class="fa-solid fa-file-shield"></i> Data Quality</button>
                   <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-dag"><i class="fa-solid fa-diagram-project"></i> Orchestrator DAG</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-history" id="nav-run-history"><i class="fa-solid fa-list-check"></i> Run History &amp; Audits</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-git" id="nav-git-cicd"><i class="fa-solid fa-code-commit"></i> Git &amp; CI/CD</button>
+                  <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-automation" id="nav-triggers"><i class="fa-solid fa-circle-play"></i> Triggers &amp; Alerts</button>
                   <button class="btn btn-secondary btn-sm studio-sub-tab-btn" data-subtab="studio-tab-maintenance"><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</button>
                 </div>
 
@@ -2823,6 +2826,254 @@ with DAG(
                     <!-- Live DAG Logs terminal -->
                     <div style="background: #020c06; border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.75rem; color: #bef264; height: 120px; overflow-y: auto;" id="dag-terminal-logs">
                       [orchestrator] Ready to run Medallion ETL pipeline execution. Click 'Run Pipeline' above.
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB: RUN HISTORY & AUDITS -->
+                  <div id="studio-tab-history" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Lakehouse Pipeline Run History &amp; Audits</h3>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <select id="run-history-filter-source" class="input-field" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: 140px;">
+                          <option value="all">All Trigger Sources</option>
+                          <option value="manual">Manual Click</option>
+                          <option value="cron">Cron Schedule</option>
+                          <option value="webhook">Webhook/Event</option>
+                          <option value="git">Git Merge</option>
+                        </select>
+                        <button id="btn-refresh-run-history" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                      </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem;">
+                      <!-- Left column: Runs table -->
+                      <div style="border: 1px solid var(--border-subtle); border-radius: 8px; background: rgba(0,0,0,0.15); overflow-x: auto; max-height: 380px;">
+                        <table class="run-history-table" id="table-run-history">
+                          <thead>
+                            <tr style="background: rgba(255,255,255,0.02);">
+                              <th>Run ID</th>
+                              <th>Triggered By (Actor)</th>
+                              <th>Source</th>
+                              <th>Status</th>
+                              <th>Duration</th>
+                              <th>Time</th>
+                            </tr>
+                          </thead>
+                          <tbody id="tbody-run-history">
+                            <!-- Populated dynamically -->
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <!-- Right column: Selected Run Details / Task Timeline / Task Logs -->
+                      <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: flex; justify-content: space-between;">
+                          <span>Run Task-Level Execution Timeline</span>
+                          <span id="active-run-id-header" style="color: #bef264; font-family: var(--font-mono); font-size: 0.75rem;">Select a run</span>
+                        </h4>
+                        
+                        <div class="timeline-steps-container" id="run-timeline-steps">
+                          <!-- Timeline items render here -->
+                          <div style="text-align: center; color: var(--text-muted); font-style: italic; font-size: 0.8rem; padding: 2rem 0;">
+                            Select a pipeline run on the left to view per-task status details and retry logs.
+                          </div>
+                        </div>
+                        
+                        <div style="background: #020c06; border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 0.75rem; font-family: var(--font-mono); font-size: 0.7rem; color: #bef264; height: 110px; overflow-y: auto;" id="run-task-terminal-logs">
+                          [orchestrator] Task execution logger offline.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB: GIT & CI/CD -->
+                  <div id="studio-tab-git" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Git Integration &amp; Multi-Environment Promotions</h3>
+                      <span class="run-status-badge success" style="font-family: var(--font-mono); font-size: 0.75rem;"><i class="fa-brands fa-github"></i> Connected: SumitAG008/apacheiceberg</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem;">
+                      <!-- Left side: Promotion stages & Commit history -->
+                      <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">Environment Promotion Pipeline</h4>
+                        <div class="promo-stages">
+                          <div class="promo-stage-card active" id="promo-stage-dev">
+                            <div style="font-weight: 700; font-size: 0.75rem; color: #38bdf8;">DEVELOPMENT</div>
+                            <div id="promo-dev-sha" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">SHA: 7b39223</div>
+                          </div>
+                          <div class="promo-stage-arrow">➔</div>
+                          <div class="promo-stage-card" id="promo-stage-staging">
+                            <div style="font-weight: 700; font-size: 0.75rem; color: #eab308;">STAGING</div>
+                            <div id="promo-staging-sha" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">SHA: b0a488b</div>
+                          </div>
+                          <div class="promo-stage-arrow">➔</div>
+                          <div class="promo-stage-card" id="promo-stage-prod">
+                            <div style="font-weight: 700; font-size: 0.75rem; color: #ef4444;">PRODUCTION</div>
+                            <div id="promo-prod-sha" style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem;">SHA: b0a488b</div>
+                          </div>
+                        </div>
+
+                        <!-- Promotion actions -->
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                          <button id="btn-promo-staging" class="btn btn-secondary btn-sm" style="flex: 1;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Promote to Staging</button>
+                          <button id="btn-promo-prod" class="btn btn-primary btn-sm" style="flex: 1;"><i class="fa-solid fa-shield-check"></i> Promote to Production</button>
+                        </div>
+
+                        <!-- Approval Gate Card (Shows when production promotion starts) -->
+                        <div class="approval-overlay-card" id="approval-gate-card" style="display: none;">
+                          <div style="font-weight: 700; font-size: 0.8rem; color: #eab308; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fa-solid fa-circle-exclamation"></i> Production Promotion Requires Approval
+                          </div>
+                          <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Production environment promotions require review from an authorized administrator. Please input the reviewer's approval signature token.</p>
+                          <div style="display: flex; gap: 0.4rem;">
+                            <input type="text" id="input-approval-approver" class="input-field" placeholder="Admin Approver (e.g. Lead Architect)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">
+                            <button id="btn-approve-promo" class="btn btn-primary btn-sm" style="background: #eab308; border-color: #eab308;"><i class="fa-solid fa-signature"></i> Sign &amp; Approve</button>
+                          </div>
+                        </div>
+
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0.5rem 0 0 0;">Recent Git Deploy History</h4>
+                        <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.1); padding: 0.35rem;">
+                          <div id="git-commits-list" style="display: flex; flex-direction: column; gap: 0.35rem;">
+                            <!-- Commits populated dynamically -->
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Right side: Promotion dry-runs and environment diffs -->
+                      <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;">CI Validation Stage &amp; Environment Diff</h4>
+                        
+                        <div class="git-diff-container" id="promo-diff-container">
+                          <!-- Diff visualizer -->
+                          <div class="git-diff-panel">
+                            <div class="git-diff-header">LOCAL / DEV SCHEMA (SHA: 7b39223)</div>
+                            <div class="diff-line unchanged">CREATE TABLE default.transactions_10k (</div>
+                            <div class="diff-line unchanged">  account_from STRING,</div>
+                            <div class="diff-line addition">+  fee_amount DOUBLE,  -- New data model column</div>
+                            <div class="diff-line addition">+  validation_badge STRING, -- Compliance requirement</div>
+                            <div class="diff-line unchanged">  status STRING</div>
+                            <div class="diff-line unchanged">);</div>
+                          </div>
+                          <div class="git-diff-panel">
+                            <div class="git-diff-header">STAGING SCHEMA (SHA: b0a488b)</div>
+                            <div class="diff-line unchanged">CREATE TABLE default.transactions_10k (</div>
+                            <div class="diff-line unchanged">  account_from STRING,</div>
+                            <div class="diff-line deletion">-  -- fee_amount is missing</div>
+                            <div class="diff-line deletion">-  -- validation_badge is missing</div>
+                            <div class="diff-line unchanged">  status STRING</div>
+                            <div class="diff-line unchanged">);</div>
+                          </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                          <span style="font-size: 0.75rem; font-weight: 700; color: #fff;">CI Pre-deployment Validation Checks</span>
+                          <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.75rem;" id="ci-checks-status">
+                            <div style="display: flex; justify-content: space-between; align-items: center; color: #22c55e;">
+                              <span><i class="fa-solid fa-circle-check"></i> SQL Linter Dry Run</span>
+                              <span>Passed</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; color: #22c55e;">
+                              <span><i class="fa-solid fa-circle-check"></i> Schema Compatibility check</span>
+                              <span>Passed</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; color: #22c55e;">
+                              <span><i class="fa-solid fa-circle-check"></i> Automated Data Quality (DQ) tests</span>
+                              <span>Passed</span>
+                            </div>
+                          </div>
+                          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button id="btn-run-ci-dryrun" class="btn btn-secondary btn-sm" style="flex: 1;"><i class="fa-solid fa-vial"></i> Trigger Dry-Run Lint</button>
+                            <button id="btn-git-rollback" class="btn btn-secondary btn-sm" style="flex: 1; color: #ef4444; border-color: rgba(239,68,68,0.2);"><i class="fa-solid fa-arrow-rotate-left"></i> One-Click Rollback</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUB-TAB: TRIGGERS & ALERTS -->
+                  <div id="studio-tab-automation" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <h3 style="font-size: 1.1rem; color: #fff; margin: 0;">Automated S3/Cron Triggers &amp; Notification Alerts</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Configure time-based and event-driven automation rules to ingest data, execute downstream transformation tasks, and broadcast failures to alerts channels.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 2rem;">
+                      <!-- Left side: Scheduler and triggers setup -->
+                      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                          <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-clock" style="color: #38bdf8; margin-right: 0.35rem;"></i> Scheduled Cron Trigger Config</h4>
+                          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted);">Frequency:</label>
+                            <select id="cron-frequency" class="input-field" style="padding: 0.35rem; font-size: 0.75rem; width: 120px;">
+                              <option value="5min">Every 5 minutes</option>
+                              <option value="hourly">Hourly</option>
+                              <option value="daily">Daily at midnight</option>
+                              <option value="weekly">Weekly</option>
+                            </select>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">or Cron expression:</span>
+                            <input type="text" id="cron-expression-input" class="input-field" style="padding: 0.35rem; font-size: 0.75rem; font-family: var(--font-mono); width: 100px;" value="*/5 * * * *">
+                            <button id="btn-save-cron" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Set</button>
+                          </div>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                          <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-folder-open" style="color: #22c55e; margin-right: 0.35rem;"></i> Event-Driven Ingestion (S3 Sensor)</h4>
+                          <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Automatically run pipelines when new CSV or JSON files land in designated S3 buckets.</p>
+                          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; gap: 0.4rem;">
+                              <input type="text" id="trigger-s3-path" class="input-field" placeholder="s3://meldra-lakehouse-raw/data/*.csv" style="padding: 0.35rem; font-size: 0.75rem; flex: 1;">
+                              <select id="trigger-target-dag" class="input-field" style="padding: 0.35rem; font-size: 0.75rem; width: 120px;">
+                                <option value="bronze">Ingest BSEG</option>
+                                <option value="silver">Clean Ledgers</option>
+                                <option value="gold">Ledger Summary</option>
+                              </select>
+                              <button id="btn-add-event-trigger" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add Path</button>
+                            </div>
+                            <!-- Mock simulate S3 file upload button -->
+                            <button id="btn-simulate-s3-upload" class="btn btn-secondary btn-sm" style="align-self: flex-start; color: #bef264; border-color: rgba(190, 242, 100, 0.2);"><i class="fa-solid fa-cloud-arrow-up"></i> Simulate S3 File Drop (*.csv)</button>
+                          </div>
+                        </div>
+
+                        <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.5rem;">
+                          <span style="font-size: 0.75rem; font-weight: 700; color: #fff; display: block; margin-bottom: 0.35rem;">Active Automation Triggers</span>
+                          <div id="active-triggers-list" style="display: flex; flex-direction: column; gap: 0.35rem;">
+                            <!-- Active triggers list -->
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Right side: Notifications alerts Slack configuration -->
+                      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0;"><i class="fa-solid fa-bell" style="color: #ef4444; margin-right: 0.35rem;"></i> Alerting &amp; Incident Notifications</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Push notifications to Slack, Email, or Webhooks immediately when task-level execution fails.</p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.5rem;">
+                            <span style="font-size: 0.8rem; color: #fff; font-weight: 600;"><i class="fa-brands fa-slack" style="color: #a855f7;"></i> Slack Integration</span>
+                            <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                              <input type="checkbox" id="alert-slack-toggle" checked style="opacity: 0; width: 0; height: 0;">
+                              <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #475569; border-radius: 20px; transition: .4s;"></span>
+                            </label>
+                          </div>
+                          <div>
+                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Webhook URL</label>
+                            <input type="text" id="alert-slack-url" class="input-field" style="padding: 0.35rem; font-size: 0.75rem; font-family: var(--font-mono);" value="https://hooks.slack.com/services/T00MELDRA/B00ALERTS/x123abc">
+                          </div>
+                          
+                          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.03); padding-bottom: 0.5rem; margin-top: 0.5rem;">
+                            <span style="font-size: 0.8rem; color: #fff; font-weight: 600;"><i class="fa-solid fa-envelope" style="color: #38bdf8;"></i> Email Broadcasts</span>
+                            <label class="switch" style="position: relative; display: inline-block; width: 34px; height: 20px;">
+                              <input type="checkbox" id="alert-email-toggle" style="opacity: 0; width: 0; height: 0;">
+                              <span class="slider" style="position: absolute; cursor: pointer; inset: 0; background-color: #475569; border-radius: 20px; transition: .4s;"></span>
+                            </label>
+                          </div>
+                          <div>
+                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Recipient List</label>
+                            <input type="text" id="alert-email-recipients" class="input-field" style="padding: 0.35rem; font-size: 0.75rem;" placeholder="e.g. sumit.ops@company.com">
+                          </div>
+                          
+                          <button id="btn-test-webhook-alert" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;"><i class="fa-solid fa-paper-plane"></i> Test Alert Broadcast Channel</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

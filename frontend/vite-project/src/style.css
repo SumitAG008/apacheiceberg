@@ -1987,4 +1987,174 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   padding-bottom: 0.5rem;
 }
 
+/* ── Run History & Audits ── */
+.run-history-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+.run-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.run-history-table th, .run-history-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.run-history-table tr {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.run-history-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.run-history-table tr.active {
+  background: rgba(34, 197, 94, 0.08);
+}
+.run-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.run-status-badge.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+.run-status-badge.running {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.run-status-badge.failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.run-status-badge.queued {
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+/* ── Per-Task Status Timeline ── */
+.timeline-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+.timeline-step-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  position: relative;
+}
+.timeline-step-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.timeline-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.timeline-step-dot.success { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.timeline-step-dot.running { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+.timeline-step-dot.failed { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+.timeline-step-dot.queued { background: #eab308; box-shadow: 0 0 8px #eab308; }
+
+/* ── Git Diff & Promo UI ── */
+.git-diff-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: #020c06;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 250px;
+  overflow-y: auto;
+}
+.git-diff-panel {
+  display: flex;
+  flex-direction: column;
+}
+.git-diff-header {
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.diff-line {
+  padding: 0.15rem 0.35rem;
+  border-radius: 2px;
+}
+.diff-line.addition {
+  background: rgba(34, 197, 94, 0.15);
+  color: #bef264;
+}
+.diff-line.deletion {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+.diff-line.unchanged {
+  color: #94a3b8;
+}
+
+/* ── Promoted Environments Path ── */
+.promo-stages {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.promo-stage-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+.promo-stage-card.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.03);
+}
+.promo-stage-arrow {
+  color: var(--text-muted);
+  font-size: 1.2rem;
+}
+
+/* ── Approval Gates & Trigger Setup ── */
+.approval-overlay-card {
+  border: 1px dashed rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.02);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 
