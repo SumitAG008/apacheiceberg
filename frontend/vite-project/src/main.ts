@@ -4850,10 +4850,68 @@ function initDeveloperWorkspace() {
   const btnDownload = document.getElementById('btn-download-dag') as HTMLButtonElement;
   
   if (btnSave) {
-    btnSave.onclick = () => {
-      const bucket = (document.getElementById('workspace-bucket-uri') as HTMLInputElement).value || 'default';
-      const region = (document.getElementById('workspace-cloud-region') as HTMLInputElement).value || 'default';
-      showToast(`Meldra Connection Parameters applied for ${activeCloudProvider.toUpperCase()} (${region}) targeting bucket: ${bucket}`);
+    btnSave.onclick = async () => {
+      const bucket = (document.getElementById('workspace-bucket-uri') as HTMLInputElement).value.trim();
+      const region = (document.getElementById('workspace-cloud-region') as HTMLInputElement).value.trim();
+      const keyInput = document.getElementById('workspace-cloud-key') as HTMLInputElement;
+      const key = keyInput ? keyInput.value.trim() : '';
+      
+      if (!bucket || !region) {
+        showToast('S3 Bucket URI and Region are required.', 'error');
+        return;
+      }
+      
+      btnSave.disabled = true;
+      btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Applying...';
+      
+      try {
+        await api.updateAWSConfig({
+          region,
+          s3_warehouse_uri: bucket,
+          access_key_id: key || undefined,
+          secret_access_key: undefined
+        });
+        
+        showToast(`Meldra Connection Parameters applied for ${activeCloudProvider.toUpperCase()} (${region}) targeting bucket: ${bucket}`, 'success');
+        
+        // Unlock all workspace navigation menu items
+        updateWorkspaceLockState(false);
+        
+        // Update local workspace status UI details
+        const wsS3 = document.getElementById('ws-details-s3');
+        const wsRegion = document.getElementById('ws-details-region');
+        const wsStatus = document.getElementById('ws-details-status');
+        
+        if (wsS3) wsS3.textContent = bucket;
+        if (wsRegion) wsRegion.textContent = region;
+        if (wsStatus) {
+          wsStatus.textContent = 'CONNECTED';
+          wsStatus.className = 'badge badge-green';
+        }
+        
+        // Synchronize the sidebar toggles to active connected state
+        const customAwsToggle = document.getElementById('custom-aws-toggle') as HTMLInputElement;
+        if (customAwsToggle) {
+          customAwsToggle.checked = true;
+          const awsConfigForm = document.getElementById('aws-config-form');
+          const awsDemoInfo = document.getElementById('aws-demo-info');
+          if (awsConfigForm) awsConfigForm.style.display = 'flex';
+          if (awsDemoInfo) awsDemoInfo.style.display = 'none';
+          
+          // Pre-populate left sidebar input copies as well
+          const awsRegionSidebar = document.getElementById('aws-region') as HTMLInputElement;
+          const awsS3Sidebar = document.getElementById('aws-s3-uri') as HTMLInputElement;
+          const awsKeySidebar = document.getElementById('aws-access-key') as HTMLInputElement;
+          if (awsRegionSidebar) awsRegionSidebar.value = region;
+          if (awsS3Sidebar) awsS3Sidebar.value = bucket;
+          if (awsKeySidebar && key) awsKeySidebar.value = '••••••••••••••••';
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Failed to save parameters.', 'error');
+      } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Apply Connection Parameters';
+      }
     };
   }
   
