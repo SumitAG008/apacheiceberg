@@ -2416,214 +2416,214 @@
           </div>
 
           <!-- TAB 3: INGEST -->
-          <div id="ingest-tab" class="tab-content">
-            <div class="ingest-container" style="position: relative;">
-              <!-- Column A -->
-              <div class="ingest-panel">
-                <div class="ingest-panel-header">
-                  <i class="fa-solid fa-file-csv" style="color: var(--color-primary);"></i>
-                  <h3>1. Upload CSV Dataset</h3>
-                </div>
-
-                <div class="drop-zone" id="drop-zone">
-                  <i class="fa-solid fa-cloud-arrow-up drop-zone-icon"></i>
-                  <span class="drop-zone-text">Drag &amp; drop your CSV file here</span>
-                  <span class="drop-zone-or">or</span>
-                  <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file-input').click()">Browse files</button>
-                  <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
-                </div>
-
-                <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                  <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin: 0; font-weight: 700;">Need dummy data? Download samples:</h4>
-                  <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-employees" style="flex: 1;"><i class="fa-solid fa-download"></i> Employees</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-orders" style="flex: 1;"><i class="fa-solid fa-download"></i> Orders</button>
-                    <button class="btn btn-secondary btn-sm" id="btn-sample-traffic" style="flex: 1;"><i class="fa-solid fa-download"></i> Web Traffic</button>
-                  </div>
-                </div>
+          <div id="ingest-tab" class="tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+              <div>
+                <h3 style="font-size: 1.15rem; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fa-solid fa-cloud-arrow-down" style="color: var(--color-primary);"></i> Ingest Data
+                </h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.25rem 0 0 0; line-height: 1.4;">
+                  Load data into your Iceberg lakehouse from local files, SaaS applications, or sample data sets.
+                </p>
               </div>
-
-              <!-- Column B -->
-              <div class="ingest-panel">
-                <div class="ingest-panel-header">
-                  <i class="fa-solid fa-gears" style="color: var(--color-primary);"></i>
-                  <h3>2. Configuration &amp; Schema Mapping</h3>
-                </div>
-
-                <div class="ingest-grid-layout" style="display: flex; flex-direction: column; gap: 1rem; flex: 1; height: 100%;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Namespace</label>
-                      <input type="text" id="ingest-namespace" class="input-field" value="default" style="padding: 0.4rem; font-size: 0.8rem;">
-                    </div>
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Table Name</label>
-                      <input type="text" id="ingest-table-name" class="input-field" placeholder="e.g. transactions" style="padding: 0.4rem; font-size: 0.8rem;">
-                    </div>
-                  </div>
-
-                  <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Write Mode</label>
-                      <select id="ingest-write-mode" class="input-field" style="padding: 0.4rem; font-size: 0.8rem;">
-                        <option value="append">Append (Default)</option>
-                        <option value="overwrite">Overwrite</option>
-                        <option value="merge">Merge (Upsert)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Merge Key (Optional)</label>
-                      <input type="text" id="ingest-merge-key" class="input-field" placeholder="e.g. transaction_id" style="padding: 0.4rem; font-size: 0.8rem;">
-                    </div>
-                  </div>
-
-                  <div id="preview-section" class="preview-section" style="display: none; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                      <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">File Preview (<span id="preview-row-count">0</span> rows)</span>
-                    </div>
-                    <div style="overflow: auto; flex: 1; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.15);">
-                      <table class="preview-table">
-                        <thead><tr id="preview-thead-tr"></tr></thead>
-                        <tbody id="preview-tbody"></tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div class="schema-mapping-section" style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 180px;">
-                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">Schema Mapping Specs</span>
-                    <table class="schema-mapping-table">
-                      <thead>
-                        <tr>
-                          <th>Column</th>
-                          <th>Iceberg Type</th>
-                        </tr>
-                      </thead>
-                      <tbody id="schema-config-tbody">
-                        <tr>
-                          <td colspan="2" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Upload a CSV to view schema</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <button id="btn-do-ingest" class="btn btn-primary btn-block" style="margin-top: auto;" disabled>
-                    <i class="fa-solid fa-rocket"></i> Create Table &amp; Ingest Data
-                  </button>
-                </div>
-              </div>
-
-              <div id="ingest-loading-overlay" class="ingest-loading-overlay">
-                <div class="ingest-spinner"></div>
-                <h3 style="color: #fff;" id="ingest-loading-text">Writing files to S3...</h3>
-                <p style="color: var(--text-muted); font-size: 0.83rem;">Creating Iceberg metadata snapshots</p>
+              <div>
+                <span class="conn-badge"><span class="dot"></span>Lake connected · <span id="lbl-lake-region">eu-west-2</span></span>
               </div>
             </div>
 
-            <!-- Unified Cloud Connectors Panel -->
-            <div style="margin-top: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(34,197,94,0.3); border-radius: var(--radius-md); padding: 1.5rem; position: relative; overflow: hidden; margin-bottom: 2rem;">
-              <!-- Accent bar -->
-              <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #16a34a, #0284c7, #4f46e5);"></div>
+            <!-- Ingest Subtabs switcher -->
+            <div class="tabs-ingest" role="tablist">
+              <button class="tab-ingest-btn active" data-ingest-panel="p-upload"><i class="fa-solid fa-file-csv"></i> Upload File</button>
+              <button class="tab-ingest-btn" id="btn-tab-saas" data-ingest-panel="p-saas"><i class="fa-solid fa-network-wired"></i> Enterprise Connector</button>
+              <button class="tab-ingest-btn" data-ingest-panel="p-sample"><i class="fa-solid fa-vial"></i> Sample Data</button>
+            </div>
 
-              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
-                <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg,var(--color-primary),#15803d); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; color:#fff; flex-shrink:0;"><i class="fa-solid fa-cloud-arrow-down"></i></div>
-                <div>
-                  <h3 style="margin:0; font-size: 0.95rem; font-weight: 700; color: var(--text-main);">Enterprise Cloud Ingest Connectors</h3>
-                  <p style="margin:0; font-size: 0.72rem; color: var(--text-muted);">Pull raw records directly from ERP, CRM, and HR endpoints into S3 Apache Iceberg</p>
+            <!-- ============ UPLOAD FILE PANEL ============ -->
+            <div id="p-upload" class="panel-ingest active">
+              <div class="ingest-container" style="position: relative;">
+                
+                <!-- Upload Drop Zone Card -->
+                <div class="ingest-panel">
+                  <div class="ingest-panel-header">
+                    <i class="fa-solid fa-file-csv" style="color: var(--color-primary);"></i>
+                    <h3>1. Upload CSV Dataset</h3>
+                  </div>
+                  
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Up to 50 MB · UTF-8 · comma or semicolon delimited. Schema is detected automatically.</p>
+
+                  <div class="drop-zone" id="drop-zone" style="cursor: pointer; padding: 3rem 1.5rem; text-align: center; border: 2px dashed var(--border-glass); border-radius: var(--radius-lg); background: rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.2rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Drag &amp; drop your CSV file here</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">or</span>
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file-input').click()">Browse files</button>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                  </div>
                 </div>
-                <div style="margin-left:auto;">
-                  <span id="conn-status-badge" style="font-size:0.65rem; padding: 0.2rem 0.6rem; border-radius:99px; background: rgba(100,116,139,0.15); color: var(--text-muted); font-weight:600; text-transform:uppercase;">Inactive</span>
+
+                <!-- Config & Schema Card -->
+                <div class="ingest-panel">
+                  <div class="ingest-panel-header">
+                    <i class="fa-solid fa-gears" style="color: var(--color-primary);"></i>
+                    <h3>2. Configuration &amp; Schema Mapping</h3>
+                  </div>
+
+                  <div class="ingest-grid-layout" style="display: flex; flex-direction: column; gap: 1rem; flex: 1;">
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Namespace</label>
+                        <input type="text" id="ingest-namespace" class="input-field" value="default" style="padding: 0.4rem; font-size: 0.8rem;">
+                      </div>
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Table Name</label>
+                        <input type="text" id="ingest-table-name" class="input-field" placeholder="e.g. transactions" style="padding: 0.4rem; font-size: 0.8rem;">
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Write Mode</label>
+                        <select id="ingest-write-mode" class="input-field" style="padding: 0.4rem; font-size: 0.8rem;">
+                          <option value="append">Append (Default)</option>
+                          <option value="overwrite">Overwrite</option>
+                          <option value="merge">Merge (Upsert)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Merge Key (Optional)</label>
+                        <input type="text" id="ingest-merge-key" class="input-field" placeholder="e.g. transaction_id" style="padding: 0.4rem; font-size: 0.8rem;">
+                      </div>
+                    </div>
+
+                    <!-- CSV Preview -->
+                    <div id="preview-section" class="preview-section" style="display: none; flex-direction: column; gap: 0.5rem; flex: 1; min-height: 0;">
+                      <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">File Preview (<span id="preview-row-count">0</span> rows)</span>
+                      <div style="overflow: auto; max-height: 150px; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.15);">
+                        <table class="preview-table">
+                          <thead><tr id="preview-thead-tr"></tr></thead>
+                          <tbody id="preview-tbody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <!-- Schema Table -->
+                    <div class="schema-mapping-section" style="display: flex; flex-direction: column; gap: 0.5rem; min-height: 120px;">
+                      <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main);">Schema Mapping Specs</span>
+                      <div style="border: 1px solid var(--border-subtle); border-radius: 6px; overflow: hidden;">
+                        <table class="schema-mapping-table" style="width:100%;">
+                          <thead>
+                            <tr>
+                              <th>Column</th>
+                              <th>Iceberg Type</th>
+                            </tr>
+                          </thead>
+                          <tbody id="schema-config-tbody">
+                            <tr>
+                              <td colspan="2" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Upload a CSV to view schema</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <button id="btn-do-ingest" class="btn btn-primary btn-block" style="margin-top: auto;" disabled>
+                      <i class="fa-solid fa-rocket"></i> Create Table &amp; Ingest Data
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Loading overlay -->
+                <div id="ingest-loading-overlay" class="ingest-loading-overlay">
+                  <div class="ingest-spinner"></div>
+                  <h3 style="color: #fff;" id="ingest-loading-text">Writing files to S3...</h3>
+                  <p style="color: var(--text-muted); font-size: 0.83rem;">Creating Iceberg metadata snapshots</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ============ ENTERPRISE CONNECTOR PANEL ============ -->
+            <div id="p-saas" class="panel-ingest">
+              
+              <!-- Wizard Steps -->
+              <div class="steps-ingest" aria-hidden="true">
+                <span class="step-ingest-item done" id="step-s1"><span class="n-num">1</span>Source</span>
+                <span class="step-ingest-item current" id="step-s2"><span class="n-num">2</span>Authenticate</span>
+                <span class="step-ingest-item" id="step-s3"><span class="n-num">3</span>Configure and Ingest</span>
+              </div>
+
+              <!-- Step 1 Card: Choose Source -->
+              <div class="stat-card" style="padding: 1.5rem; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
+                <h3 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Choose a source system</h3>
+                <p style="margin:0; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.5rem;">Authentication fields and schemas adapt dynamically to the system you select.</p>
+                
+                <div style="max-width: 450px;">
+                  <select id="conn-select-dropdown" class="input-field" style="padding:0.45rem; font-size:0.82rem; width: 100%; font-weight: 600; border-radius: 6px;" onchange="window.selectIngestConnector(this.value)">
+                    <!-- Will be populated dynamically via JS -->
+                  </select>
                 </div>
               </div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+              <!-- Step 2 Card: Authenticate -->
+              <div class="stat-card" id="conn-auth-card" style="padding: 1.5rem; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
+                <h3 style="margin:0; font-size: 0.95rem; color: var(--text-main);" id="conn-auth-title">Workday HR Authentication</h3>
+                <p style="margin:0; font-size: 0.72rem; color: var(--text-muted);">Credentials are stored encrypted in the lakehouse key vault and never shown again.</p>
+                
+                <div class="auth-methods-row" id="conn-auth-methods-container">
+                  <!-- Will be populated dynamically -->
+                </div>
 
-                <!-- Col 1: Connection & Discovery -->
-                <div style="display:flex; flex-direction:column; gap:0.75rem;">
-                  <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">① Connection</h4>
+                <div class="grid" id="conn-auth-fields-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                  <!-- Dynamically generated credential inputs -->
+                </div>
 
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Cloud Data Source</label>
-                    <select id="conn-source-type" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
-                      <option value="sap_sf">SAP SuccessFactors (HR)</option>
-                      <option value="sap_s4">SAP S/4HANA ERP (Finance/Supply Chain)</option>
-                      <option value="salesforce">Salesforce CRM (Sales/Marketing)</option>
-                      <option value="netsuite">NetSuite ERP (Financials)</option>
-                      <option value="workday">Workday HR (Human Capital)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Endpoint URL</label>
-                    <input type="text" id="conn-endpoint" class="input-field" placeholder="https://api4.successfactors.com" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                  </div>
-
-                  <div>
-                    <label id="conn-tenant-label" style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Company ID</label>
-                    <input type="text" id="conn-tenant-id" class="input-field" placeholder="e.g. ACME_CORP" style="padding:0.4rem; font-size:0.8rem; font-family:var(--font-mono);">
-                  </div>
-
-                  <!-- Discover Metadata Trigger -->
-                  <button id="btn-conn-discover" class="btn btn-secondary btn-sm" style="margin-top: 0.35rem; width: 100%;">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Connect &amp; Discover Metadata
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+                  <span id="conn-test-result" style="font-size:0.75rem; font-weight: 600;"></span>
+                  <button class="btn btn-secondary btn-sm" id="btn-conn-test" style="margin-left: auto;">
+                    Test Connection
                   </button>
-
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Target Object / Entity</label>
-                    <select id="conn-entity" class="input-field" style="padding:0.4rem; font-size:0.8rem;" disabled>
-                      <option value="">-- Click 'Discover Metadata' first --</option>
-                    </select>
-                    <input type="text" id="conn-entity-custom" class="input-field" placeholder="Enter custom entity name" style="padding:0.4rem; font-size:0.8rem; margin-top:0.4rem; display:none;">
-                  </div>
                 </div>
+              </div>
 
-                <!-- Col 2: Dynamic Authentication -->
-                <div style="display:flex; flex-direction:column; gap:0.75rem;">
-                  <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">② Authentication</h4>
+              <!-- Step 3 Card: Configure and Ingest -->
+              <div class="stat-card" id="conn-config-card" style="padding: 1.5rem; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface); opacity: 0.55;">
+                <h3 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Configure and Ingest</h3>
+                <p class="locked-card-note" id="conn-config-note">Unlocks after a successful connection test.</p>
 
-                  <!-- Auth type toggle -->
-                  <div style="display:flex; gap:0; border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden;" id="conn-auth-toggle-bar">
-                    <!-- Buttons populated dynamically -->
+                <div class="grid" id="conn-config-fields-grid" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                  <div class="field">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Target Object / Entity</label>
+                    <select id="conn-entity" class="input-field" style="padding:0.4rem; font-size:0.8rem;"></select>
                   </div>
-
-                  <!-- Dynamic Credentials Form Panel -->
-                  <div id="conn-credentials-fields" style="display:flex; flex-direction:column; gap:0.6rem; max-height: 250px; overflow-y: auto; padding-right: 0.25rem;">
-                    <!-- Input fields injected dynamically depending on source and auth mode -->
+                  <div class="field">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Records per page</label>
+                    <input type="number" id="conn-top" class="input-field" value="1000" min="50" max="10000" step="50" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
-                </div>
-
-                <!-- Col 3: Target & Ingest -->
-                <div style="display:flex; flex-direction:column; gap:0.75rem;">
-                  <h4 style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin:0; font-weight:700; letter-spacing:0.05em;">③ Lakehouse Target</h4>
-
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
+                  <div class="field">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Namespace</label>
                     <input type="text" id="conn-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
-                  <div>
-                    <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Iceberg Table Name</label>
-                    <input type="text" id="conn-table-name" class="input-field" placeholder="sf_employees" style="padding:0.4rem; font-size:0.8rem;">
+                  <div class="field">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Table Name</label>
+                    <input type="text" id="conn-table-name" class="input-field" placeholder="e.g. workday_workers" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
-                  
-                  <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.5rem;">
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Write Mode</label>
-                      <select id="conn-write-mode" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
-                        <option value="overwrite">Overwrite</option>
-                        <option value="append">Append</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">$top Limit</label>
-                      <input type="number" id="conn-top" class="input-field" value="1000" min="100" max="5000" style="padding:0.4rem; font-size:0.8rem;">
-                    </div>
+                  <div class="field" style="grid-column: span 2;">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Write Mode</label>
+                    <select id="conn-write-mode" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
+                      <option value="append">Append (Default)</option>
+                      <option value="overwrite">Overwrite</option>
+                      <option value="merge">Merge (Upsert)</option>
+                    </select>
                   </div>
+                </div>
 
-                  <button id="btn-conn-ingest" class="btn btn-primary" style="margin-top:auto; width:100%; background: linear-gradient(135deg,var(--color-primary),#15803d); border-color:#16a34a;" disabled>
-                    <i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse
+                <div id="conn-config-actions-row" style="display: none; justify-content: flex-end; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem; gap: 1rem;">
+                  <button class="btn btn-primary" id="btn-conn-ingest">
+                    <i class="fa-solid fa-bolt"></i> Fetch and Ingest into Lakehouse
                   </button>
+                </div>
 
-                  <div id="conn-result-box" style="display:none; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:0.75rem; font-size:0.75rem; color:var(--text-main);">
-                    <div id="conn-result-text"></div>
-                  </div>
+                <div id="conn-result-box" style="display:none; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:6px; padding:0.75rem; font-size:0.75rem; color:var(--text-main);">
+                  <div id="conn-result-text"></div>
                 </div>
               </div>
             </div>
