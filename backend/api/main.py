@@ -335,6 +335,24 @@ class IngestRequest(BaseModel):
     write_mode: Optional[str] = "append" # "append", "overwrite", "upsert"
     merge_key: Optional[str] = None
 
+class SuccessFactorsRequest(BaseModel):
+    # Connection
+    sf_endpoint: str          # e.g. https://api4.successfactors.com
+    company_id: str           # e.g. ACME_CORP
+    # Auth
+    auth_type: str            # "basic" or "oauth2"
+    username: Optional[str] = None      # Basic auth
+    password: Optional[str] = None      # Basic auth
+    client_id: Optional[str] = None     # OAuth2
+    client_secret: Optional[str] = None # OAuth2
+    token_url: Optional[str] = None     # OAuth2 token endpoint override
+    # Entity & target
+    entity_name: str          # e.g. PerPersonal, EmpJob, EmpCompensation
+    top: Optional[int] = 1000 # OData $top (max records per page)
+    namespace: str = "default"
+    table_name: str
+    write_mode: Optional[str] = "overwrite"
+
 class CypherRequest(BaseModel):
     graph_name: str
     query: str
@@ -1024,10 +1042,184 @@ async def update_aws_config(
         details=f"AWS config updated: region={payload.region}, warehouse={payload.s3_warehouse_uri}",
         status="success"
     )
-    return {"status": "success", "message": "AWS config updated successfully."}
+    return {\"status\": \"success\", \"message\": \"AWS config updated successfully.\"}
 
 
-@app.get("/v1/graph/stats", tags=["Graph"])
+@app.post(\"/v1/ingest/successfactors\", tags=[\"Ingestion\"])
+async def ingest_successfactors(
+    payload: SuccessFactorsRequest,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    \"\"\"
+    Fetch data from SAP SuccessFactors OData API and ingest into the Iceberg lakehouse.
+    Supports Basic Auth (username/password) and OAuth2 Client Credentials flow.
+    Handles OData pagination ($skiptoken / @odata.nextLink) automatically.
+    \"\"\"
+    import requests
+    import pyarrow as pa
+    from catalog_setup import get_catalog
+    from tools import create_iceberg_table
+
+    base_url = payload.sf_endpoint.rstrip(\"/\")
+    company_id = payload.company_id
+    entity = payload.entity_name
+
+    # ── 1. Resolve Auth ─────────────────────────────────────────────────────
+    session = requests.Session()
+    session.headers.update({\"Accept\": \"application/json\",
+                             \"Content-Type\": \"application/json\"})
+
+    if payload.auth_type == \"basic\":
+        if not payload.username or not payload.password:
+            raise HTTPException(status_code=400,
+                detail=\"username and password are required for Basic auth\")
+        # SuccessFactors Basic = username@companyId:password
+        sf_user = f\"{payload.username}@{company_id}\"
+        session.auth = (sf_user, payload.password)
+
+    elif payload.auth_type == \"oauth2\":
+        if not payload.client_id or not payload.client_secret:
+            raise HTTPException(status_code=400,
+                detail=\"client_id and client_secret are required for OAuth2\")
+        token_url = payload.token_url or f\"{base_url}/oauth/token\"
+        try:
+            token_resp = requests.post(token_url, data={
+                \"grant_type\": \"client_credentials\",
+                \"client_id\": payload.client_id,
+                \"client_secret\": payload.client_secret,
+                \"company_id\": company_id,
+            }, timeout=30)
+            token_resp.raise_for_status()
+            access_token = token_resp.json().get(\"access_token\")
+            if not access_token:
+                raise HTTPException(status_code=401,
+                    detail=f\"OAuth2 token response missing access_token: {token_resp.text}\")
+            session.headers[\"Authorization\"] = f\"Bearer {access_token}\"
+        except requests.RequestException as e:
+            raise HTTPException(status_code=502, detail=f\"OAuth2 token fetch failed: {e}\")
+    else:
+        raise HTTPException(status_code=400,
+            detail=\"auth_type must be 'basic' or 'oauth2'\")
+
+    # ── 2. Paginated OData Fetch ─────────────────────────────────────────────
+    records: list[dict] = []
+    odata_url = (f\"{base_url}/odata/v2/{entity}\"
+                 f\"?$format=json&$top={payload.top}&companyId={company_id}\")
+
+    try:
+        while odata_url:
+            resp = session.get(odata_url, timeout=60)
+            resp.raise_for_status()
+            body = resp.json()
+
+            # OData v2 wraps in {\"d\": {\"results\": [...]}} or {\"d\": [...]}
+            d = body.get(\"d\", body)
+            page_records = d.get(\"results\", d) if isinstance(d, dict) else d
+            if not isinstance(page_records, list):
+                raise HTTPException(status_code=502,
+                    detail=f\"Unexpected OData response structure: {str(body)[:400]}\")
+
+            # Flatten: remove OData metadata keys
+            for rec in page_records:
+                clean = {k: v for k, v in rec.items()
+                         if not k.startswith(\"__\") and not isinstance(v, dict)}
+                records.append(clean)
+
+            # Follow nextLink for pagination
+            next_link = (d.get(\"__next\") or
+                         body.get(\"@odata.nextLink\") or
+                         d.get(\"__deferred\"))
+            odata_url = next_link if isinstance(next_link, str) else None
+
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f\"SuccessFactors API error: {e}\")
+
+    if not records:
+        raise HTTPException(status_code=404,
+            detail=f\"Entity '{entity}' returned 0 records. Check entity name and permissions.\")
+
+    # ── 3. Convert to PyArrow table ──────────────────────────────────────────
+    try:
+        df = pd.DataFrame(records)
+        # Coerce all object columns to string for safe Iceberg schema inference
+        for col in df.select_dtypes(include=\"object\").columns:
+            df[col] = df[col].astype(str)
+        arrow_table = pa.Table.from_pandas(df, preserve_index=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f\"DataFrame conversion failed: {e}\")
+
+    # ── 4. Build schema_json for Iceberg table creation ──────────────────────
+    type_map = {
+        pa.string(): \"string\", pa.large_string(): \"string\",
+        pa.int32(): \"int\", pa.int64(): \"long\",
+        pa.float32(): \"float\", pa.float64(): \"double\",
+        pa.bool_(): \"boolean\",
+        pa.date32(): \"date\", pa.timestamp(\"us\"): \"timestamp\",
+    }
+    schema_json = []
+    for field in arrow_table.schema:
+        iceberg_type = type_map.get(field.type, \"string\")
+        schema_json.append({\"name\": field.name, \"type\": iceberg_type})
+
+    # ── 5. Create Iceberg table if not exists ────────────────────────────────
+    import json as _json
+    create_res = create_iceberg_table.invoke({
+        \"namespace\": payload.namespace,
+        \"table_name\": payload.table_name,
+        \"schema_json\": _json.dumps(schema_json)
+    })
+    if \"error\" in create_res.lower():
+        raise HTTPException(status_code=500, detail=f\"Table creation failed: {create_res}\")
+
+    # ── 6. Write to Iceberg ──────────────────────────────────────────────────
+    try:
+        catalog = get_catalog()
+        table = catalog.load_table((payload.namespace, payload.table_name))
+        pyarrow_schema = table.schema().as_arrow()
+
+        cast_arrays, cast_fields = [], []
+        for field in pyarrow_schema:
+            if field.name in arrow_table.schema.names:
+                col = arrow_table.column(field.name)
+                try:
+                    cast_arrays.append(col.cast(field.type))
+                except Exception:
+                    cast_arrays.append(col.cast(pa.string()))
+                cast_fields.append(field)
+
+        final_table = pa.table(
+            {f.name: arr for f, arr in zip(cast_fields, cast_arrays)},
+            schema=pa.schema(cast_fields)
+        )
+
+        if payload.write_mode == \"overwrite\":
+            table.overwrite(final_table)
+        else:
+            table.append(final_table)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f\"Iceberg write failed: {e}\")
+
+    log_audit(
+        user_id=user.get(\"sub\", \"unknown\"),
+        tier=user.get(\"tier\", \"trial\"),
+        action=\"sf_ingest\",
+        details=(f\"SuccessFactors {entity} → {payload.namespace}.{payload.table_name}: \"
+                 f\"{len(records)} rows via {payload.auth_type}\"),
+        status=\"success\"
+    )
+
+    return {
+        \"status\": \"success\",
+        \"message\": (f\"Successfully ingested {len(records):,} records from SF entity '{entity}' \"
+                     f\"into {payload.namespace}.{payload.table_name}\"),
+        \"rows_ingested\": len(records),
+        \"columns\": len(schema_json),
+        \"table\": f\"{payload.namespace}.{payload.table_name}\",
+        \"auth_method\": payload.auth_type,
+    }
+
+
+@app.get(\"/v1/graph/stats\", tags=[\"Graph\"])
 async def get_graph_stats_endpoint(
     graph_name: str = "pharma_graph",
     user: Dict[str, Any] = Depends(get_current_user)

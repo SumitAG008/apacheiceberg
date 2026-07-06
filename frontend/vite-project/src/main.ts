@@ -5480,6 +5480,129 @@ function initOrchestratorDagSimulation() {
 (window as any).logoutToHome = logoutToHome;
 (window as any).toggleLandingMobileMenu = toggleLandingMobileMenu;
 
+// ── SAP SuccessFactors Connector ──────────────────────────────────────────────
+
+// Auth mode toggle (called inline from HTML)
+let sfAuthMode = 'basic';
+(window as any).sfSetAuth = (mode: string) => {
+  sfAuthMode = mode;
+  const basicFields = document.getElementById('sf-basic-fields');
+  const oauthFields = document.getElementById('sf-oauth-fields');
+  const basicBtn = document.getElementById('sf-auth-basic-btn') as HTMLButtonElement;
+  const oauthBtn = document.getElementById('sf-auth-oauth-btn') as HTMLButtonElement;
+
+  if (mode === 'basic') {
+    if (basicFields) basicFields.style.display = 'flex';
+    if (oauthFields) oauthFields.style.display = 'none';
+    if (basicBtn) { basicBtn.style.background = 'var(--color-primary)'; basicBtn.style.color = '#fff'; }
+    if (oauthBtn) { oauthBtn.style.background = 'var(--bg-surface2)'; oauthBtn.style.color = 'var(--text-muted)'; }
+  } else {
+    if (basicFields) basicFields.style.display = 'none';
+    if (oauthFields) oauthFields.style.display = 'flex';
+    if (oauthBtn) { oauthBtn.style.background = 'var(--color-primary)'; oauthBtn.style.color = '#fff'; }
+    if (basicBtn) { basicBtn.style.background = 'var(--bg-surface2)'; basicBtn.style.color = 'var(--text-muted)'; }
+  }
+};
+
+// Custom entity input toggle
+const sfEntitySelect = document.getElementById('sf-entity') as HTMLSelectElement;
+const sfEntityCustom = document.getElementById('sf-entity-custom') as HTMLInputElement;
+if (sfEntitySelect) {
+  sfEntitySelect.addEventListener('change', () => {
+    if (sfEntityCustom) {
+      sfEntityCustom.style.display = sfEntitySelect.value === 'custom' ? 'block' : 'none';
+    }
+  });
+}
+
+// Fetch & Ingest button
+const btnSfIngest = document.getElementById('btn-sf-ingest') as HTMLButtonElement;
+if (btnSfIngest) {
+  btnSfIngest.addEventListener('click', async () => {
+    const sfEndpoint = (document.getElementById('sf-endpoint') as HTMLInputElement)?.value.trim();
+    const sfCompanyId = (document.getElementById('sf-company-id') as HTMLInputElement)?.value.trim();
+    const sfEntitySel = (document.getElementById('sf-entity') as HTMLSelectElement)?.value;
+    const sfEntityName = sfEntitySel === 'custom'
+      ? (document.getElementById('sf-entity-custom') as HTMLInputElement)?.value.trim()
+      : sfEntitySel;
+    const sfTop = parseInt((document.getElementById('sf-top') as HTMLInputElement)?.value || '1000');
+    const sfNamespace = (document.getElementById('sf-namespace') as HTMLInputElement)?.value.trim() || 'default';
+    const sfTableName = (document.getElementById('sf-table-name') as HTMLInputElement)?.value.trim();
+    const sfWriteMode = (document.getElementById('sf-write-mode') as HTMLSelectElement)?.value;
+    const sfStatusBadge = document.getElementById('sf-status-badge');
+    const sfResultBox = document.getElementById('sf-result-box');
+    const sfResultText = document.getElementById('sf-result-text');
+
+    // Validation
+    if (!sfEndpoint) { showToast('Please enter the SuccessFactors API Endpoint URL.', 'error'); return; }
+    if (!sfCompanyId) { showToast('Please enter the Company ID.', 'error'); return; }
+    if (!sfEntityName) { showToast('Please select or enter an entity name.', 'error'); return; }
+    if (!sfTableName) { showToast('Please enter a target Iceberg table name.', 'error'); return; }
+
+    // Build payload
+    const payload: Record<string, any> = {
+      sf_endpoint: sfEndpoint,
+      company_id: sfCompanyId,
+      auth_type: sfAuthMode,
+      entity_name: sfEntityName,
+      top: sfTop,
+      namespace: sfNamespace,
+      table_name: sfTableName,
+      write_mode: sfWriteMode,
+    };
+
+    if (sfAuthMode === 'basic') {
+      payload.username = (document.getElementById('sf-username') as HTMLInputElement)?.value.trim();
+      payload.password = (document.getElementById('sf-password') as HTMLInputElement)?.value;
+      if (!payload.username || !payload.password) {
+        showToast('Username and Password are required for Basic Auth.', 'error'); return;
+      }
+    } else {
+      payload.client_id = (document.getElementById('sf-client-id') as HTMLInputElement)?.value.trim();
+      payload.client_secret = (document.getElementById('sf-client-secret') as HTMLInputElement)?.value;
+      payload.token_url = (document.getElementById('sf-token-url') as HTMLInputElement)?.value.trim() || undefined;
+      if (!payload.client_id || !payload.client_secret) {
+        showToast('Client ID and Client Secret are required for OAuth 2.0.', 'error'); return;
+      }
+    }
+
+    // Update UI state
+    btnSfIngest.disabled = true;
+    btnSfIngest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to SuccessFactors...';
+    if (sfStatusBadge) { sfStatusBadge.textContent = 'Fetching...'; sfStatusBadge.style.background = 'rgba(234,179,8,0.15)'; sfStatusBadge.style.color = '#ca8a04'; }
+    if (sfResultBox) sfResultBox.style.display = 'none';
+
+    try {
+      const data = await api.triggerSFIngest(payload);
+
+      // Success
+      if (sfStatusBadge) { sfStatusBadge.textContent = '✓ Connected'; sfStatusBadge.style.background = 'rgba(34,197,94,0.15)'; sfStatusBadge.style.color = '#22c55e'; }
+      if (sfResultBox) sfResultBox.style.display = 'block';
+      if (sfResultText) {
+        sfResultText.innerHTML = `
+          ✅ <strong>${data.rows_ingested?.toLocaleString()} rows</strong> ingested from <strong>${sfEntityName}</strong><br>
+          📋 <strong>${data.columns}</strong> columns auto-mapped to Iceberg schema<br>
+          🗃️ Table: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;">${data.table}</code><br>
+          🔑 Auth method: <strong>${data.auth_method}</strong>
+        `;
+      }
+      showToast(`${data.rows_ingested?.toLocaleString()} SF rows ingested into ${sfTableName}!`, 'success');
+      // Jump to SQL console to query
+      setTimeout(() => {
+        switchTab('datastudio-tab');
+        sendMessage(`Show me the schema and first 10 rows of "${sfNamespace}.${sfTableName}"`);
+      }, 1500);
+
+    } catch (err: any) {
+      if (sfStatusBadge) { sfStatusBadge.textContent = 'Error'; sfStatusBadge.style.background = 'rgba(239,68,68,0.15)'; sfStatusBadge.style.color = '#ef4444'; }
+      showToast(`SF Ingest failed: ${err.message}`, 'error');
+    } finally {
+      btnSfIngest.disabled = false;
+      btnSfIngest.innerHTML = '<i class="fa-solid fa-bolt"></i> Fetch &amp; Ingest into Lakehouse';
+    }
+  });
+}
+
 if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', initAuthController);
 } else {

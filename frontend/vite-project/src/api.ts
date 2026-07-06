@@ -290,6 +290,20 @@ export const api = {
     return res.json();
   },
 
+  // ── Ingestion: SuccessFactors OData connector ──────────────────────────
+  async triggerSFIngest(payload: Record<string, any>): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/v1/ingest/successfactors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || err.error || 'SuccessFactors ingest failed');
+    }
+    return res.json();
+  },
+
   // ── Ingestion: 2. Create + Ingest ─────────────────────────────────────
   async triggerIngest(payload: IngestPayload): Promise<{ status: string; message: string }> {
     const res = await authFetch(`${BASE_URL}/v1/ingest`, {
