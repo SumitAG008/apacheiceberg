@@ -2628,6 +2628,73 @@
               </div>
             </div>
 
+            <!-- ============ SAMPLE DATA PANEL ============ -->
+            <div id="p-sample" class="panel-ingest">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;">
+                
+                <!-- Card 1: Employees -->
+                <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                    <span class="logo-icon" style="background:#0875e1; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">HR</span>
+                    <div>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Employee Directory</h4>
+                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">1,000 rows · 8 columns</p>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
+                    HR Master Data including employee ID, full name, department, title, salary, hire date, and manager relationships. Perfect for testing aggregations and organizational graphs.
+                  </p>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                    <strong>Fields:</strong> emp_id, name, dept, title, salary, hire_date, email, manager_id
+                  </div>
+                  <button class="btn btn-primary btn-block" id="btn-sample-employees" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Employees Dataset
+                  </button>
+                </div>
+
+                <!-- Card 2: E-Commerce Orders -->
+                <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                    <span class="logo-icon" style="background:#16a34a; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">EC</span>
+                    <div>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">E-Commerce Orders</h4>
+                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">5,000 rows · 7 columns</p>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
+                    Transactional sales history containing order status, total price, payment methods, customer IDs, and store branches. Great for business intelligence reporting and time-series analysis.
+                  </p>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                    <strong>Fields:</strong> order_id, customer_id, order_date, amount, status, payment_method, branch
+                  </div>
+                  <button class="btn btn-primary btn-block" id="btn-sample-orders" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Orders Dataset
+                  </button>
+                </div>
+
+                <!-- Card 3: Web Traffic -->
+                <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                    <span class="logo-icon" style="background:#7c3aed; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">WT</span>
+                    <div>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Web Traffic Logs</h4>
+                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">10,000 rows · 6 columns</p>
+                    </div>
+                  </div>
+                  <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
+                    Web server clickstream events including IP addresses, HTTP request paths, status codes, referrer URLs, and response latencies. Ideal for log auditing and performance dashboards.
+                  </p>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                    <strong>Fields:</strong> timestamp, ip, path, status, referrer, response_time_ms
+                  </div>
+                  <button class="btn btn-primary btn-block" id="btn-sample-traffic" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Traffic Dataset
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
           </div>
 
           <!-- TAB 4: GRAPH -->
