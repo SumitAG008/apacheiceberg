@@ -1827,78 +1827,78 @@ async function checkBackendStatus() {
 // AUTH OVERLAY CONTROLLER
 // ─────────────────────────────────────────
 function initAuthController() {
-  const overlay = document.getElementById('auth-overlay')!;
-  const mainApp = document.getElementById('main-app')!;
-  const landingPage = document.getElementById('landing-page')!;
+  const overlay = document.getElementById('auth-overlay');
+  const mainApp = document.getElementById('main-app');
+  const landingPage = document.getElementById('landing-page');
 
   // ─ Landing page buttons
-  const landingBtnLogin = document.getElementById('landing-btn-login')!;
-  const landingBtnSignup = document.getElementById('landing-btn-signup')!;
-  const landingHeroSignup = document.getElementById('landing-hero-signup')!;
+  const landingBtnLogin = document.getElementById('landing-btn-login');
+  const landingBtnSignup = document.getElementById('landing-btn-signup');
+  const landingHeroSignup = document.getElementById('landing-hero-signup');
 
   // ─ Screen references
-  const screenLogin    = document.getElementById('auth-screen-login')!;
-  const screenRegister = document.getElementById('auth-screen-register')!;
-  const screenMfa      = document.getElementById('auth-screen-mfa')!;
-  const screenForgot   = document.getElementById('auth-screen-forgot')!;
-  const screenResetOtp = document.getElementById('auth-screen-reset-otp')!;
-  const screenNewPwd   = document.getElementById('auth-screen-new-password')!;
+  const screenLogin    = document.getElementById('auth-screen-login');
+  const screenRegister = document.getElementById('auth-screen-register');
+  const screenMfa      = document.getElementById('auth-screen-mfa');
+  const screenForgot   = document.getElementById('auth-screen-forgot');
+  const screenResetOtp = document.getElementById('auth-screen-reset-otp');
+  const screenNewPwd   = document.getElementById('auth-screen-new-password');
 
   // ─ Login elements
   const loginEmailEl    = document.getElementById('login-email') as HTMLInputElement;
   const loginPasswordEl = document.getElementById('login-password') as HTMLInputElement;
-  const loginErrorEl    = document.getElementById('login-error')!;
+  const loginErrorEl    = document.getElementById('login-error');
   const btnLogin        = document.getElementById('btn-login') as HTMLButtonElement;
-  const gotoRegister    = document.getElementById('goto-register')!;
+  const gotoRegister    = document.getElementById('goto-register');
 
   // ─ Register elements
   const regEmailEl    = document.getElementById('register-email') as HTMLInputElement;
   const regPasswordEl = document.getElementById('register-password') as HTMLInputElement;
   const regPassword2El= document.getElementById('register-password2') as HTMLInputElement;
-  const regErrorEl    = document.getElementById('register-error')!;
+  const regErrorEl    = document.getElementById('register-error');
   const btnRegister   = document.getElementById('btn-register') as HTMLButtonElement;
-  const gotoLogin     = document.getElementById('goto-login')!;
+  const gotoLogin     = document.getElementById('goto-login');
   const pwdBar        = document.getElementById('pwd-strength-bar') as HTMLDivElement;
 
   // ─ MFA elements
-  const otpEmailBadge = document.getElementById('otp-target-email')!;
-  const mfaErrorEl    = document.getElementById('mfa-error')!;
-  const mfaSuccessEl  = document.getElementById('mfa-success')!;
+  const otpEmailBadge = document.getElementById('otp-target-email');
+  const mfaErrorEl    = document.getElementById('mfa-error');
+  const mfaSuccessEl  = document.getElementById('mfa-success');
   const btnVerify     = document.getElementById('btn-verify-otp') as HTMLButtonElement;
   const btnResend     = document.getElementById('btn-resend-otp') as HTMLButtonElement;
-  const gotoLoginFromMfa = document.getElementById('goto-login-from-mfa')!;
-  const otpTimer      = document.getElementById('otp-timer')!;
+  const gotoLoginFromMfa = document.getElementById('goto-login-from-mfa');
+  const otpTimer      = document.getElementById('otp-timer');
   const otpDigits     = Array.from({length:6}, (_,i) => document.getElementById(`otp-${i}`) as HTMLInputElement);
 
   // ─ Header user/logout
-  const headerEmail = document.getElementById('header-user-email')!;
+  const headerEmail = document.getElementById('header-user-email');
   const btnLogout   = document.getElementById('btn-logout') as HTMLButtonElement;
 
   // ─ Forgot Password elements
   const forgotEmailEl      = document.getElementById('forgot-email') as HTMLInputElement;
-  const forgotErrorEl      = document.getElementById('forgot-error')!;
-  const forgotSuccessEl    = document.getElementById('forgot-success')!;
+  const forgotErrorEl      = document.getElementById('forgot-error');
+  const forgotSuccessEl    = document.getElementById('forgot-success');
   const btnSendReset       = document.getElementById('btn-send-reset') as HTMLButtonElement;
-  const gotoForgotPwd      = document.getElementById('goto-forgot-password')!;
-  const gotoLoginFromForgot = document.getElementById('goto-login-from-forgot')!;
+  const gotoForgotPwd      = document.getElementById('goto-forgot-password');
+  const gotoLoginFromForgot = document.getElementById('goto-login-from-forgot');
 
   // ─ Reset OTP elements
-  const resetOtpEmailBadge = document.getElementById('reset-otp-target-email')!;
-  const resetOtpErrorEl    = document.getElementById('reset-otp-error')!;
-  const resetOtpSuccessEl  = document.getElementById('reset-otp-success')!;
-  const resetOtpTimer      = document.getElementById('reset-otp-timer')!;
+  const resetOtpEmailBadge = document.getElementById('reset-otp-target-email');
+  const resetOtpErrorEl    = document.getElementById('reset-otp-error');
+  const resetOtpSuccessEl  = document.getElementById('reset-otp-success');
+  const resetOtpTimer      = document.getElementById('reset-otp-timer');
   const btnVerifyResetOtp  = document.getElementById('btn-verify-reset-otp') as HTMLButtonElement;
-  const gotoForgotFromResetOtp = document.getElementById('goto-forgot-from-reset-otp')!;
+  const gotoForgotFromResetOtp = document.getElementById('goto-forgot-from-reset-otp');
   const resetOtpDigits     = Array.from({length:6}, (_,i) => document.getElementById(`rotp-${i}`) as HTMLInputElement);
 
   // ─ New Password elements
   const newPwdInput        = document.getElementById('new-password-input') as HTMLInputElement;
   const newPwdConfirm      = document.getElementById('new-password-confirm') as HTMLInputElement;
-  const newPwdErrorEl      = document.getElementById('new-pwd-error')!;
-  const newPwdSuccessEl    = document.getElementById('new-pwd-success')!;
+  const newPwdErrorEl      = document.getElementById('new-pwd-error');
+  const newPwdSuccessEl    = document.getElementById('new-pwd-success');
   const newPwdBar          = document.getElementById('new-pwd-strength-bar') as HTMLDivElement;
   const btnSetNewPwd       = document.getElementById('btn-set-new-password') as HTMLButtonElement;
-  const gotoLoginFromNewPwd = document.getElementById('goto-login-from-new-pwd')!;
+  const gotoLoginFromNewPwd = document.getElementById('goto-login-from-new-pwd');
 
   // ─ Reset flow state
   let resetTempToken = '';
@@ -1909,43 +1909,50 @@ function initAuthController() {
   let resendCountdown: ReturnType<typeof setInterval> | null = null;
 
   // ── Helpers─────────────────────────────────────────────
-  function showScreen(screen: HTMLElement) {
-    [screenLogin, screenRegister, screenMfa, screenForgot, screenResetOtp, screenNewPwd].forEach(s => s.classList.remove('active'));
+  function showScreen(screen: HTMLElement | null) {
+    if (!screen) return;
+    const screens = [screenLogin, screenRegister, screenMfa, screenForgot, screenResetOtp, screenNewPwd];
+    screens.forEach(s => {
+      if (s) s.classList.remove('active');
+    });
     screen.classList.add('active');
   }
 
-  function setError(el: HTMLElement, msg: string) {
+  function setError(el: HTMLElement | null, msg: string) {
+    if (!el) return;
     el.textContent = msg;
     el.classList.add('show');
   }
 
   // Clear errors
-  function clearError(el: HTMLElement) {
+  function clearError(el: HTMLElement | null) {
+    if (!el) return;
     el.textContent = '';
     el.classList.remove('show');
   }
 
-  function setSuccess(el: HTMLElement, msg: string) {
+  function setSuccess(el: HTMLElement | null, msg: string) {
+    if (!el) return;
     el.textContent = msg;
     el.classList.add('show');
   }
 
   function showMainApp() {
-    landingPage.classList.add('hidden');
-    overlay.classList.add('hidden');
-    overlay.classList.remove('active');
+    landingPage?.classList.add('hidden');
+    overlay?.classList.add('hidden');
+    overlay?.classList.remove('active');
     
     const academyPage = document.getElementById('academy-portal-page');
     if (academyPage) academyPage.style.display = 'none';
 
     setTimeout(() => { 
-      overlay.style.display = 'none'; 
-      landingPage.style.display = 'none';
+      if (overlay) overlay.style.display = 'none'; 
+      if (landingPage) landingPage.style.display = 'none';
     }, 400);
-    mainApp.style.display = 'flex';
+    if (mainApp) mainApp.style.display = 'flex';
     const user = tokenStore.getUser();
     if (user) {
-      headerEmail.textContent = user.email;
+      if (headerEmail) headerEmail.textContent = user.email;
       const avatarCharEl = document.getElementById('user-avatar-char');
       if (avatarCharEl) avatarCharEl.textContent = user.email.charAt(0).toUpperCase();
       const dropdownEmailEl = document.getElementById('dropdown-user-email');
@@ -2006,9 +2013,11 @@ LIMIT 10;`;
   }
 
   function openAuthModal(mode: 'login' | 'register') {
-    overlay.style.display = 'flex';
-    overlay.classList.remove('hidden');
-    overlay.classList.add('active');
+    if (overlay) {
+      overlay.style.display = 'flex';
+      overlay.classList.remove('hidden');
+      overlay.classList.add('active');
+    }
     if (mode === 'login') {
       showScreen(screenLogin);
     } else {
@@ -2017,7 +2026,7 @@ LIMIT 10;`;
   }
 
   // Close modal if user clicks on the backdrop overlay
-  overlay.addEventListener('click', (e) => {
+  overlay?.addEventListener('click', (e) => {
     if (e.target === overlay) {
       overlay.classList.remove('active');
       overlay.classList.add('hidden');
@@ -2026,9 +2035,9 @@ LIMIT 10;`;
   });
 
   // Bind landing page buttons to open auth card
-  landingBtnLogin.addEventListener('click', () => openAuthModal('login'));
-  landingBtnSignup.addEventListener('click', () => openAuthModal('register'));
-  landingHeroSignup.addEventListener('click', () => openAuthModal('register'));
+  landingBtnLogin?.addEventListener('click', () => openAuthModal('login'));
+  landingBtnSignup?.addEventListener('click', () => openAuthModal('register'));
+  landingHeroSignup?.addEventListener('click', () => openAuthModal('register'));
 
   function startOtpTimer(seconds = 600) {
     if (otpCountdown) clearInterval(otpCountdown);
@@ -2036,11 +2045,13 @@ LIMIT 10;`;
     const update = () => {
       const m = Math.floor(remaining / 60).toString().padStart(2,'0');
       const s = (remaining % 60).toString().padStart(2,'0');
-      otpTimer.textContent = `${m}:${s}`;
-      if (remaining <= 0) {
-        clearInterval(otpCountdown!);
-        otpTimer.textContent = 'Expired';
-        otpTimer.style.color = '#F87171';
+      if (otpTimer) {
+        otpTimer.textContent = `${m}:${s}`;
+        if (remaining <= 0) {
+          clearInterval(otpCountdown!);
+          otpTimer.textContent = 'Expired';
+          otpTimer.style.color = '#F87171';
+        }
       }
       remaining--;
     };
@@ -2050,14 +2061,16 @@ LIMIT 10;`;
 
   function startResendCooldown(seconds = 60) {
     if (resendCountdown) clearInterval(resendCountdown);
-    btnResend.disabled = true;
+    if (btnResend) btnResend.disabled = true;
     let remaining = seconds;
     const update = () => {
-      btnResend.textContent = `Resend code (${remaining}s)`;
+      if (btnResend) btnResend.textContent = `Resend code (${remaining}s)`;
       if (remaining <= 0) {
         clearInterval(resendCountdown!);
-        btnResend.disabled = false;
-        btnResend.textContent = 'Resend code';
+        if (btnResend) {
+          btnResend.disabled = false;
+          btnResend.textContent = 'Resend code';
+        }
       }
       remaining--;
     };
@@ -2083,24 +2096,29 @@ LIMIT 10;`;
     if (/[^A-Za-z0-9]/.test(pwd)) score++;
     const colors = ['#EF4444','#F59E0B','#10B981','#6D28D9'];
     const widths = ['25%','50%','75%','100%'];
-    pwdBar.style.width = score > 0 ? widths[score-1] : '0';
-    pwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+    if (pwdBar) {
+      pwdBar.style.width = score > 0 ? widths[score-1] : '0';
+      pwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+    }
   }
-  regPasswordEl.addEventListener('input', () => updatePwdStrength(regPasswordEl.value));
+  regPasswordEl?.addEventListener('input', () => {
+    if (regPasswordEl) updatePwdStrength(regPasswordEl.value);
+  });
 
   // OTP digit keyboard navigation
   otpDigits.forEach((input, idx) => {
+    if (!input) return;
     input.addEventListener('input', () => {
       const val = input.value.replace(/\D/g,'');
       input.value = val.slice(-1);
       input.classList.toggle('filled', val.length > 0);
-      if (val && idx < 5) otpDigits[idx+1].focus();
+      if (val && idx < 5) otpDigits[idx+1]?.focus();
       // Auto-submit when all 6 filled
-      if (getOtpValue().length === 6) btnVerify.click();
+      if (getOtpValue().length === 6) btnVerify?.click();
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Backspace' && !input.value && idx > 0) {
-        otpDigits[idx-1].focus();
+        otpDigits[idx-1]?.focus();
       }
     });
     input.addEventListener('paste', (e) => {
@@ -2109,20 +2127,20 @@ LIMIT 10;`;
       pasted.split('').forEach((ch, i) => {
         if (otpDigits[i]) { otpDigits[i].value = ch; otpDigits[i].classList.add('filled'); }
       });
-      if (pasted.length === 6) btnVerify.click();
+      if (pasted.length === 6) btnVerify?.click();
     });
   });
 
   // ── Screen transitions──────────────────────────────────────
-  gotoRegister.addEventListener('click', () => {
+  gotoRegister?.addEventListener('click', () => {
     clearError(loginErrorEl);
     showScreen(screenRegister);
   });
-  gotoLogin.addEventListener('click', () => {
+  gotoLogin?.addEventListener('click', () => {
     clearError(regErrorEl);
     showScreen(screenLogin);
   });
-  gotoLoginFromMfa.addEventListener('click', () => {
+  gotoLoginFromMfa?.addEventListener('click', () => {
     if (otpCountdown) clearInterval(otpCountdown);
     if (resendCountdown) clearInterval(resendCountdown);
     currentTempToken = '';
@@ -2134,27 +2152,27 @@ LIMIT 10;`;
   });
 
   // ─ Forgot password navigation
-  gotoForgotPwd.addEventListener('click', () => {
+  gotoForgotPwd?.addEventListener('click', () => {
     clearError(loginErrorEl);
     clearError(forgotErrorEl);
-    forgotSuccessEl.classList.remove('show');
-    forgotEmailEl.value = '';
+    if (forgotSuccessEl) forgotSuccessEl.classList.remove('show');
+    if (forgotEmailEl) forgotEmailEl.value = '';
     showScreen(screenForgot);
     setTimeout(() => forgotEmailEl.focus(), 100);
   });
-  gotoLoginFromForgot.addEventListener('click', () => {
+  gotoLoginFromForgot?.addEventListener('click', () => {
     clearError(forgotErrorEl);
-    forgotSuccessEl.classList.remove('show');
+    if (forgotSuccessEl) forgotSuccessEl.classList.remove('show');
     showScreen(screenLogin);
   });
-  gotoForgotFromResetOtp.addEventListener('click', () => {
+  gotoForgotFromResetOtp?.addEventListener('click', () => {
     clearError(resetOtpErrorEl);
-    resetOtpSuccessEl.classList.remove('show');
+    if (resetOtpSuccessEl) resetOtpSuccessEl.classList.remove('show');
     showScreen(screenForgot);
   });
-  gotoLoginFromNewPwd.addEventListener('click', () => {
+  gotoLoginFromNewPwd?.addEventListener('click', () => {
     clearError(newPwdErrorEl);
-    newPwdSuccessEl.classList.remove('show');
+    if (newPwdSuccessEl) newPwdSuccessEl.classList.remove('show');
     resetTempToken = '';
     showScreen(screenLogin);
   });
@@ -2163,10 +2181,10 @@ LIMIT 10;`;
   let resetOtpCountdown: ReturnType<typeof setInterval> | null = null;
 
   function getResetOtpValue(): string {
-    return resetOtpDigits.map(d => d.value).join('');
+    return resetOtpDigits.map(d => d ? d.value : '').join('');
   }
   function clearResetOtpInputs() {
-    resetOtpDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+    resetOtpDigits.forEach(d => { if (d) { d.value = ''; d.classList.remove('filled'); } });
     resetOtpDigits[0]?.focus();
   }
   function startResetOtpTimer(seconds = 600) {
@@ -2175,8 +2193,14 @@ LIMIT 10;`;
     const update = () => {
       const m = Math.floor(remaining / 60).toString().padStart(2,'0');
       const s = (remaining % 60).toString().padStart(2,'0');
-      resetOtpTimer.textContent = `${m}:${s}`;
-      if (remaining <= 0) { clearInterval(resetOtpCountdown!); resetOtpTimer.textContent = 'Expired'; resetOtpTimer.style.color = '#F87171'; }
+      if (resetOtpTimer) {
+        resetOtpTimer.textContent = `${m}:${s}`;
+        if (remaining <= 0) { 
+          clearInterval(resetOtpCountdown!); 
+          resetOtpTimer.textContent = 'Expired'; 
+          resetOtpTimer.style.color = '#F87171'; 
+        }
+      }
       remaining--;
     };
     update();
@@ -2185,15 +2209,16 @@ LIMIT 10;`;
 
   // ─ Reset OTP digit keyboard navigation
   resetOtpDigits.forEach((input, idx) => {
+    if (!input) return;
     input.addEventListener('input', () => {
       const val = input.value.replace(/\D/g,'');
       input.value = val.slice(-1);
       input.classList.toggle('filled', val.length > 0);
-      if (val && idx < 5) resetOtpDigits[idx+1].focus();
+      if (val && idx < 5) resetOtpDigits[idx+1]?.focus();
       if (getResetOtpValue().length === 6) btnVerifyResetOtp.click();
     });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && idx > 0) resetOtpDigits[idx-1].focus();
+      if (e.key === 'Backspace' && !input.value && idx > 0) resetOtpDigits[idx-1]?.focus();
     });
     input.addEventListener('paste', (e) => {
       e.preventDefault();
@@ -2201,12 +2226,12 @@ LIMIT 10;`;
       pasted.split('').forEach((ch, i) => {
         if (resetOtpDigits[i]) { resetOtpDigits[i].value = ch; resetOtpDigits[i].classList.add('filled'); }
       });
-      if (pasted.length === 6) btnVerifyResetOtp.click();
+      if (pasted.length === 6) btnVerifyResetOtp?.click();
     });
   });
 
   // ─ New password strength bar
-  newPwdInput.addEventListener('input', () => {
+  newPwdInput?.addEventListener('input', () => {
     const pwd = newPwdInput.value;
     let score = 0;
     if (pwd.length >= 8) score++;
@@ -2215,75 +2240,85 @@ LIMIT 10;`;
     if (/[^A-Za-z0-9]/.test(pwd)) score++;
     const colors = ['#EF4444','#F59E0B','#10B981','#6D28D9'];
     const widths = ['25%','50%','75%','100%'];
-    newPwdBar.style.width = score > 0 ? widths[score-1] : '0';
-    newPwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+    if (newPwdBar) {
+      newPwdBar.style.width = score > 0 ? widths[score-1] : '0';
+      newPwdBar.style.background = score > 0 ? colors[score-1] : 'transparent';
+    }
   });
 
   // ── FORGOT PASSWORD — Step 1: send reset code
   async function doForgotPassword() {
     clearError(forgotErrorEl);
-    forgotSuccessEl.classList.remove('show');
-    const email = forgotEmailEl.value.trim();
+    if (forgotSuccessEl) forgotSuccessEl.classList.remove('show');
+    const email = forgotEmailEl?.value.trim() || '';
     if (!email) { setError(forgotErrorEl, 'Please enter your email address.'); return; }
 
-    btnSendReset.disabled = true;
-    btnSendReset.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    if (btnSendReset) {
+      btnSendReset.disabled = true;
+      btnSendReset.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    }
     try {
       const res = await api.auth.forgotPassword(email);
       resetTempToken = res.temp_token;
       if (resetTempToken) {
-        resetOtpEmailBadge.textContent = email;
+        if (resetOtpEmailBadge) resetOtpEmailBadge.textContent = email;
         clearResetOtpInputs();
         clearError(resetOtpErrorEl);
-        resetOtpSuccessEl.classList.remove('show');
+        if (resetOtpSuccessEl) resetOtpSuccessEl.classList.remove('show');
         showScreen(screenResetOtp);
         startResetOtpTimer(600);
         setTimeout(() => resetOtpDigits[0]?.focus(), 100);
       } else {
         setSuccess(forgotSuccessEl, '✓ If that email is registered, a reset code has been sent.');
-        forgotSuccessEl.classList.add('show');
+        if (forgotSuccessEl) forgotSuccessEl.classList.add('show');
       }
     } catch(e: any) {
       setError(forgotErrorEl, e.message || 'Failed to send reset code. Please try again.');
     } finally {
-      btnSendReset.disabled = false;
-      btnSendReset.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Reset Code';
+      if (btnSendReset) {
+        btnSendReset.disabled = false;
+        btnSendReset.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Reset Code';
+      }
     }
   }
-  btnSendReset.addEventListener('click', doForgotPassword);
-  forgotEmailEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doForgotPassword(); });
+  btnSendReset?.addEventListener('click', doForgotPassword);
+  forgotEmailEl?.addEventListener('keydown', (e) => { if (forgotEmailEl && e.key === 'Enter') doForgotPassword(); });
 
   // ── FORGOT PASSWORD — Step 2: verify reset OTP
-  btnVerifyResetOtp.addEventListener('click', async () => {
+  btnVerifyResetOtp?.addEventListener('click', async () => {
     clearError(resetOtpErrorEl);
     const code = getResetOtpValue();
     if (code.length < 6) { setError(resetOtpErrorEl, 'Please enter all 6 digits.'); return; }
 
-    btnVerifyResetOtp.disabled = true;
-    btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    if (btnVerifyResetOtp) {
+      btnVerifyResetOtp.disabled = true;
+      btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    }
     try {
       clearError(newPwdErrorEl);
-      newPwdSuccessEl.classList.remove('show');
-      newPwdInput.value = '';
-      newPwdConfirm.value = '';
-      newPwdBar.style.width = '0';
+      if (newPwdSuccessEl) newPwdSuccessEl.classList.remove('show');
+      if (newPwdInput) newPwdInput.value = '';
+      if (newPwdConfirm) newPwdConfirm.value = '';
+      if (newPwdBar) newPwdBar.style.width = '0';
       sessionStorage.setItem('meldra_reset_otp', code);
       showScreen(screenNewPwd);
-      setTimeout(() => newPwdInput.focus(), 100);
+      setTimeout(() => newPwdInput?.focus(), 100);
     } catch(e: any) {
       setError(resetOtpErrorEl, e.message || 'Invalid code. Please try again.');
       clearResetOtpInputs();
     } finally {
-      btnVerifyResetOtp.disabled = false;
-      btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Code';
+      if (btnVerifyResetOtp) {
+        btnVerifyResetOtp.disabled = false;
+        btnVerifyResetOtp.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Code';
+      }
     }
   });
 
   // ── FORGOT PASSWORD — Step 3: set new password
-  btnSetNewPwd.addEventListener('click', async () => {
+  btnSetNewPwd?.addEventListener('click', async () => {
     clearError(newPwdErrorEl);
-    const pwd = newPwdInput.value;
-    const confirm = newPwdConfirm.value;
+    const pwd = newPwdInput?.value || '';
+    const confirm = newPwdConfirm?.value || '';
     const code = sessionStorage.getItem('meldra_reset_otp') || '';
 
     if (pwd.length < 8) { setError(newPwdErrorEl, 'Password must be at least 8 characters.'); return; }
@@ -2292,20 +2327,22 @@ LIMIT 10;`;
     if (pwd !== confirm)   { setError(newPwdErrorEl, 'Passwords do not match.'); return; }
     if (!code || !resetTempToken) { setError(newPwdErrorEl, 'Session expired. Please restart the reset flow.'); return; }
 
-    btnSetNewPwd.disabled = true;
-    btnSetNewPwd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+    if (btnSetNewPwd) {
+      btnSetNewPwd.disabled = true;
+      btnSetNewPwd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+    }
     try {
       await api.auth.resetPassword(resetTempToken, code, pwd);
       sessionStorage.removeItem('meldra_reset_otp');
       resetTempToken = '';
       if (resetOtpCountdown) clearInterval(resetOtpCountdown);
       setSuccess(newPwdSuccessEl, '✓ Password reset! Redirecting to login...');
-      newPwdSuccessEl.classList.add('show');
+      newPwdSuccessEl?.classList.add('show');
       setTimeout(() => {
         clearError(newPwdErrorEl);
-        newPwdSuccessEl.classList.remove('show');
-        loginEmailEl.value = '';
-        loginPasswordEl.value = '';
+        newPwdSuccessEl?.classList.remove('show');
+        if (loginEmailEl) loginEmailEl.value = '';
+        if (loginPasswordEl) loginPasswordEl.value = '';
         showScreen(screenLogin);
         showToast('Password reset successfully! Please sign in.', 'success');
       }, 1800);
@@ -2320,21 +2357,23 @@ LIMIT 10;`;
   // ── LOGIN ───────────────────────────────────────────────
   async function doLogin() {
     clearError(loginErrorEl);
-    const email = loginEmailEl.value.trim();
-    const password = loginPasswordEl.value;
+    const email = loginEmailEl?.value.trim() || '';
+    const password = loginPasswordEl?.value || '';
     if (!email || !password) { setError(loginErrorEl, 'Please enter your email and password.'); return; }
 
-    btnLogin.disabled = true;
-    btnLogin.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending code...';
+    if (btnLogin) {
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending code...';
+    }
     try {
       const res = await api.auth.login(email, password);
       currentTempToken = res.temp_token;
       sessionStorage.setItem('meldra_temp_token', res.temp_token);
       sessionStorage.setItem('meldra_mfa_email', email);
-      otpEmailBadge.textContent = email;
+      if (otpEmailBadge) otpEmailBadge.textContent = email;
       clearOtpInputs();
       clearError(mfaErrorEl);
-      mfaSuccessEl.classList.remove('show');
+      if (mfaSuccessEl) mfaSuccessEl.classList.remove('show');
       showScreen(screenMfa);
       startOtpTimer(600);
       startResendCooldown(60);
@@ -2342,34 +2381,38 @@ LIMIT 10;`;
     } catch(e: any) {
       setError(loginErrorEl, e.message || 'Login failed. Check your credentials.');
     } finally {
-      btnLogin.disabled = false;
-      btnLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Continue';
+      if (btnLogin) {
+        btnLogin.disabled = false;
+        btnLogin.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Continue';
+      }
     }
   }
-  btnLogin.addEventListener('click', doLogin);
-  loginPasswordEl.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  btnLogin?.addEventListener('click', doLogin);
+  loginPasswordEl?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
   // ── REGISTER ────────────────────────────────────────────
   async function doRegister() {
     clearError(regErrorEl);
-    const email = regEmailEl.value.trim();
-    const password = regPasswordEl.value;
-    const confirm = regPassword2El.value;
+    const email = regEmailEl?.value.trim() || '';
+    const password = regPasswordEl?.value || '';
+    const confirm = regPassword2El?.value || '';
     if (!email) { setError(regErrorEl, 'Email address is required.'); return; }
     if (!password) { setError(regErrorEl, 'Password is required.'); return; }
     if (password !== confirm) { setError(regErrorEl, 'Passwords do not match.'); return; }
 
-    btnRegister.disabled = true;
-    btnRegister.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...';
+    if (btnRegister) {
+      btnRegister.disabled = true;
+      btnRegister.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...';
+    }
     try {
       const res = await api.auth.register(email, password);
       currentTempToken = res.temp_token;
       sessionStorage.setItem('meldra_temp_token', res.temp_token);
       sessionStorage.setItem('meldra_mfa_email', email);
-      otpEmailBadge.textContent = email;
+      if (otpEmailBadge) otpEmailBadge.textContent = email;
       clearOtpInputs();
       clearError(mfaErrorEl);
-      mfaSuccessEl.classList.remove('show');
+      if (mfaSuccessEl) mfaSuccessEl.classList.remove('show');
       showScreen(screenMfa);
       startOtpTimer(600);
       startResendCooldown(60);
@@ -2377,20 +2420,24 @@ LIMIT 10;`;
     } catch(e: any) {
       setError(regErrorEl, e.message || 'Registration failed. Please try again.');
     } finally {
-      btnRegister.disabled = false;
-      btnRegister.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
+      if (btnRegister) {
+        btnRegister.disabled = false;
+        btnRegister.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
+      }
     }
   }
-  btnRegister.addEventListener('click', doRegister);
+  btnRegister?.addEventListener('click', doRegister);
 
   // ── VERIFY OTP ─────────────────────────────────────────
-  btnVerify.addEventListener('click', async () => {
+  btnVerify?.addEventListener('click', async () => {
     clearError(mfaErrorEl);
     const code = getOtpValue();
     if (code.length < 6) { setError(mfaErrorEl, 'Please enter all 6 digits.'); return; }
 
-    btnVerify.disabled = true;
-    btnVerify.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    if (btnVerify) {
+      btnVerify.disabled = true;
+      btnVerify.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+    }
     try {
       await api.auth.verifyMfa(currentTempToken, code);
       currentTempToken = '';
@@ -2401,9 +2448,9 @@ LIMIT 10;`;
       
       if (sessionStorage.getItem('meldra_academy_referral') === 'true') {
         sessionStorage.removeItem('meldra_academy_referral');
-        overlay.classList.remove('active');
-        overlay.classList.add('hidden');
-        setTimeout(() => { overlay.style.display = 'none'; }, 400);
+        overlay?.classList.remove('active');
+        overlay?.classList.add('hidden');
+        setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 400);
         
         // Show Academy page directly (which will detect user is logged in)
         const showAcad = (window as any).showAcademyPage;
@@ -2420,22 +2467,24 @@ LIMIT 10;`;
         sessionStorage.removeItem('meldra_mfa_email');
         showScreen(screenLogin);
       }
-      otpDigits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+      otpDigits.forEach(d => { if (d) { d.value = ''; d.classList.remove('filled'); } });
       otpDigits[0]?.focus();
     } finally {
-      btnVerify.disabled = false;
-      btnVerify.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Code';
+      if (btnVerify) {
+        btnVerify.disabled = false;
+        btnVerify.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Code';
+      }
     }
   });
 
   // ── RESEND OTP ─────────────────────────────────────────
-  btnResend.addEventListener('click', async () => {
+  btnResend?.addEventListener('click', async () => {
     clearError(mfaErrorEl);
-    mfaSuccessEl.classList.remove('show');
+    if (mfaSuccessEl) mfaSuccessEl.classList.remove('show');
     try {
       await api.auth.resendOtp(currentTempToken);
       setSuccess(mfaSuccessEl, '✓ New code sent! Check your email.');
-      mfaSuccessEl.classList.add('show');
+      if (mfaSuccessEl) mfaSuccessEl.classList.add('show');
       clearOtpInputs();
       startOtpTimer(600);
       startResendCooldown(60);
@@ -2445,16 +2494,20 @@ LIMIT 10;`;
   });
 
   // ── LOGOUT ──────────────────────────────────────────────
-  btnLogout.addEventListener('click', async () => {
+  btnLogout?.addEventListener('click', async () => {
     await api.auth.logout();
-    mainApp.style.display = 'none';
-    landingPage.style.display = 'flex';
-    landingPage.classList.remove('hidden');
-    overlay.style.display = 'none';
-    overlay.classList.remove('active');
-    overlay.classList.remove('hidden');
-    loginEmailEl.value = '';
-    loginPasswordEl.value = '';
+    if (mainApp) mainApp.style.display = 'none';
+    if (landingPage) {
+      landingPage.style.display = 'flex';
+      landingPage.classList.remove('hidden');
+    }
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('active');
+      overlay.classList.remove('hidden');
+    }
+    if (loginEmailEl) loginEmailEl.value = '';
+    if (loginPasswordEl) loginPasswordEl.value = '';
     showScreen(screenLogin);
     showToast('Signed out successfully.', 'info');
   });
@@ -2463,7 +2516,7 @@ LIMIT 10;`;
   if (tokenStore.isLoggedIn()) {
     showMainApp();
   } else if (currentTempToken) {
-    otpEmailBadge.textContent = sessionStorage.getItem('meldra_mfa_email') || 'your email';
+    if (otpEmailBadge) otpEmailBadge.textContent = sessionStorage.getItem('meldra_mfa_email') || 'your email';
     showScreen(screenMfa);
     startOtpTimer(600);
     startResendCooldown(60);
@@ -2472,8 +2525,10 @@ LIMIT 10;`;
 
   // ── ACADEMY ROUTING & REGISTER CONTROLS ─────────────────
   (window as any).showAcademyPage = () => {
-    landingPage.classList.add('hidden');
-    landingPage.style.display = 'none';
+    if (landingPage) {
+      landingPage.classList.add('hidden');
+      landingPage.style.display = 'none';
+    }
     const academy = document.getElementById('academy-portal-page');
     if (academy) {
       academy.style.display = 'flex';
@@ -2496,8 +2551,10 @@ LIMIT 10;`;
   (window as any).showLandingPageFromAcademy = () => {
     const academy = document.getElementById('academy-portal-page');
     if (academy) academy.style.display = 'none';
-    landingPage.classList.remove('hidden');
-    landingPage.style.display = 'flex';
+    if (landingPage) {
+      landingPage.classList.remove('hidden');
+      landingPage.style.display = 'flex';
+    }
   };
 
   (window as any).selectAcademyModule = (moduleNum: number) => {
