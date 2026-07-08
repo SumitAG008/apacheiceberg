@@ -3100,6 +3100,7 @@ function bootstrapApp() {
   try { initCreateTableModal(); } catch (e) { console.error("Error initializing Create Table Modal:", e); }
   try { initSqlResultsSwitcher(); } catch (e) { console.error("Error initializing SQL Results Switcher:", e); }
   try { initOrchestratorDagSimulation(); } catch (e) { console.error("Error initializing DAG simulation:", e); }
+  try { initFabricSaaS(); } catch (e) { console.error("Error initializing Fabric SaaS:", e); }
 }
 
 function initUserControls() {
@@ -6222,6 +6223,492 @@ setTimeout(() => {
   renderAuthFields();
   updateConfigCardState();
 }, 200);
+
+
+// ─────────────────────────────────────────
+// MICROSOFT FABRIC SAAS EXPERIENCE SWITCHER & CONTROLLER
+// ─────────────────────────────────────────
+function applyExperience(expName: string) {
+  const currentExpTitle = document.getElementById('current-experience-title');
+  const expTitleMap: Record<string, string> = {
+    engineering: 'Synapse Data Engineering',
+    factory: 'Synapse Data Factory',
+    warehouse: 'Synapse Data Warehouse',
+    graph: 'Link & Graph',
+    admin: 'Security & Admin'
+  };
+  
+  if (currentExpTitle) currentExpTitle.innerText = expTitleMap[expName] || expName;
+  
+  // Hide all tab buttons by default
+  const allTabs = document.querySelectorAll('.tab-headers .tab-btn') as NodeListOf<HTMLElement>;
+  allTabs.forEach(t => t.style.display = 'none');
+  
+  // Show specific tab buttons based on active experience
+  const expTabs: Record<string, string[]> = {
+    engineering: ['nav-studio', 'nav-workspace', 'nav-help'],
+    factory: ['nav-ingest', 'nav-studio'],
+    warehouse: ['nav-chat', 'nav-studio'],
+    graph: ['nav-graph'],
+    admin: ['nav-audit', 'nav-traffic', 'nav-mcp', 'nav-studio']
+  };
+  
+  const visibleTabIds = expTabs[expName] || [];
+  visibleTabIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'inline-flex';
+  });
+
+  // Activate sub-tabs inside Data Studio based on experience
+  if (expName === 'warehouse') {
+    const sqlSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-sql"]') as HTMLButtonElement;
+    if (sqlSubBtn) sqlSubBtn.click();
+  } else if (expName === 'engineering') {
+    const pySubBtn = document.querySelector('#btn-studio-python-tab') as HTMLButtonElement;
+    if (pySubBtn) pySubBtn.click();
+  } else if (expName === 'admin') {
+    const rbacSubBtn = document.querySelector('#btn-studio-rbac-tab') as HTMLButtonElement;
+    if (rbacSubBtn) rbacSubBtn.click();
+  } else if (expName === 'factory') {
+    const maintSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-maintenance"]') as HTMLButtonElement;
+    if (maintSubBtn) maintSubBtn.click();
+  }
+  
+  // Click the first visible tab button to show content
+  const firstVisible = Array.from(allTabs).find(t => t.style.display !== 'none');
+  if (firstVisible) {
+    firstVisible.click();
+  }
+}
+
+function applyUserRoleControls() {
+  const user = tokenStore.getUser() as any;
+  const role = user?.role || 'Business Analyst';
+  
+  // Set user role badge in header menu
+  const badgeEl = document.querySelector('.user-profile-menu-container .badge');
+  if (badgeEl) {
+    badgeEl.textContent = `${role} Role`;
+  }
+  
+  // Lock Admin Experience from non-admin users
+  const adminOption = document.querySelector('.experience-option[data-exp="admin"]') as HTMLElement;
+  if (adminOption) {
+    if (role === 'Admin') {
+      adminOption.style.opacity = '1';
+      adminOption.style.pointerEvents = 'auto';
+    } else {
+      adminOption.style.opacity = '0.5';
+      adminOption.style.pointerEvents = 'none';
+      adminOption.title = 'Admin role required';
+    }
+  }
+  
+  // Hide policy adjustment buttons if not Admin
+  const btnSaveRbac = document.getElementById('btn-save-rbac-policies');
+  const btnAddRbac = document.getElementById('btn-add-rbac-row');
+  if (btnSaveRbac && btnAddRbac) {
+    if (role === 'Admin') {
+      btnSaveRbac.style.display = 'inline-block';
+      btnAddRbac.style.display = 'inline-block';
+    } else {
+      btnSaveRbac.style.display = 'none';
+      btnAddRbac.style.display = 'none';
+    }
+  }
+  
+  // If not Admin/Data Engineer, disable Python execution run script button
+  const btnRunPython = document.getElementById('btn-run-python');
+  if (btnRunPython) {
+    if (role === 'Admin' || role === 'Data Engineer') {
+      btnRunPython.style.opacity = '1';
+      (btnRunPython as HTMLButtonElement).disabled = false;
+    } else {
+      btnRunPython.style.opacity = '0.5';
+      (btnRunPython as HTMLButtonElement).disabled = true;
+      btnRunPython.title = 'Admin or Data Engineer role required';
+    }
+  }
+}
+
+function initExperienceSwitcher() {
+  const switcherBtn = document.getElementById('experience-switcher-btn');
+  const dropdownPanel = document.getElementById('experience-dropdown-panel');
+  
+  if (switcherBtn && dropdownPanel) {
+    switcherBtn.onclick = (e) => {
+      e.stopPropagation();
+      const show = dropdownPanel.style.display === 'none';
+      dropdownPanel.style.display = show ? 'flex' : 'none';
+    };
+    
+    document.addEventListener('click', () => {
+      dropdownPanel.style.display = 'none';
+    });
+    
+    const options = dropdownPanel.querySelectorAll('.experience-option') as NodeListOf<HTMLElement>;
+    options.forEach(opt => {
+      opt.onclick = () => {
+        options.forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        const exp = opt.getAttribute('data-exp')!;
+        applyExperience(exp);
+      };
+    });
+  }
+}
+
+function initCommandPalette() {
+  const palette = document.getElementById('command-palette') as HTMLElement;
+  const launcher = document.getElementById('header-search-launcher') as HTMLElement;
+  const input = document.getElementById('command-palette-input') as HTMLInputElement;
+  const resultsContainer = document.getElementById('command-palette-results') as HTMLElement;
+  
+  const showPalette = () => {
+    if (palette) {
+      palette.style.display = 'flex';
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      renderPaletteResults([]);
+    }
+  };
+  
+  const hidePalette = () => {
+    if (palette) palette.style.display = 'none';
+  };
+  
+  if (launcher) launcher.onclick = showPalette;
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      showPalette();
+    }
+    if (e.key === 'Escape') {
+      hidePalette();
+    }
+  });
+  
+  if (palette) {
+    palette.onclick = (e) => {
+      if (e.target === palette) hidePalette();
+    };
+  }
+  
+  if (input) {
+    let debounceTimer: any = null;
+    input.oninput = () => {
+      clearTimeout(debounceTimer);
+      const query = input.value.trim();
+      if (!query) {
+        renderPaletteResults([]);
+        return;
+      }
+      debounceTimer = setTimeout(async () => {
+        try {
+          const results = await api.studio.search(query);
+          renderPaletteResults(results);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 250);
+    };
+  }
+  
+  function renderPaletteResults(results: any[]) {
+    if (!resultsContainer) return;
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="palette-empty-state">Start typing to search or query catalog...</div>';
+      return;
+    }
+    
+    resultsContainer.innerHTML = '';
+    results.forEach(res => {
+      const item = document.createElement('div');
+      item.className = 'palette-result-item';
+      
+      let icon = 'fa-solid fa-file';
+      if (res.type === 'page') icon = 'fa-solid fa-file-invoice';
+      else if (res.type === 'table') icon = 'fa-solid fa-table';
+      else if (res.type === 'namespace') icon = 'fa-solid fa-folder-open';
+      else if (res.type === 'action') icon = 'fa-solid fa-screwdriver-wrench';
+      
+      item.innerHTML = `
+        <div class="palette-result-icon"><i class="${icon}"></i></div>
+        <div class="palette-result-info">
+          <div class="palette-result-name">${res.name}</div>
+          <div class="palette-result-desc">${res.desc}</div>
+        </div>
+        <span class="palette-result-badge">${res.type}</span>
+      `;
+      
+      item.onclick = () => {
+        hidePalette();
+        if (res.type === 'page') {
+          let matchedExp = 'engineering';
+          if (res.route === 'ingest-tab') matchedExp = 'factory';
+          else if (res.route === 'chat-tab') matchedExp = 'warehouse';
+          else if (res.route === 'graph-tab') matchedExp = 'graph';
+          else if (['audit-tab', 'traffic-tab', 'mcp-tab'].includes(res.route)) matchedExp = 'admin';
+          
+          const opt = document.querySelector(`.experience-option[data-exp="${matchedExp}"]`) as HTMLElement;
+          if (opt) opt.click();
+          
+          setTimeout(() => {
+            const targetTabBtn = document.getElementById(res.route) || document.querySelector(`.tab-btn[data-tab="${res.route}"]`);
+            if (targetTabBtn) (targetTabBtn as HTMLButtonElement).click();
+          }, 100);
+        } else if (res.type === 'table') {
+          const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
+          if (opt) opt.click();
+          
+          setTimeout(() => {
+            const workspaceBtn = document.getElementById('nav-workspace');
+            if (workspaceBtn) workspaceBtn.click();
+            const selectEl = document.getElementById('studio-namespace-select') as HTMLSelectElement;
+            if (selectEl) {
+              selectEl.value = res.namespace;
+              const event = new Event('change');
+              selectEl.dispatchEvent(event);
+            }
+            activeTableName = res.table_name;
+            const studioBtn = document.getElementById('nav-studio');
+            if (studioBtn) studioBtn.click();
+            const detailsSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-catalog"]') as HTMLButtonElement;
+            if (detailsSubBtn) detailsSubBtn.click();
+          }, 150);
+        } else if (res.type === 'action') {
+          if (res.action_id === 'rbac') {
+            const opt = document.querySelector('.experience-option[data-exp="admin"]') as HTMLElement;
+            if (opt) opt.click();
+            setTimeout(() => {
+              const studioBtn = document.getElementById('nav-studio');
+              if (studioBtn) studioBtn.click();
+              const rbacSubBtn = document.getElementById('btn-studio-rbac-tab') as HTMLButtonElement;
+              if (rbacSubBtn) rbacSubBtn.click();
+            }, 100);
+          } else if (res.action_id === 'optimize' || res.action_id === 'expire_snapshots') {
+            const opt = document.querySelector('.experience-option[data-exp="factory"]') as HTMLElement;
+            if (opt) opt.click();
+            setTimeout(() => {
+              const studioBtn = document.getElementById('nav-studio');
+              if (studioBtn) studioBtn.click();
+              const maintSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-maintenance"]') as HTMLButtonElement;
+              if (maintSubBtn) maintSubBtn.click();
+            }, 100);
+          }
+        }
+      };
+      
+      resultsContainer.appendChild(item);
+    });
+  }
+}
+
+function initPythonWorkspace() {
+  const btnRunPython = document.getElementById('btn-run-python');
+  const pythonEditor = document.getElementById('studio-python-editor') as HTMLTextAreaElement;
+  const pythonOutput = document.getElementById('studio-python-output') as HTMLElement;
+  
+  if (btnRunPython && pythonEditor && pythonOutput) {
+    btnRunPython.onclick = async () => {
+      btnRunPython.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Executing...';
+      pythonOutput.textContent = 'Running Python script in sandboxed environment...';
+      
+      try {
+        const code = pythonEditor.value;
+        const res = await api.studio.executePython(code);
+        pythonOutput.innerHTML = '';
+        
+        if (res.stderr) {
+          const stderrSpan = document.createElement('span');
+          stderrSpan.style.color = '#ef4444';
+          stderrSpan.textContent = res.stderr;
+          pythonOutput.appendChild(stderrSpan);
+        }
+        if (res.stdout) {
+          const stdoutText = document.createTextNode(res.stdout);
+          pythonOutput.appendChild(stdoutText);
+        }
+        if (!res.stdout && !res.stderr) {
+          pythonOutput.textContent = 'Execution finished successfully with no stdout/stderr output.';
+        }
+      } catch (err: any) {
+        pythonOutput.innerHTML = `<span style="color:#ef4444;">Execution Error: ${err.message}</span>`;
+      } finally {
+        btnRunPython.innerHTML = '<i class="fa-solid fa-play"></i> Run Script';
+      }
+    };
+  }
+}
+
+let activePolicies: any[] = [];
+
+async function loadRbacPolicies() {
+  const tbody = document.getElementById('rbac-policies-tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading access control policies...</td></tr>';
+  
+  try {
+    activePolicies = await api.rbac.getPolicies();
+    renderRbacPolicies();
+  } catch (err: any) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding: 1.5rem;">Failed to load policies: ${err.message}</td></tr>`;
+  }
+}
+
+function renderRbacPolicies() {
+  const tbody = document.getElementById('rbac-policies-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (activePolicies.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; font-style:italic; padding: 1.5rem; color:var(--text-muted);">No policies defined. Click Add Rule.</td></tr>';
+    return;
+  }
+  
+  activePolicies.forEach((pol, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <select class="input-field rbac-role-select" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">
+          <option value="Admin" ${pol.role === 'Admin' ? 'selected' : ''}>Admin</option>
+          <option value="Data Engineer" ${pol.role === 'Data Engineer' ? 'selected' : ''}>Data Engineer</option>
+          <option value="Data Architect" ${pol.role === 'Data Architect' ? 'selected' : ''}>Data Architect</option>
+          <option value="Business Analyst" ${pol.role === 'Business Analyst' ? 'selected' : ''}>Business Analyst</option>
+        </select>
+      </td>
+      <td><input type="text" class="input-field rbac-ns-input" value="${pol.namespace}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 100px;"></td>
+      <td><input type="text" class="input-field rbac-tbl-input" value="${pol.table_name}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 120px;"></td>
+      <td><input type="text" class="input-field rbac-col-input" value="${pol.column_name}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 120px;"></td>
+      <td>
+        <select class="input-field rbac-action-select" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">
+          <option value="mask" ${pol.action === 'mask' ? 'selected' : ''}>mask</option>
+          <option value="deny" ${pol.action === 'deny' ? 'selected' : ''}>deny</option>
+        </select>
+      </td>
+      <td><input type="text" class="input-field rbac-pattern-input" value="${pol.masking_pattern || '***'}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 100px;"></td>
+      <td style="text-align: center;">
+        <button class="btn btn-secondary btn-sm rbac-delete-row-btn" data-idx="${idx}" style="padding: 0.25rem 0.5rem; color: #ef4444;" title="Delete Rule">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  const delButtons = tbody.querySelectorAll('.rbac-delete-row-btn') as NodeListOf<HTMLButtonElement>;
+  delButtons.forEach(btn => {
+    btn.onclick = () => {
+      const idx = parseInt(btn.getAttribute('data-idx')!);
+      activePolicies.splice(idx, 1);
+      renderRbacPolicies();
+    };
+  });
+}
+
+function initRbacPoliciesEditor() {
+  const btnAdd = document.getElementById('btn-add-rbac-row');
+  const btnSave = document.getElementById('btn-save-rbac-policies');
+  
+  if (btnAdd) {
+    btnAdd.onclick = () => {
+      activePolicies.push({
+        role: 'Business Analyst',
+        namespace: 'default',
+        table_name: 'sap_hr_data',
+        column_name: 'salary',
+        action: 'mask',
+        masking_pattern: '***'
+      });
+      renderRbacPolicies();
+    };
+  }
+  
+  if (btnSave) {
+    btnSave.onclick = async () => {
+      const tbody = document.getElementById('rbac-policies-tbody');
+      if (!tbody) return;
+      
+      const rows = tbody.querySelectorAll('tr');
+      const policies: any[] = [];
+      
+      for (const row of Array.from(rows)) {
+        const roleSel = row.querySelector('.rbac-role-select') as HTMLSelectElement;
+        const nsIn = row.querySelector('.rbac-ns-input') as HTMLInputElement;
+        const tblIn = row.querySelector('.rbac-tbl-input') as HTMLInputElement;
+        const colIn = row.querySelector('.rbac-col-input') as HTMLInputElement;
+        const actSel = row.querySelector('.rbac-action-select') as HTMLSelectElement;
+        const patIn = row.querySelector('.rbac-pattern-input') as HTMLInputElement;
+        
+        if (roleSel && nsIn && tblIn && colIn && actSel && patIn) {
+          policies.push({
+            role: roleSel.value,
+            namespace: nsIn.value.trim(),
+            table_name: tblIn.value.trim(),
+            column_name: colIn.value.trim(),
+            action: actSel.value,
+            masking_pattern: patIn.value.trim()
+          });
+        }
+      }
+      
+      btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+      try {
+        await api.rbac.savePolicies(policies);
+        showToast('RBAC policies saved successfully.');
+        activePolicies = policies;
+        renderRbacPolicies();
+      } catch (err: any) {
+        showToast(`Failed to save policies: ${err.message}`, 'error');
+      } finally {
+        btnSave.innerHTML = '<i class="fa-solid fa-save"></i> Save Policies';
+      }
+    };
+  }
+}
+
+function initHelpGuideSubtabs() {
+  const helpBtns = document.querySelectorAll('.help-section-btn') as NodeListOf<HTMLElement>;
+  helpBtns.forEach(btn => {
+    btn.onclick = () => {
+      helpBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.color = 'var(--text-muted)';
+      });
+      btn.classList.add('active');
+      btn.style.color = 'var(--color-primary)';
+      
+      const targetId = btn.getAttribute('data-helpsection')!;
+      const contents = document.querySelectorAll('.help-section-content');
+      contents.forEach(c => (c as HTMLElement).style.display = 'none');
+      
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) targetEl.style.display = 'block';
+    };
+  });
+}
+
+function initFabricSaaS() {
+  initExperienceSwitcher();
+  initCommandPalette();
+  initPythonWorkspace();
+  initRbacPoliciesEditor();
+  initHelpGuideSubtabs();
+  
+  // Set default experience to Synapse Data Engineering
+  applyExperience('engineering');
+  applyUserRoleControls();
+  
+  // Load policies on Access Policies sub-tab click
+  const rbacTabBtn = document.getElementById('btn-studio-rbac-tab');
+  if (rbacTabBtn) {
+    rbacTabBtn.addEventListener('click', loadRbacPolicies);
+  }
+}
 
 
 if (document.readyState === 'loading') {

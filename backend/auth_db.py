@@ -78,7 +78,8 @@ def init_auth_schema():
                 expires_at      TIMESTAMPTZ,                   -- Expiration timestamp for trial accounts
                 reg_ip          TEXT,                          -- Registration IP address
                 reg_country     TEXT,                          -- Registration Geography / Country
-                subscription_status TEXT NOT NULL DEFAULT 'active' -- 'active' | 'expired' | 'canceled'
+                subscription_status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'expired' | 'canceled'
+                user_role       TEXT NOT NULL DEFAULT 'Business Analyst' -- 'Admin' | 'Data Engineer' | 'Data Architect' | 'Business Analyst'
             );
         """)
 
@@ -88,6 +89,36 @@ def init_auth_schema():
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS reg_ip TEXT;")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS reg_country TEXT;")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active';")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS user_role TEXT NOT NULL DEFAULT 'Business Analyst';")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS auth.rbac_policies (
+                id              BIGSERIAL PRIMARY KEY,
+                role            TEXT NOT NULL,
+                namespace       TEXT NOT NULL,
+                table_name      TEXT NOT NULL,
+                column_name     TEXT NOT NULL,
+                action          TEXT NOT NULL DEFAULT 'mask',  -- 'mask' | 'deny'
+                masking_pattern TEXT NOT NULL DEFAULT '***'
+            );
+        """)
+
+        # Add default demo policies for Business Analyst role if table is empty
+        cur.execute("SELECT count(*) FROM auth.rbac_policies;")
+        if cur.fetchone()["count"] == 0:
+            default_policies = [
+                ('Business Analyst', 'default', 'sap_hr_data', 'performance_rating', 'mask', '***'),
+                ('Business Analyst', 'default', 'sap_hr_data', 'projects_count', 'mask', '***'),
+                ('Business Analyst', 'default', 'vendors_10k_50col', 'bank_account', 'mask', 'BANK-***'),
+                ('Business Analyst', 'default', 'vendors_10k_50col', 'tax_id', 'mask', 'XX-***'),
+                ('Business Analyst', 'default', 'vendors_10k_50col', 'routing_number', 'mask', 'ROUT-***'),
+                ('Business Analyst', 'default', 'vendors_10k_50col', 'annual_spend', 'mask', '###.##')
+            ]
+            for p in default_policies:
+                cur.execute("""
+                    INSERT INTO auth.rbac_policies (role, namespace, table_name, column_name, action, masking_pattern)
+                    VALUES (%s, %s, %s, %s, %s, %s);
+                """, p)
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS auth.mfa_tokens (
@@ -131,9 +162,10 @@ def init_auth_schema():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_mfa_user ON auth.mfa_tokens(user_id);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON auth.sessions(user_id);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON auth.audit_logs(timestamp DESC);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_rbac_role ON auth.rbac_policies(role);")
 
         conn.commit()
-        print("[auth_db] Auth schema initialised successfully with geo, membership and expiration parameters.")
+        print("[auth_db] Auth schema initialised successfully with geo, membership, expiration, and RBAC parameters.")
     except Exception as e:
         conn.rollback()
         print(f"[auth_db] Schema init error: {e}")
@@ -152,7 +184,8 @@ def create_user(
     phone: Optional[str] = None,
     tier: str = "trial",
     reg_ip: Optional[str] = None,
-    reg_country: Optional[str] = None
+    reg_country: Optional[str] = None,
+    user_role: str = "Business Analyst"
 ) -> Dict[str, Any]:
     conn = _get_conn()
     try:
@@ -166,11 +199,11 @@ def create_user(
             
         cur.execute(
             """
-            INSERT INTO auth.users (email, password_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, email, mfa_method, phone, is_verified, created_at, tier, expires_at, reg_ip, reg_country, subscription_status
+            INSERT INTO auth.users (email, password_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country, user_role)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, email, mfa_method, phone, is_verified, created_at, tier, expires_at, reg_ip, reg_country, subscription_status, user_role
             """,
-            (email.lower().strip(), pwd_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country),
+            (email.lower().strip(), pwd_hash, mfa_method, phone, tier, expires_at, reg_ip, reg_country, user_role),
         )
         user = dict(cur.fetchone())
         conn.commit()

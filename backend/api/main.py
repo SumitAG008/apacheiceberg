@@ -367,6 +367,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     mfa_method: str = "email"   # only 'email' for now
+    role: Optional[str] = "Business Analyst"
 
     @field_validator("password")
     @classmethod
@@ -513,6 +514,15 @@ async def register(payload: RegisterRequest, request: Request):
     )
 
     try:
+        from auth_db import _get_conn
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM auth.users;")
+        first_user = cur.fetchone()["count"] == 0
+        conn.close()
+        
+        assigned_role = "Admin" if first_user else (payload.role or "Business Analyst")
+        
         user = create_user(
             email=payload.email,
             password=payload.password,
@@ -520,6 +530,7 @@ async def register(payload: RegisterRequest, request: Request):
             tier="trial",
             reg_ip=reg_ip,
             reg_country=reg_country,
+            user_role=assigned_role
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -596,11 +607,12 @@ async def verify_mfa(payload: VerifyMFARequest):
     else:
         update_last_login(user_id)
 
-    # Issue tokens using user's database tier
+    # Issue tokens using user's database tier and role
     access_token = _create_access_token({
         "sub": user_id,
         "email": user["email"],
         "tier": user["tier"],
+        "role": user.get("user_role", "Business Analyst")
     })
     refresh_token = create_session(user_id)
 
@@ -618,6 +630,7 @@ async def verify_mfa(payload: VerifyMFARequest):
             "is_verified": True,
             "tier": user["tier"],
             "expires_at": expires_str,
+            "role": user.get("user_role", "Business Analyst"),
             "reg_ip": user.get("reg_ip"),
             "reg_country": user.get("reg_country"),
             "subscription_status": user["subscription_status"],
@@ -712,6 +725,7 @@ async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
         "is_verified": db_user["is_verified"],
         "created_at": db_user["created_at"].isoformat() if db_user["created_at"] else None,
         "last_login_at": db_user["last_login_at"].isoformat() if db_user.get("last_login_at") else None,
+        "role": db_user.get("user_role", "Business Analyst")
     }
 
 
@@ -1627,6 +1641,9 @@ async def create_namespace(payload: CreateNamespaceRequest, user: Dict[str, Any]
 
 @app.delete("/v1/catalog/namespaces/{namespace}", tags=["Catalog"])
 async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role not in ["Admin", "Data Architect"]:
+        raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to delete namespaces.")
     from meldra import MeldraCatalog
     try:
         m_catalog = MeldraCatalog()
@@ -1671,6 +1688,9 @@ async def get_table_details(namespace: str, table_name: str, user: Dict[str, Any
 
 @app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/schema", tags=["Catalog"])
 async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutionRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role not in ["Admin", "Data Architect"]:
+        raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to evolve schemas.")
     from meldra import MeldraCatalog
     try:
         m_catalog = MeldraCatalog()
@@ -1832,6 +1852,33 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
         start_time = time.time()
         result_df = con.execute(payload.sql).fetchdf()
         duration_ms = (time.time() - start_time) * 1000
+
+        # Apply dynamic column-level RBAC policies
+        role = user.get("role", "Business Analyst")
+        from auth_db import _get_conn
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT namespace, table_name, column_name, action, masking_pattern FROM auth.rbac_policies WHERE role = %s;", (role,))
+        policies = cur.fetchall()
+        conn.close()
+        
+        for pol in policies:
+            col_to_mask = pol["column_name"]
+            tbl_to_mask = pol["table_name"]
+            action = pol["action"]
+            pattern = pol["masking_pattern"]
+            
+            if col_to_mask in result_df.columns and (tbl_to_mask.lower() in payload.sql.lower() or tbl_to_mask == "*"):
+                if action == "mask":
+                    result_df[col_to_mask] = result_df[col_to_mask].astype(object)
+                    if pattern == "***":
+                        result_df[col_to_mask] = "***"
+                    elif pattern == "###.##":
+                        result_df[col_to_mask] = 0.00
+                    else:
+                        result_df[col_to_mask] = result_df[col_to_mask].apply(lambda x: pattern if pd.notna(x) else None)
+                elif action == "deny":
+                    raise Exception(f"Access Denied: Your role '{role}' is not authorized to query column '{col_to_mask}' of table '{tbl_to_mask}'.")
         
         preview_rows = result_df.head(100).to_dict(orient="records")
         for row in preview_rows:
@@ -1926,6 +1973,180 @@ async def get_data_contracts(namespace: str, table_name: str, user: Dict[str, An
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class RBACPolicyItem(BaseModel):
+    role: str
+    namespace: str
+    table_name: str
+    column_name: str
+    action: str
+    masking_pattern: str
+
+class SavePoliciesRequest(BaseModel):
+    policies: List[RBACPolicyItem]
+
+class UpdateUserRoleRequest(BaseModel):
+    email: str
+    role: str
+
+class PythonExecuteRequest(BaseModel):
+    script: str
+
+@app.get("/v1/rbac/policies", tags=["RBAC"])
+async def get_rbac_policies(user: Dict[str, Any] = Depends(get_current_user)):
+    from auth_db import _get_conn
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, role, namespace, table_name, column_name, action, masking_pattern FROM auth.rbac_policies;")
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+@app.post("/v1/rbac/policies", tags=["RBAC"])
+async def save_rbac_policies(payload: SavePoliciesRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can modify RBAC policies.")
+    from auth_db import _get_conn
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth.rbac_policies;")
+        for item in payload.policies:
+            cur.execute("""
+                INSERT INTO auth.rbac_policies (role, namespace, table_name, column_name, action, masking_pattern)
+                VALUES (%s, %s, %s, %s, %s, %s);
+            """, (item.role, item.namespace, item.table_name, item.column_name, item.action, item.masking_pattern))
+        conn.commit()
+        return {"status": "success", "message": "RBAC policies updated."}
+    finally:
+        conn.close()
+
+@app.post("/v1/rbac/user-role", tags=["RBAC"])
+async def update_user_role(payload: UpdateUserRoleRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can modify user roles.")
+    from auth_db import _get_conn
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE auth.users SET user_role = %s WHERE email = %s;", (payload.role, payload.email.lower().strip()))
+        conn.commit()
+        return {"status": "success", "message": f"User {payload.email} role updated to {payload.role}."}
+    finally:
+        conn.close()
+
+@app.post("/v1/studio/execute-python", tags=["Studio"])
+async def execute_python_script(payload: PythonExecuteRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role not in ["Admin", "Data Engineer"]:
+        raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to execute Python scripts.")
+    
+    import sys
+    import subprocess
+    import tempfile
+    
+    # Write script to temporary file
+    temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "scratch")
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=temp_dir, delete=False) as f:
+        # Prepend path setups
+        f.write("import os\n")
+        f.write("import sys\n")
+        backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Escape path backslashes for Windows safety
+        escaped_backend_path = backend_path.replace("\\", "\\\\")
+        f.write(f"sys.path.insert(0, '{escaped_backend_path}')\n")
+        f.write(payload.script)
+        temp_file_path = f.name
+        
+    try:
+        env = os.environ.copy()
+        result = subprocess.run(
+            [sys.executable, temp_file_path],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=env,
+            cwd=backend_path
+        )
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "exit_code": result.returncode
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "stdout": "",
+            "stderr": "Execution Timeout: Code took longer than 15 seconds to run.",
+            "exit_code": -1
+        }
+    except Exception as e:
+        return {
+            "stdout": "",
+            "stderr": f"Execution Error: {str(e)}",
+            "exit_code": -2
+        }
+    finally:
+        try:
+            os.remove(temp_file_path)
+        except Exception:
+            pass
+
+@app.get("/v1/studio/search", tags=["Studio"])
+async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)):
+    from meldra import MeldraCatalog
+    query = q.lower().strip()
+    results = []
+    
+    pages = [
+        {"name": "Chat Console", "type": "page", "route": "chat-tab", "desc": "Chat with your data lake using AI"},
+        {"name": "Learn Academy", "type": "page", "route": "learn-tab", "desc": "Hands-on tutorials and academy videos"},
+        {"name": "Upload CSV", "type": "page", "route": "ingest-tab", "desc": "Ingest CSV files into S3 Iceberg"},
+        {"name": "Graph Database Console", "type": "page", "route": "graph-tab", "desc": "Run openCypher queries on Apache AGE"},
+        {"name": "Audit Trails & SOX Logs", "type": "page", "route": "audit-tab", "desc": "Cryptographically signed system log tracker"},
+        {"name": "AWS Warehouse Settings", "type": "page", "route": "workspace-tab", "desc": "Connect your own S3 data lake bucket"},
+        {"name": "Python Script Workspace", "type": "page", "route": "studio-tab", "desc": "Run Python scripts and SQL queries"},
+        {"name": "Role-Based Access Control Policies", "type": "page", "route": "studio-tab", "desc": "Manage column-level masking rules"}
+    ]
+    for p in pages:
+        if query in p["name"].lower() or query in p["desc"].lower():
+            results.append(p)
+            
+    try:
+        m_catalog = MeldraCatalog()
+        namespaces = m_catalog.list_namespaces()
+        for ns in namespaces:
+            if query in ns.lower():
+                results.append({"name": f"Namespace '{ns}'", "type": "namespace", "route": "studio-tab", "desc": f"Iceberg catalog namespace"})
+            
+            tables = m_catalog.list_tables(ns)
+            for tbl in tables:
+                if query in tbl.lower():
+                    results.append({
+                        "name": f"Table '{ns}.{tbl}'",
+                        "type": "table",
+                        "route": "studio-tab",
+                        "desc": f"Iceberg table in namespace {ns}",
+                        "namespace": ns,
+                        "table_name": tbl
+                    })
+    except Exception:
+        pass
+        
+    actions = [
+        {"name": "Compact table files (Optimize)", "type": "action", "route": "studio-tab", "action_id": "optimize", "desc": "Run layout bin-packing compaction on Iceberg tables"},
+        {"name": "Expire table snapshots", "type": "action", "route": "studio-tab", "action_id": "expire_snapshots", "desc": "Purge older metadata snapshots from S3 store"},
+        {"name": "Manage column masking", "type": "action", "route": "studio-tab", "action_id": "rbac", "desc": "Open role-based policy board"}
+    ]
+    for a in actions:
+        if query in a["name"].lower() or query in a["desc"].lower():
+            results.append(a)
+            
+    return results
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

@@ -62,6 +62,7 @@ export interface AuthUser {
   is_verified: boolean;
   created_at?: string;
   last_login_at?: string;
+  role?: string;
 }
 
 export interface AuthTokenResponse {
@@ -447,6 +448,58 @@ export const api = {
         body: JSON.stringify({ rules }),
       });
       if (!res.ok) throw new Error('Failed to save data contracts');
+      return res.json();
+    }
+  },
+  // ── Studio / Notebook & Command Search ────────────────────────────────────
+  studio: {
+    async executePython(script: string): Promise<{ stdout: string; stderr: string; exit_code: number }> {
+      const res = await authFetch(`${BASE_URL}/v1/studio/execute-python`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to execute Python script');
+      }
+      return res.json();
+    },
+    async search(q: string): Promise<any[]> {
+      const res = await authFetch(`${BASE_URL}/v1/studio/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('Search failed');
+      return res.json();
+    }
+  },
+  // ── RBAC Policy controls ──────────────────────────────────────────────────
+  rbac: {
+    async getPolicies(): Promise<any[]> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/policies`);
+      if (!res.ok) throw new Error('Failed to load RBAC policies');
+      return res.json();
+    },
+    async savePolicies(policies: any[]): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/policies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ policies }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to save RBAC policies');
+      }
+      return res.json();
+    },
+    async updateUserRole(email: string, role: string): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/user-role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to update user role');
+      }
       return res.json();
     }
   }
