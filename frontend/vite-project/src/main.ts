@@ -1032,6 +1032,42 @@ async function runCypherQuery() {
 
 btnExecuteCypher?.addEventListener('click', runCypherQuery);
 
+async function runGraphProjection() {
+  const tableInput = document.getElementById('proj-table') as HTMLInputElement;
+  const edgeInput = document.getElementById('proj-edge') as HTMLInputElement;
+  const sourceInput = document.getElementById('proj-source') as HTMLInputElement;
+  const targetInput = document.getElementById('proj-target') as HTMLInputElement;
+  const btnRunProj = document.getElementById('btn-run-projection') as HTMLButtonElement;
+
+  if (!tableInput || !edgeInput || !sourceInput || !targetInput || !btnRunProj) return;
+
+  const table = tableInput.value.trim();
+  const edge = edgeInput.value.trim();
+  const source = sourceInput.value.trim();
+  const target = targetInput.value.trim();
+
+  if (!table || !edge || !source || !target) {
+    showToast('Please fill in all projection parameters.', 'error');
+    return;
+  }
+
+  btnRunProj.disabled = true;
+  btnRunProj.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Projecting...';
+
+  try {
+    const res = await api.projectTableToGraph(table, source, target, edge);
+    showToast(res.message || 'Table projected to graph successfully!', 'success');
+    loadGraphStats();
+  } catch (err: any) {
+    showToast(err.message || 'Graph projection failed.', 'error');
+  } finally {
+    btnRunProj.disabled = false;
+    btnRunProj.innerHTML = '<i class="fa-solid fa-play"></i> Run Projection';
+  }
+}
+
+document.getElementById('btn-run-projection')?.addEventListener('click', runGraphProjection);
+
 
 // ─────────────────────────────────────────
 // SECURITY AUDIT TRAIL LOGS LOGIC

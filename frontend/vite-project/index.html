@@ -2767,15 +2767,50 @@
                 </div>
               </div>
 
-              <div class="cypher-editor-panel">
-                <h3 class="section-title"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
-                <textarea id="cypher-query-input" class="cypher-textarea">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10</textarea>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 0.79rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-circle-question"></i> Example: <code>MATCH (p:Person) RETURN p.name LIMIT 10</code>
-                  </span>
-                  <button id="btn-execute-cypher" class="btn btn-primary">
-                    <i class="fa-solid fa-play"></i> Execute Query
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <!-- Cypher Query Editor Panel -->
+                <div class="cypher-editor-panel" style="height: 100%; margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                  <h3 class="section-title" style="margin: 0 0 0.5rem 0;"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
+                  <textarea id="cypher-query-input" class="cypher-textarea" style="height: 80px; min-height: 80px; margin-bottom: 0.5rem;">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.node_id, b.node_id LIMIT 10</textarea>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.68rem; color: var(--text-muted);">
+                      <i class="fa-solid fa-circle-question"></i> Example: <code>MATCH (p:Person) RETURN p.name LIMIT 10</code>
+                    </span>
+                    <button id="btn-execute-cypher" class="btn btn-primary btn-sm">
+                      <i class="fa-solid fa-play"></i> Execute Query
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Table-to-Graph Projection Panel -->
+                <div class="stat-card" style="align-items: stretch; text-align: left; padding: 1.25rem; background: var(--bg-surface2); display: flex; flex-direction: column; gap: 0.75rem;">
+                  <h3 class="section-title" style="margin: 0; display: flex; align-items: center; gap: 0.4rem;"><i class="fa-solid fa-diagram-project" style="color: var(--color-primary);"></i> Iceberg-to-Graph Projection</h3>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Project columns of an Iceberg catalog table into node vertices and directional relationship edges.</p>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div>
+                      <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Iceberg Table</label>
+                      <input type="text" id="proj-table" class="input-field" placeholder="sap_hr_data" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                    </div>
+                    <div>
+                      <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Edge Label</label>
+                      <input type="text" id="proj-edge" class="input-field" placeholder="REPORTS_TO" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div>
+                      <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Source Column (From)</label>
+                      <input type="text" id="proj-source" class="input-field" placeholder="name" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                    </div>
+                    <div>
+                      <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Target Column (To)</label>
+                      <input type="text" id="proj-target" class="input-field" placeholder="manager" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                    </div>
+                  </div>
+
+                  <button id="btn-run-projection" class="btn btn-secondary btn-sm" style="align-self: flex-start; margin-top: 0.25rem;">
+                    <i class="fa-solid fa-play"></i> Run Projection
                   </button>
                 </div>
               </div>

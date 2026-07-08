@@ -310,6 +310,22 @@ def startup_event():
     except Exception as e:
         print(f"[api/main] Failed to initialize graph tables on startup: {e}")
     seed_demo_data()
+    
+    # Launch Arrow Flight Server in background thread
+    try:
+        import threading
+        from arrow_flight_server import meldraFlightServer
+        def run_flight():
+            try:
+                server = meldraFlightServer(host="0.0.0.0", port=8888)
+                print("[api/main] Starting Arrow Flight Server on port 8888...")
+                server.serve()
+            except Exception as ex:
+                print(f"[api/main] Arrow Flight Server failed: {ex}")
+        t = threading.Thread(target=run_flight, daemon=True)
+        t.start()
+    except Exception as e:
+        print(f"[api/main] Failed to launch Flight thread: {e}")
 
 # ─────────────────────────────────────────
 # PYDANTIC SCHEMAS
@@ -1970,6 +1986,44 @@ async def get_data_contracts(namespace: str, table_name: str, user: Dict[str, An
         table = catalog.load_table(identifier)
         rules_str = table.properties.get("data_contracts", "[]")
         return {"rules": json.loads(rules_str)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class GraphProjectRequest(BaseModel):
+    namespace: str = "default"
+    table_name: str
+    source_col: str
+    target_col: str
+    edge_label: str = "RELATED_TO"
+    graph_name: str = "default_graph"
+
+@app.post("/v1/graph/project", tags=["Graph"])
+async def project_table_to_graph(req: GraphProjectRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    from catalog_setup import get_catalog
+    from graph_db import sync_dataframe_to_neo4j
+    try:
+        catalog = get_catalog()
+        table_identifier = f"{req.namespace}.{req.table_name}"
+        table = catalog.load_table(table_identifier)
+        df = table.scan().to_arrow().to_pandas()
+
+        if req.source_col not in df.columns or req.target_col not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Source column '{req.source_col}' or Target column '{req.target_col}' not found in table schema."
+            )
+
+        result = sync_dataframe_to_neo4j(
+            graph_name=req.graph_name,
+            df=df,
+            source_col=req.source_col,
+            target_col=req.target_col,
+            edge_label=req.edge_label
+        )
+        if "error" in result.lower() or "❌" in result:
+            raise HTTPException(status_code=500, detail=result)
+        return {"status": "success", "message": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

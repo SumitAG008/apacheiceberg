@@ -5,36 +5,36 @@
    ──────────────────────────────────────────────────────── */
 
 :root {
-  /* Core Palette — Royal Green & Clean White */
-  --bg-primary:        #ffffff;
-  --bg-secondary:      #f8fafc;
-  --bg-surface:        #ffffff;
-  --bg-surface2:       #f1f5f9;
-  --bg-glass:          rgba(255, 255, 255, 0.95);
+  /* Core Palette — Futuristic Cyber Dark */
+  --bg-primary:        #080b14;       /* Ultra deep space black */
+  --bg-secondary:      #0e1324;       /* Deep slate panel bg */
+  --bg-surface:        #151c33;       /* Surface card bg */
+  --bg-surface2:       #1e2747;       /* Active/hover surface state */
+  --bg-glass:          rgba(21, 28, 51, 0.78);
 
-  /* Accent — Royal Green */
-  --color-primary:     #16a34a;       /* Royal Green */
-  --color-primary-dim: rgba(22, 163, 74, 0.1);
-  --color-primary-glow:rgba(22, 163, 74, 0.2);
-  --color-accent:      #15803d;
-  --color-accent-dim:  rgba(21, 128, 61, 0.1);
+  /* Accent — Cyber Emerald / Teal Aura */
+  --color-primary:     #10b981;       /* Cyber Emerald */
+  --color-primary-dim: rgba(16, 185, 129, 0.12);
+  --color-primary-glow:rgba(16, 185, 129, 0.25);
+  --color-accent:      #06b6d4;       /* Holographic Cyan */
+  --color-accent-dim:  rgba(6, 182, 212, 0.12);
 
   /* Status */
-  --color-success:     #16A34A;
-  --color-warning:     #D97706;
-  --color-danger:      #DC2626;
-  --color-info:        #0284C7;
+  --color-success:     #10b981;
+  --color-warning:     #eab308;
+  --color-danger:      #f43f5e;
+  --color-info:        #38bdf8;
 
   /* Borders */
-  --border-subtle:     #cbd5e1;
-  --border-active:     #16a34a;
-  --border-glass:      rgba(22, 163, 74, 0.15);
+  --border-subtle:     rgba(255, 255, 255, 0.08);
+  --border-active:     #10b981;
+  --border-glass:      rgba(16, 185, 129, 0.18);
 
   /* Text */
-  --text-main:         #0f172a;       /* Black/dark slate font */
-  --text-muted:        #475569;
+  --text-main:         #f8fafc;       /* Bright silver text */
+  --text-muted:        #94a3b8;       /* Slate gray text */
   --text-dim:          #64748b;
-  --text-dark:         #ffffff;
+  --text-dark:         #080b14;
 
   /* Fonts */
   --font-sans:         'Space Grotesk', 'Inter', sans-serif;
@@ -42,8 +42,8 @@
   --font-mono:         'JetBrains Mono', monospace;
 
   /* Timing */
-  --transition-fast:   0.18s ease;
-  --transition-smooth: 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast:   0.15s ease;
+  --transition-smooth: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Radii */
   --radius-sm: 6px;
@@ -66,8 +66,9 @@ body {
   overflow: hidden;
   line-height: 1.55;
   background-image:
-    radial-gradient(ellipse 60% 50% at 10% -10%, rgba(22, 163, 74, 0.04) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 90% 110%, rgba(16, 185, 129, 0.02) 0%, transparent 55%);
+    radial-gradient(ellipse 65% 55% at 15% -10%, rgba(16, 185, 129, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 110%, rgba(6, 182, 212, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%);
 }
 
 button, input, textarea, select { font-family: inherit; color: inherit; }
@@ -336,10 +337,10 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 .tab-headers {
   display: flex;
   gap: 0.25rem;
-  background: rgba(241, 245, 249, 0.8);
+  background: rgba(255, 255, 255, 0.03);
   padding: 0.25rem;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
 }
 
 .tab-btn {
@@ -350,7 +351,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   padding: 0.5rem 1rem;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
   border-radius: 8px;
   transition: all 0.2s ease;
   display: flex;
@@ -361,15 +362,15 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 }
 
 .tab-btn:hover {
-  color: #0f172a;
-  background: rgba(223, 230, 238, 0.4);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .tab-btn.active {
-  color: #16a34a;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(22, 163, 74, 0.03);
-  border: 1px solid rgba(22, 163, 74, 0.15);
+  color: var(--color-primary);
+  background: var(--bg-surface2);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 /* ─── Tab Content ─── */
@@ -471,8 +472,8 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 /* Messages */
 .chat-messages-box {
   flex-grow: 1;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   overflow-y: auto;
@@ -480,7 +481,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   flex-direction: column;
   gap: 1.25rem;
   margin-bottom: 1rem;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .chat-message {
@@ -509,19 +510,19 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 }
 
 .chat-message.user .message-avatar {
-  background: #0052cc;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   color: #fff;
 }
 
 .chat-message.assistant .message-avatar {
-  background: rgba(22, 163, 74, 0.08);
-  border: 1px solid rgba(22, 163, 74, 0.2);
-  color: #16a34a;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--color-primary);
 }
 
 .message-content-wrapper { display: flex; flex-direction: column; gap: 0.2rem; max-width: 100%; }
 
-.message-sender { font-size: 0.72rem; font-weight: 700; color: #475569; }
+.message-sender { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
 .chat-message.user .message-sender { text-align: right; }
 
 .message-text {
@@ -533,17 +534,19 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 }
 
 .chat-message.user .message-text {
-  background: #0052cc;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   color: #ffffff;
   border: none;
   border-top-right-radius: 2px;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
 }
 
 .chat-message.assistant .message-text {
-  background: #f8fafc;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
   border-top-left-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .message-text pre {

@@ -343,6 +343,25 @@ export const api = {
     return res.json();
   },
 
+  async projectTableToGraph(tableName: string, sourceCol: string, targetCol: string, edgeLabel: string = 'RELATED_TO', graphName: string = 'pharma_graph'): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/v1/graph/project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table_name: tableName,
+        source_col: sourceCol,
+        target_col: targetCol,
+        edge_label: edgeLabel,
+        graph_name: graphName
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || err.detail || 'Failed to project table to graph');
+    }
+    return res.json();
+  },
+
   // ── Audit trail logs ─────────────────────────────────────────────────
   async getAuditLogs(): Promise<AuditLog[]> {
     const res = await authFetch(`${BASE_URL}/v1/audit`);
