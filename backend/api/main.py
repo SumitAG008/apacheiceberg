@@ -85,18 +85,23 @@ app = FastAPI(
 )
 
 # Allow calling from frontend origin
-# Allow calling from frontend origin
 cors_origins_raw = os.environ.get("CORS_ALLOW_ORIGINS")
 if cors_origins_raw:
-    cors_origins = cors_origins_raw.split(",")
+    # Split and strip whitespaces to prevent parsing errors
+    cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
 else:
-    # Safe defaults to prevent wildcard credentials runtime errors in FastAPI
     cors_origins = [
         "http://localhost:5173", 
         "http://localhost:3000", 
         "http://127.0.0.1:5173",
         "https://zerocopy.meldra.ai"
     ]
+
+# Foolproof fallback: always append default UI origins to ensure no CORS blocking
+always_allowed = ["https://zerocopy.meldra.ai", "http://localhost:5173", "http://127.0.0.1:5173"]
+for origin in always_allowed:
+    if origin not in cors_origins:
+        cors_origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,
