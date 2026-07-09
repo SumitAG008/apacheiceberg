@@ -1083,6 +1083,8 @@ async def ingest_endpoint(
 
 @app.get("/v1/config/aws", tags=["AWS Config"])
 async def get_aws_config(user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role") != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can view AWS config")
     return {
         "region": os.environ.get("AWS_REGION", "eu-west-2"),
         "s3_warehouse_uri": os.environ.get("S3_WAREHOUSE_URI", ""),
@@ -1096,6 +1098,8 @@ async def update_aws_config(
     payload: AWSConfigRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ):
+    if user.get("role") != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can modify AWS config")
     os.environ["AWS_REGION"] = payload.region
     os.environ["S3_WAREHOUSE_URI"] = payload.s3_warehouse_uri
     

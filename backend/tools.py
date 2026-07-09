@@ -165,6 +165,7 @@ def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
         # Get PyArrow table for querying with DuckDB
         # Using scan().to_arrow() is the efficient way to read Iceberg data
         con = duckdb.connect(database=':memory:')
+        con.execute("SET enable_external_access=false;")
         iceberg_table = table.scan().to_arrow()
         con.register("iceberg_table", iceberg_table)
         
