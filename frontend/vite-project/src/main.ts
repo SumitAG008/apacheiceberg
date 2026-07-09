@@ -6420,113 +6420,121 @@ function initExperienceSwitcher() {
 }
 
 function initCommandPalette() {
-  const palette = document.getElementById('command-palette') as HTMLElement;
-  const launcher = document.getElementById('header-search-launcher') as HTMLElement;
-  const input = document.getElementById('command-palette-input') as HTMLInputElement;
-  const resultsContainer = document.getElementById('command-palette-results') as HTMLElement;
-  
-  const showPalette = () => {
-    if (palette) {
-      palette.style.display = 'flex';
-      if (input) {
-        input.value = '';
-        input.focus();
-      }
-      renderPaletteResults([]);
-    }
+  const headerSearchInput = document.getElementById('header-search-input') as HTMLInputElement;
+  const dropdown = document.getElementById('header-search-dropdown') as HTMLElement;
+
+  if (!headerSearchInput || !dropdown) return;
+
+  const showDropdown = () => {
+    dropdown.style.display = 'block';
   };
-  
-  const hidePalette = () => {
-    if (palette) palette.style.display = 'none';
+
+  const hideDropdown = () => {
+    dropdown.style.display = 'none';
   };
-  
-  if (launcher) launcher.onclick = showPalette;
-  
+
+  // Focus input on Ctrl+K
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      showPalette();
+      headerSearchInput.focus();
+      showDropdown();
     }
     if (e.key === 'Escape') {
-      hidePalette();
+      hideDropdown();
+      headerSearchInput.blur();
     }
   });
-  
-  if (palette) {
-    palette.onclick = (e) => {
-      if (e.target === palette) hidePalette();
-    };
-  }
-  
-  if (input) {
-    let debounceTimer: any = null;
-    input.oninput = () => {
-      clearTimeout(debounceTimer);
-      const query = input.value.trim();
-      if (!query) {
-        renderPaletteResults([]);
-        return;
-      }
-      debounceTimer = setTimeout(async () => {
-        try {
-          const results = await api.studio.search(query);
-          renderPaletteResults(results);
-        } catch (err) {
-          console.error(err);
-        }
-      }, 250);
-    };
-  }
-  
-  function renderPaletteResults(results: any[]) {
-    if (!resultsContainer) return;
-    if (results.length === 0) {
-      resultsContainer.innerHTML = '<div class="palette-empty-state">Start typing to search or query catalog...</div>';
+
+  // Show dropdown on focus or click
+  headerSearchInput.onfocus = () => {
+    showDropdown();
+  };
+  headerSearchInput.onclick = (e) => {
+    e.stopPropagation();
+    showDropdown();
+  };
+
+  // Hide dropdown on click outside
+  document.addEventListener('click', (e) => {
+    if (e.target !== headerSearchInput && !dropdown.contains(e.target as Node)) {
+      hideDropdown();
+    }
+  });
+
+  // Handle typing search
+  let debounceTimer: any = null;
+  headerSearchInput.oninput = () => {
+    clearTimeout(debounceTimer);
+    const query = headerSearchInput.value.trim();
+    if (!query) {
+      renderDropdownResults([]);
       return;
     }
-    
-    resultsContainer.innerHTML = '';
+    debounceTimer = setTimeout(async () => {
+      try {
+        const results = await api.studio.search(query);
+        renderDropdownResults(results);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 200);
+  };
+
+  function renderDropdownResults(results: any[]) {
+    if (!dropdown) return;
+    if (results.length === 0) {
+      dropdown.innerHTML = '<div class="palette-empty-state" style="padding: 12px 16px; font-size: 13px; color: #8B8BA7; text-align: center;">No results found.</div>';
+      return;
+    }
+
+    dropdown.innerHTML = '';
     results.forEach(res => {
       const item = document.createElement('div');
       item.className = 'palette-result-item';
-      
+
       let icon = 'fa-solid fa-file';
       if (res.type === 'page') icon = 'fa-solid fa-file-invoice';
       else if (res.type === 'table') icon = 'fa-solid fa-table';
-      else if (res.type === 'namespace') icon = 'fa-solid fa-folder-open';
+      else if (res.type === 'namespace') icon = 'fa-solid fa-folder-open';   
       else if (res.type === 'action') icon = 'fa-solid fa-screwdriver-wrench';
-      
+      else if (res.type === 'transaction') icon = 'fa-solid fa-money-bill-transfer';
+
       item.innerHTML = `
-        <div class="palette-result-icon"><i class="${icon}"></i></div>
+        <div class="palette-result-icon"><i class="${icon}"></i></div>       
         <div class="palette-result-info">
           <div class="palette-result-name">${res.name}</div>
           <div class="palette-result-desc">${res.desc}</div>
         </div>
         <span class="palette-result-badge">${res.type}</span>
       `;
-      
-      item.onclick = () => {
-        hidePalette();
+
+      item.onclick = (e) => {
+        e.stopPropagation();
+        hideDropdown();
+        headerSearchInput.value = '';
+        headerSearchInput.blur();
+        
         if (res.type === 'page') {
           let matchedExp = 'engineering';
           if (res.route === 'ingest-tab') matchedExp = 'factory';
-          else if (res.route === 'chat-tab') matchedExp = 'warehouse';
+          else if (res.route === 'chat-tab') matchedExp = 'warehouse';       
           else if (res.route === 'graph-tab') matchedExp = 'graph';
           else if (['audit-tab', 'traffic-tab', 'mcp-tab'].includes(res.route)) matchedExp = 'admin';
-          
+
           const opt = document.querySelector(`.experience-option[data-exp="${matchedExp}"]`) as HTMLElement;
           if (opt) opt.click();
-          
+
           setTimeout(() => {
             const targetTabBtn = document.getElementById(res.route) || document.querySelector(`.tab-btn[data-tab="${res.route}"]`);
-            if (targetTabBtn) (targetTabBtn as HTMLButtonElement).click();
+            if (targetTabBtn) (targetTabBtn as HTMLButtonElement).click();   
           }, 100);
         } else if (res.type === 'table') {
           const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
           if (opt) opt.click();
-          
+
           setTimeout(() => {
-            const workspaceBtn = document.getElementById('nav-workspace');
+            const workspaceBtn = document.getElementById('nav-workspace');   
             if (workspaceBtn) workspaceBtn.click();
             const selectEl = document.getElementById('studio-namespace-select') as HTMLSelectElement;
             if (selectEl) {
@@ -6545,25 +6553,37 @@ function initCommandPalette() {
             const opt = document.querySelector('.experience-option[data-exp="admin"]') as HTMLElement;
             if (opt) opt.click();
             setTimeout(() => {
-              const studioBtn = document.getElementById('nav-studio');
+              const studioBtn = document.getElementById('nav-studio');       
               if (studioBtn) studioBtn.click();
               const rbacSubBtn = document.getElementById('btn-studio-rbac-tab') as HTMLButtonElement;
               if (rbacSubBtn) rbacSubBtn.click();
-            }, 100);
-          } else if (res.action_id === 'optimize' || res.action_id === 'expire_snapshots') {
-            const opt = document.querySelector('.experience-option[data-exp="factory"]') as HTMLElement;
-            if (opt) opt.click();
-            setTimeout(() => {
-              const studioBtn = document.getElementById('nav-studio');
-              if (studioBtn) studioBtn.click();
-              const maintSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-maintenance"]') as HTMLButtonElement;
-              if (maintSubBtn) maintSubBtn.click();
-            }, 100);
+            }, 150);
           }
+        } else if (res.type === 'transaction') {
+          // Switch to engineering experience
+          const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
+          if (opt) opt.click();
+
+          setTimeout(() => {
+            const studioBtn = document.getElementById('nav-studio');
+            if (studioBtn) studioBtn.click();
+            
+            // Switch to the Query tab
+            const querySubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-query"]') as HTMLButtonElement;
+            if (querySubBtn) querySubBtn.click();
+
+            // Set the query sql and run it
+            const queryArea = document.getElementById('studio-query-sql') as HTMLTextAreaElement;
+            if (queryArea) {
+              queryArea.value = `SELECT * FROM default.transactions_10k WHERE tx_id = ${res.tx_id};`;
+              const runBtn = document.getElementById('studio-query-run-btn') as HTMLButtonElement;
+              if (runBtn) runBtn.click();
+            }
+          }, 150);
         }
       };
-      
-      resultsContainer.appendChild(item);
+
+      dropdown.appendChild(item);
     });
   }
 }

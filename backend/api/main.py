@@ -2594,6 +2594,44 @@ async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)
     except Exception:
         pass
         
+    # Search transaction records inside default.transactions_10k table if it exists
+    try:
+        table = m_catalog.load_table("default.transactions_10k")
+        arrow_table = table.scan().to_arrow()
+        
+        import duckdb
+        con = duckdb.connect(database=':memory:')
+        con.execute("SET enable_external_access=false;")
+        con.register("tx_table", arrow_table)
+        
+        # Look for matching ID or accounts (up to 5 results to keep search fast and relevant)
+        sql_query = f"""
+            SELECT tx_id, account_from, account_to, amount, status, timestamp 
+            FROM tx_table 
+            WHERE CAST(tx_id AS VARCHAR) LIKE '%{query}%'
+               OR LOWER(account_from) LIKE '%{query}%'
+               OR LOWER(account_to) LIKE '%{query}%'
+               OR LOWER(status) LIKE '%{query}%'
+            LIMIT 5
+        """
+        db_results = con.execute(sql_query).fetchall()
+        for row in db_results:
+            tx_id, acc_from, acc_to, amt, status, ts = row
+            results.append({
+                "name": f"Transaction #{tx_id}",
+                "type": "transaction",
+                "route": "studio-tab",
+                "desc": f"{acc_from} ➔ {acc_to} | ${amt} ({status})",
+                "tx_id": tx_id,
+                "account_from": acc_from,
+                "account_to": acc_to,
+                "amount": amt,
+                "status": status,
+                "timestamp": ts
+            })
+    except Exception as e:
+        print(f"[search] Error searching transactions: {e}")
+
     actions = [
         {"name": "Compact table files (Optimize)", "type": "action", "route": "studio-tab", "action_id": "optimize", "desc": "Run layout bin-packing compaction on Iceberg tables"},
         {"name": "Expire table snapshots", "type": "action", "route": "studio-tab", "action_id": "expire_snapshots", "desc": "Purge older metadata snapshots from S3 store"},

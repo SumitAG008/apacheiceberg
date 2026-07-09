@@ -2292,10 +2292,14 @@
           </div>
 
           <!-- Global search launcher -->
-          <div class="header-search-container" id="header-search-launcher">
+          <div class="header-search-container" id="header-search-launcher" style="position: relative; cursor: default;">  
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <span class="search-placeholder-text">Search tables, pages, actions...</span>
+            <input type="text" id="header-search-input" class="header-search-input" placeholder="Search tables, txs, pages... (Ctrl+K)" autocomplete="off">
             <span class="search-kbd-shortcut">Ctrl+K</span>
+            <!-- Inline Search Dropdown Results -->
+            <div id="header-search-dropdown" class="header-search-dropdown" style="display: none;">
+              <div class="palette-empty-state">Start typing to search...</div>
+            </div>
           </div>
 
           <nav class="tab-headers">
