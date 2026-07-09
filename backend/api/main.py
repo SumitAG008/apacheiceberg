@@ -91,7 +91,12 @@ if cors_origins_raw:
     cors_origins = cors_origins_raw.split(",")
 else:
     # Safe defaults to prevent wildcard credentials runtime errors in FastAPI
-    cors_origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    cors_origins = [
+        "http://localhost:5173", 
+        "http://localhost:3000", 
+        "http://127.0.0.1:5173",
+        "https://zerocopy.meldra.ai"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
