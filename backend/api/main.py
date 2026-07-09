@@ -69,7 +69,11 @@ except Exception as e:
     create_iceberg_agent = None  # type: ignore
 
 # ── JWT Configuration ────────────────────────────────────────────────────────
-JWT_SECRET = os.environ.get("JWT_SECRET_KEY", "CHANGE_ME_USE_A_LONG_RANDOM_STRING_IN_PROD")
+JWT_SECRET = os.environ.get("JWT_SECRET_KEY")
+if not JWT_SECRET:
+    import secrets
+    JWT_SECRET = secrets.token_hex(32)
+    print("[api/main] WARNING: JWT_SECRET_KEY env var was missing! Auto-generated a secure random signing key.")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 
@@ -81,9 +85,17 @@ app = FastAPI(
 )
 
 # Allow calling from frontend origin
+# Allow calling from frontend origin
+cors_origins_raw = os.environ.get("CORS_ALLOW_ORIGINS")
+if cors_origins_raw:
+    cors_origins = cors_origins_raw.split(",")
+else:
+    # Safe defaults to prevent wildcard credentials runtime errors in FastAPI
+    cors_origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ALLOW_ORIGINS", "*").split(","),
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type", "X-Tenant-Tier", "X-Tenant-ID"],
@@ -537,7 +549,8 @@ async def register(payload: RegisterRequest, request: Request):
         first_user = cur.fetchone()["count"] == 0
         conn.close()
         
-        assigned_role = "Admin" if first_user else (payload.role or "Business Analyst")
+        # Force "Business Analyst" role for new public signups (Admin is set manually or for first user)
+        assigned_role = "Admin" if first_user else "Business Analyst"
         
         user = create_user(
             email=payload.email,
@@ -569,11 +582,32 @@ async def register(payload: RegisterRequest, request: Request):
     }
 
 
+# Global rate limiting cache for failed login attempts
+from collections import defaultdict
+failed_logins = defaultdict(list)
+
+def check_login_rate_limit(email: str):
+    now = time.time()
+    # Filter attempts in the last 60 seconds
+    attempts = [t for t in failed_logins[email] if now - t < 60]
+    failed_logins[email] = attempts
+    if len(attempts) >= 5:
+         raise HTTPException(
+             status_code=429,
+             detail="Too many failed login attempts. Please wait 60 seconds."
+         )
+
+def record_failed_login(email: str):
+    failed_logins[email].append(time.time())
+
+
 @app.post("/auth/login", tags=["Auth"])
 async def login(payload: LoginRequest):
     """Step 1 of login: validate password + send email OTP."""
+    check_login_rate_limit(payload.email)
     user = get_user_by_email(payload.email)
     if not user or not verify_password(payload.password, user["password_hash"]):
+        record_failed_login(payload.email)
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     if not user["is_active"]:
@@ -1551,6 +1585,294 @@ async def execute_mcp_tool_endpoint(
     }
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# DISTRIBUTED QUERY ENGINE (DQE) ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Lazy import — avoids pulling in PyIceberg/DuckDB at module import time
+def _get_query_engine():
+    import sys, os as _os
+    _backend = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    if _backend not in sys.path:
+        sys.path.insert(0, _backend)
+    from query_engine.executor import query_engine
+    return query_engine
+
+
+@app.post("/v1/query/submit", tags=["Query Engine"])
+async def dqe_submit(
+    payload: "QuerySubmitRequest",
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Submit a query job to the Distributed Query Engine.
+
+    Modes:
+    - **sql**    — DuckDB SQL against an Apache Iceberg table
+    - **graph**  — Cypher-like patterns or algorithms against the graph store
+    - **python** — AST-safe pandas/pyarrow transformation script
+
+    Returns immediately with job_id and status=running.
+    Poll `/v1/query/{job_id}` for results.
+    """
+    from query_engine.models import QueryJob, QueryMode, QuerySubmitRequest as _QSR
+
+    try:
+        job = QueryJob(
+            mode=QueryMode(payload.mode),
+            namespace=payload.namespace,
+            table_name=payload.table_name,
+            sql=payload.sql,
+            cypher=payload.cypher,
+            graph_name=payload.graph_name,
+            algorithm=payload.algorithm,
+            python_script=payload.python_script,
+            filters=payload.filters,
+            limit=payload.limit,
+            submitted_by=user.get("sub"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    engine = _get_query_engine()
+
+    # Use submit_and_wait for small jobs (no payload flag for now; always await)
+    job = await engine.submit_and_wait(job)
+
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="dqe_query_submit",
+        details=f"mode={job.mode} job_id={job.job_id} status={job.status}",
+        status="success" if job.status.value != "failed" else "error",
+    )
+
+    return {
+        "job_id": job.job_id,
+        "mode": job.mode,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() + "Z",
+        "started_at": job.started_at.isoformat() + "Z" if job.started_at else None,
+        "completed_at": job.completed_at.isoformat() + "Z" if job.completed_at else None,
+        "result": job.result.model_dump() if job.result else None,
+        "error": job.error,
+    }
+
+
+@app.get("/v1/query/{job_id}", tags=["Query Engine"])
+async def dqe_get_job(
+    job_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Poll the status and result of a submitted query job."""
+    engine = _get_query_engine()
+    job = engine.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found or has expired.")
+
+    # Users can only see their own jobs (Admins see all)
+    if job.submitted_by != user.get("sub") and user.get("role") != "Admin":
+        raise HTTPException(status_code=403, detail="Access denied to this job.")
+
+    return {
+        "job_id": job.job_id,
+        "mode": job.mode,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() + "Z",
+        "started_at": job.started_at.isoformat() + "Z" if job.started_at else None,
+        "completed_at": job.completed_at.isoformat() + "Z" if job.completed_at else None,
+        "result": job.result.model_dump() if job.result else None,
+        "error": job.error,
+    }
+
+
+@app.post("/v1/query/explain", tags=["Query Engine"])
+async def dqe_explain(
+    payload: "QueryExplainRequest",
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Dry-run: return the execution plan for a query without executing it.
+
+    Validates syntax and returns routing information, EXPLAIN text (for SQL),
+    and graph statistics (for Graph mode). Does not consume compute resources.
+    """
+    from query_engine.models import QueryJob, QueryMode, QueryExplainRequest as _QER
+
+    try:
+        job = QueryJob(
+            mode=QueryMode(payload.mode),
+            namespace=payload.namespace,
+            table_name=payload.table_name,
+            sql=payload.sql,
+            cypher=payload.cypher,
+            graph_name=payload.graph_name,
+            python_script=payload.python_script,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    engine = _get_query_engine()
+    plan = engine.explain(job)
+    return {"mode": payload.mode, "execution_plan": plan}
+
+
+@app.get("/v1/query/history", tags=["Query Engine"])
+async def dqe_history(
+    limit: int = 20,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Return the authenticated user's recent query job history, newest first."""
+    engine = _get_query_engine()
+    jobs = engine.list_for_user(user.get("sub"), limit=limit)
+    return [
+        {
+            "job_id": j.job_id,
+            "mode": j.mode,
+            "status": j.status,
+            "created_at": j.created_at.isoformat() + "Z",
+            "completed_at": j.completed_at.isoformat() + "Z" if j.completed_at else None,
+            "total_rows": j.result.total_rows if j.result else None,
+            "error": j.error,
+        }
+        for j in jobs
+    ]
+
+
+@app.post("/v1/query/multi", tags=["Query Engine"])
+async def dqe_multi(
+    payload: "MultiQueryRequest",
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Fan-out multiple queries across any mix of SQL / Graph / Python modes.
+
+    Results are returned as individual job results. When merge_strategy='union',
+    all result rows are concatenated into a single merged_result (requires
+    identical column schemas). Use join_on_key for key-based merging.
+    """
+    from query_engine.models import QueryJob, QueryMode, MultiQueryRequest as _MQR
+    import asyncio as _asyncio
+
+    if len(payload.queries) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 queries per multi-request.")
+
+    engine = _get_query_engine()
+    jobs_to_run = []
+    for q in payload.queries:
+        try:
+            job = QueryJob(
+                mode=QueryMode(q.mode),
+                namespace=q.namespace,
+                table_name=q.table_name,
+                sql=q.sql,
+                cypher=q.cypher,
+                graph_name=q.graph_name,
+                algorithm=q.algorithm,
+                python_script=q.python_script,
+                filters=q.filters,
+                limit=q.limit,
+                submitted_by=user.get("sub"),
+            )
+            jobs_to_run.append(job)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+
+    # Execute all jobs concurrently
+    completed_jobs = await _asyncio.gather(
+        *[engine.submit_and_wait(j) for j in jobs_to_run],
+        return_exceptions=False,
+    )
+
+    # Build merged result if union strategy
+    merged_result = None
+    if payload.merge_strategy == "union":
+        all_rows = []
+        all_cols: Optional[List[str]] = None
+        for j in completed_jobs:
+            if j.result:
+                if all_cols is None:
+                    all_cols = j.result.columns
+                all_rows.extend(j.result.rows)
+        if all_cols and all_rows:
+            from query_engine.models import QueryResult as _QR
+            merged_result = _QR(
+                columns=all_cols,
+                rows=all_rows,
+                total_rows=len(all_rows),
+                truncated=False,
+                engine_used="multi_engine_union",
+            ).model_dump()
+
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="dqe_multi_query",
+        details=f"fan_out={len(jobs_to_run)} strategy={payload.merge_strategy}",
+        status="success",
+    )
+
+    return {
+        "jobs": [
+            {
+                "job_id": j.job_id,
+                "mode": j.mode,
+                "status": j.status,
+                "result": j.result.model_dump() if j.result else None,
+                "error": j.error,
+            }
+            for j in completed_jobs
+        ],
+        "merged_result": merged_result,
+        "merge_strategy": payload.merge_strategy,
+    }
+
+
+@app.get("/v1/query/modes", tags=["Query Engine"])
+async def dqe_modes(user: Dict[str, Any] = Depends(get_current_user)):
+    """Return supported query modes, required fields, and example payloads."""
+    engine = _get_query_engine()
+    return {"modes": engine.supported_modes()}
+
+
+# ─── DQE Pydantic request helpers (local to this file) ─────────────────────
+
+class _DQESubmitRequest(BaseModel):
+    mode: str
+    namespace: Optional[str] = None
+    table_name: Optional[str] = None
+    sql: Optional[str] = None
+    cypher: Optional[str] = None
+    graph_name: Optional[str] = None
+    algorithm: Optional[str] = None
+    python_script: Optional[str] = None
+    filters: Optional[Dict[str, Any]] = None
+    limit: int = 1000
+
+class _DQEExplainRequest(BaseModel):
+    mode: str
+    namespace: Optional[str] = None
+    table_name: Optional[str] = None
+    sql: Optional[str] = None
+    cypher: Optional[str] = None
+    graph_name: Optional[str] = None
+    python_script: Optional[str] = None
+
+class _DQEMultiRequest(BaseModel):
+    queries: List[_DQESubmitRequest]
+    merge_strategy: str = "union"
+    join_key: Optional[str] = None
+
+# Re-wire the endpoints to use the local Pydantic classes
+# (overwrite the forward-reference annotations FastAPI needs at startup)
+dqe_submit.__annotations__["payload"]  = _DQESubmitRequest
+dqe_explain.__annotations__["payload"] = _DQEExplainRequest
+dqe_multi.__annotations__["payload"]   = _DQEMultiRequest
+
+# Rebuild FastAPI route dependencies
+app.openapi_schema = None   # invalidate cached schema so FastAPI re-reads annotations
+
+
 # ── Live Traffic WebSocket & REST Fallback ──────────────────────────────────
 @app.websocket("/ws/traffic")
 async def websocket_traffic(websocket: WebSocket, token: Optional[str] = None):
@@ -1855,7 +2177,15 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
         m_catalog = MeldraCatalog()
         tables = m_catalog.list_tables(payload.namespace)
         
+        # Restrict SQL capabilities for secure query execution
+        sql_upper = payload.sql.upper()
+        forbidden_keywords = ["ATTACH", "COPY", "INSTALL", "LOAD"]
+        for kw in forbidden_keywords:
+            if kw in sql_upper:
+                raise Exception(f"SQL execution denied: Keyword '{kw}' is blocked for security.")
+                
         con = duckdb.connect(database=':memory:')
+        con.execute("SET enable_external_access=false;")
         
         for tbl_name in tables:
             try:
@@ -2028,6 +2358,61 @@ async def project_table_to_graph(req: GraphProjectRequest, user: Dict[str, Any] 
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/v1/admin/reset-tenant", tags=["Admin"])
+async def reset_tenant_state(user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role != "Admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Access Denied: Only users with the 'Admin' role can reset the tenant capacity."
+        )
+    
+    from auth_db import _get_conn
+    from catalog_setup import get_catalog
+    
+    # 1. Clear database state (except active Admin)
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        
+        # Delete all users EXCEPT the logged-in admin
+        admin_email = user.get("email")
+        cur.execute("DELETE FROM auth.users WHERE email != %s;", (admin_email,))
+        
+        # Clear all policies, nodes, edges, logs
+        cur.execute("DELETE FROM auth.rbac_policies;")
+        cur.execute("DELETE FROM auth.graph_nodes;")
+        cur.execute("DELETE FROM auth.graph_edges;")
+        cur.execute("DELETE FROM auth.audit_logs;")
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database reset error: {str(e)}")
+    finally:
+        conn.close()
+
+    # 2. Clear S3/Local Iceberg catalog tables
+    try:
+        catalog = get_catalog()
+        tables = catalog.list_tables("default")
+        for t_ident in tables:
+            try:
+                catalog.drop_table(t_ident)
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[reset-tenant] Failed to drop catalog tables: {e}")
+
+    # 3. Re-seed demo transactions
+    try:
+        seed_demo_data()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to re-seed demo data: {str(e)}")
+        
+    return {"status": "success", "message": "Tenant state reset and demo data re-seeded successfully."}
+
+
 class RBACPolicyItem(BaseModel):
     role: str
     namespace: str
@@ -2119,6 +2504,10 @@ async def execute_python_script(payload: PythonExecuteRequest, user: Dict[str, A
         
     try:
         env = os.environ.copy()
+        # Remove critical keys from runtime subprocess environment for sandbox security
+        for key in ["ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GRAPH_DB_PASSWORD", "GRAPH_DB_USER"]:
+            env.pop(key, None)
+            
         result = subprocess.run(
             [sys.executable, temp_file_path],
             capture_output=True,

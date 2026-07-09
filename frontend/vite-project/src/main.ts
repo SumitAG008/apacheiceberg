@@ -3824,6 +3824,31 @@ async function initDataStudio() {
     btnExpireSnapshots.onclick = () => runMaintenanceTask('expire_snapshots');
   }
 
+  const btnResetTenant = document.getElementById('btn-maintenance-reset-tenant') as HTMLButtonElement;
+  if (btnResetTenant) {
+    btnResetTenant.onclick = async () => {
+      const confirmReset = confirm("WARNING: This will delete all users (except yourself), graph nodes, access policies, audit trails, and custom Iceberg tables, then re-seed the default 10k transactions dataset. Do you want to continue?");
+      if (!confirmReset) return;
+      
+      btnResetTenant.disabled = true;
+      btnResetTenant.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting Tenant...';
+      
+      try {
+        const res = await api.resetTenantState();
+        showToast(res.message || 'Tenant successfully reset and re-seeded!', 'success');
+        await loadStudioNamespaces();
+        // Clear workspace schema table view if active
+        const tblTbody = document.getElementById('studio-table-schema-tbody');
+        if (tblTbody) tblTbody.innerHTML = '';
+      } catch (err: any) {
+        showToast(err.message || 'Tenant reset failed.', 'error');
+      } finally {
+        btnResetTenant.disabled = false;
+        btnResetTenant.innerHTML = '<i class="fa-solid fa-circle-check"></i> Reset &amp; Reload Demo Data';
+      }
+    };
+  }
+
   // Contract rules buttons
   const btnAddRule = document.getElementById('btn-add-contract-rule') as HTMLButtonElement;
   if (btnAddRule) {
@@ -6752,3 +6777,306 @@ if (document.readyState === 'loading') {
 } else {
   initAuthController();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DQE QUERY LAB — UI Controller
+// Wires the "Query Lab" tab to the /v1/query/* REST endpoints via dqe.* client
+// ─────────────────────────────────────────────────────────────────────────────
+import { dqe } from './api';
+import type { DQESubmitPayload, DQEJob, DQEHistoryEntry } from './api';
+
+// Inject DQE-specific CSS (mode pills, table rows, status badges)
+(function injectDQEStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .dqe-mode-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.78rem;
+      font-weight: 600; cursor: pointer; border: 1px solid var(--border-subtle);
+      background: var(--bg-surface2); color: var(--text-muted);
+      transition: all 0.18s ease;
+    }
+    .dqe-mode-pill:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .dqe-mode-pill.active {
+      background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 2px 8px rgba(139,92,246,0.35);
+    }
+    #dqe-results-thead th {
+      padding: 0.5rem 0.65rem; font-weight: 700; font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);
+      text-align: left; white-space: nowrap;
+    }
+    #dqe-results-tbody tr:hover { background: rgba(139,92,246,0.05); }
+    #dqe-results-tbody td {
+      padding: 0.45rem 0.65rem; font-size: 0.78rem; color: var(--text-main);
+      border-top: 1px solid var(--border-subtle); max-width: 240px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .dqe-hist-badge-sql   { background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.25); }
+    .dqe-hist-badge-graph { background:rgba(139,92,246,0.15); color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); }
+    .dqe-hist-badge-python{ background:rgba(59,130,246,0.15); color:#3b82f6; border:1px solid rgba(59,130,246,0.25); }
+    .dqe-hist-ok   { color: #10b981; }
+    .dqe-hist-fail { color: #ef4444; }
+    .dqe-hist-pend { color: #f59e0b; }
+  `;
+  document.head.appendChild(style);
+})();
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const dqeModePills   = document.querySelectorAll<HTMLButtonElement>('.dqe-mode-pill');
+const dqeSqlFields   = document.getElementById('dqe-sql-fields')!;
+const dqeGraphFields = document.getElementById('dqe-graph-fields')!;
+const dqePyFields    = document.getElementById('dqe-python-fields')!;
+const dqeAlgorithm   = document.getElementById('dqe-algorithm') as HTMLSelectElement;
+const dqeSpFields    = document.getElementById('dqe-shortest-path-fields')!;
+const btnDqeRun      = document.getElementById('btn-dqe-run') as HTMLButtonElement;
+const btnDqeHistRefresh = document.getElementById('btn-dqe-history-refresh') as HTMLButtonElement;
+const dqeExplainToggle  = document.getElementById('dqe-explain-toggle') as HTMLInputElement;
+
+// Result DOM
+const dqeLoader        = document.getElementById('dqe-loader')!;
+const dqeEmptyState    = document.getElementById('dqe-empty-state')!;
+const dqeTableWrapper  = document.getElementById('dqe-table-wrapper')!;
+const dqeThead         = document.getElementById('dqe-results-thead')!;
+const dqeTbody         = document.getElementById('dqe-results-tbody')!;
+const dqeResultBadge   = document.getElementById('dqe-result-badge')!;
+const dqeEngineUsed    = document.getElementById('dqe-engine-used')!;
+const dqeExplainOutput = document.getElementById('dqe-explain-output')!;
+const dqeTruncNotice   = document.getElementById('dqe-truncation-notice')!;
+const dqeTruncCount    = document.getElementById('dqe-truncated-count')!;
+const dqeTotalCount    = document.getElementById('dqe-total-count')!;
+const dqeHistTbody     = document.getElementById('dqe-history-tbody')!;
+const dqeLoaderText    = document.getElementById('dqe-loader-text')!;
+
+let _dqeMode: 'sql' | 'graph' | 'python' = 'sql';
+const _jobHistory: DQEHistoryEntry[] = [];
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+dqeModePills.forEach(pill => {
+  pill.addEventListener('click', () => {
+    dqeModePills.forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    _dqeMode = pill.getAttribute('data-mode') as typeof _dqeMode;
+    dqeSqlFields.style.display   = _dqeMode === 'sql'    ? 'flex' : 'none';
+    dqeGraphFields.style.display = _dqeMode === 'graph'  ? 'flex' : 'none';
+    dqePyFields.style.display    = _dqeMode === 'python' ? 'flex' : 'none';
+    dqeSqlFields.style.flexDirection   = 'column';
+    dqeGraphFields.style.flexDirection = 'column';
+    dqePyFields.style.flexDirection    = 'column';
+  });
+});
+
+// Show/hide shortest-path node inputs when algorithm changes
+dqeAlgorithm?.addEventListener('change', () => {
+  dqeSpFields.style.display = dqeAlgorithm.value === 'shortest_path' ? 'flex' : 'none';
+});
+
+// ── Run button ────────────────────────────────────────────────────────────────
+btnDqeRun?.addEventListener('click', () => runDQEQuery());
+
+async function runDQEQuery() {
+  const isExplain = dqeExplainToggle?.checked ?? false;
+
+  // Build payload
+  let payload: DQESubmitPayload = { mode: _dqeMode };
+
+  if (_dqeMode === 'sql') {
+    const ns = (document.getElementById('dqe-namespace') as HTMLInputElement).value.trim();
+    const tbl = (document.getElementById('dqe-table-name') as HTMLInputElement).value.trim();
+    const sql = (document.getElementById('dqe-sql') as HTMLTextAreaElement).value.trim();
+    const limit = parseInt((document.getElementById('dqe-limit-sql') as HTMLInputElement).value) || 500;
+    if (!tbl || !sql) { showToast('Please enter a table name and SQL query.', 'error'); return; }
+    payload = { mode: 'sql', namespace: ns || 'default', table_name: tbl, sql, limit };
+
+  } else if (_dqeMode === 'graph') {
+    const gn = (document.getElementById('dqe-graph-name') as HTMLInputElement).value.trim();
+    const algo = dqeAlgorithm.value;
+    const cypher = (document.getElementById('dqe-cypher') as HTMLTextAreaElement).value.trim();
+    if (!gn) { showToast('Please enter a graph name.', 'error'); return; }
+    payload = { mode: 'graph', graph_name: gn };
+    if (algo) payload.algorithm = algo;
+    if (algo === 'shortest_path') {
+      const src = (document.getElementById('dqe-sp-source') as HTMLInputElement).value.trim();
+      const tgt = (document.getElementById('dqe-sp-target') as HTMLInputElement).value.trim();
+      if (!src || !tgt) { showToast('Enter source and target node IDs for shortest path.', 'error'); return; }
+      payload.filters = { source: src, target: tgt };
+    }
+    if (cypher && !algo) payload.cypher = cypher;
+
+  } else {
+    const ns = (document.getElementById('dqe-py-namespace') as HTMLInputElement).value.trim();
+    const tbl = (document.getElementById('dqe-py-table') as HTMLInputElement).value.trim();
+    const script = (document.getElementById('dqe-python') as HTMLTextAreaElement).value.trim();
+    if (!tbl || !script) { showToast('Please enter a table name and Python script.', 'error'); return; }
+    payload = { mode: 'python', namespace: ns || 'default', table_name: tbl, python_script: script, limit: 500 };
+  }
+
+  // Switch to loading state
+  dqeSetLoading(true, isExplain ? 'Generating execution plan...' : 'Executing query...');
+
+  try {
+    if (isExplain) {
+      // ── EXPLAIN mode ──
+      const res = await dqe.explain(payload as Parameters<typeof dqe.explain>[0]);
+      dqeSetLoading(false);
+      dqeExplainOutput.textContent = res.execution_plan;
+      dqeExplainOutput.style.display = 'block';
+      dqeEmptyState.style.display = 'none';
+      dqeTableWrapper.style.display = 'none';
+      dqeTruncNotice.style.display = 'none';
+      dqeResultBadge.style.display = 'none';
+      dqeEngineUsed.textContent = `Mode: ${res.mode}`;
+    } else {
+      // ── Run mode ──
+      const job: DQEJob = await dqe.submit(payload);
+      dqeSetLoading(false);
+
+      if (job.status === 'failed') {
+        showToast(`Query failed: ${job.error}`, 'error');
+        dqeEmptyState.style.display = 'flex';
+        dqeTableWrapper.style.display = 'none';
+        dqeExplainOutput.style.display = 'none';
+        return;
+      }
+
+      const result = job.result!;
+      dqeRenderResults(result);
+
+      // Badge
+      dqeResultBadge.textContent = `✅ ${result.total_rows.toLocaleString()} rows`;
+      dqeResultBadge.style.display = 'inline';
+      dqeEngineUsed.textContent = result.engine_used ? `via ${result.engine_used}` : '';
+
+      // Push to history
+      const entry: DQEHistoryEntry = {
+        job_id: job.job_id,
+        mode: job.mode,
+        status: job.status,
+        created_at: job.created_at,
+        completed_at: job.completed_at,
+        total_rows: result.total_rows,
+      };
+      _jobHistory.unshift(entry);
+      if (_jobHistory.length > 10) _jobHistory.pop();
+      dqeRenderHistory(_jobHistory);
+    }
+  } catch (err: any) {
+    dqeSetLoading(false);
+    showToast(err.message || 'Query Engine error', 'error');
+    dqeEmptyState.style.display = 'flex';
+    dqeTableWrapper.style.display = 'none';
+    dqeExplainOutput.style.display = 'none';
+  }
+}
+
+function dqeSetLoading(on: boolean, text = 'Executing query...') {
+  if (on) {
+    btnDqeRun.disabled = true;
+    btnDqeRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+    dqeLoader.style.display = 'flex';
+    dqeLoaderText.textContent = text;
+    dqeEmptyState.style.display = 'none';
+    dqeTableWrapper.style.display = 'none';
+    dqeExplainOutput.style.display = 'none';
+    dqeTruncNotice.style.display = 'none';
+  } else {
+    btnDqeRun.disabled = false;
+    btnDqeRun.innerHTML = '<i class="fa-solid fa-play"></i> Run Query';
+    dqeLoader.style.display = 'none';
+  }
+}
+
+function dqeRenderResults(result: { columns: string[]; rows: Record<string, any>[]; total_rows: number; truncated: boolean; }) {
+  dqeThead.innerHTML = '';
+  dqeTbody.innerHTML = '';
+  dqeEmptyState.style.display = 'none';
+  dqeExplainOutput.style.display = 'none';
+
+  if (!result.columns.length || !result.rows.length) {
+    dqeEmptyState.style.display = 'flex';
+    dqeEmptyState.querySelector('p')!.textContent = 'Query returned 0 rows.';
+    dqeTableWrapper.style.display = 'none';
+    return;
+  }
+
+  // Header
+  const hdrRow = document.createElement('tr');
+  result.columns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    hdrRow.appendChild(th);
+  });
+  dqeThead.appendChild(hdrRow);
+
+  // Rows
+  result.rows.forEach(row => {
+    const tr = document.createElement('tr');
+    result.columns.forEach(col => {
+      const td = document.createElement('td');
+      const val = row[col];
+      td.textContent = val === null || val === undefined ? 'NULL' : String(val);
+      if (val === null || val === undefined) td.style.color = 'var(--text-muted)';
+      tr.appendChild(td);
+    });
+    dqeTbody.appendChild(tr);
+  });
+
+  dqeTableWrapper.style.display = 'block';
+
+  // Truncation
+  if (result.truncated) {
+    dqeTruncCount.textContent = result.rows.length.toLocaleString();
+    dqeTotalCount.textContent = result.total_rows.toLocaleString();
+    dqeTruncNotice.style.display = 'flex';
+  } else {
+    dqeTruncNotice.style.display = 'none';
+  }
+}
+
+function dqeRenderHistory(history: DQEHistoryEntry[]) {
+  if (!history.length) {
+    dqeHistTbody.innerHTML = '<tr><td colspan="4" style="padding:0.75rem 0.5rem; color:var(--text-muted); text-align:center;">No queries yet</td></tr>';
+    return;
+  }
+  dqeHistTbody.innerHTML = '';
+  history.forEach(h => {
+    const modeClass = `dqe-hist-badge-${h.mode}`;
+    const statusIcon = h.status === 'success' ? '✅' : h.status === 'failed' ? '❌' : '⏳';
+    const statusClass = h.status === 'success' ? 'dqe-hist-ok' : h.status === 'failed' ? 'dqe-hist-fail' : 'dqe-hist-pend';
+    const rows = h.total_rows !== undefined ? h.total_rows.toLocaleString() : '—';
+    const t = h.created_at ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="padding:0.3rem 0.5rem;"><span class="badge ${modeClass}" style="font-size:0.62rem;">${h.mode.toUpperCase()}</span></td>
+      <td style="padding:0.3rem 0.5rem;" class="${statusClass}">${statusIcon} ${h.status}</td>
+      <td style="padding:0.3rem 0.5rem; text-align:right; font-family:var(--font-mono); font-size:0.72rem;">${rows}</td>
+      <td style="padding:0.3rem 0.5rem; text-align:right; color:var(--text-muted); font-size:0.7rem;">${t}</td>
+    `;
+    dqeHistTbody.appendChild(tr);
+  });
+}
+
+// Refresh history from server
+btnDqeHistRefresh?.addEventListener('click', async () => {
+  try {
+    const entries = await dqe.history(10);
+    _jobHistory.splice(0, _jobHistory.length, ...entries);
+    dqeRenderHistory(_jobHistory);
+    showToast('Job history refreshed.', 'info');
+  } catch (_) {
+    showToast('Could not load job history.', 'error');
+  }
+});
+
+// Load history on tab switch
+const navQueryLab = document.getElementById('nav-query-lab');
+navQueryLab?.addEventListener('click', async () => {
+  if (!_jobHistory.length) {
+    try {
+      const entries = await dqe.history(10);
+      _jobHistory.splice(0, _jobHistory.length, ...entries);
+      dqeRenderHistory(_jobHistory);
+    } catch (_) { /* silent */ }
+  }
+});

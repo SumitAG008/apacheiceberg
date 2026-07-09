@@ -105,3 +105,10 @@ def test_graph_projection_endpoint(test_admin):
         res_data = res.json()
         detail = res_data.get("detail", str(res_data))
         assert "table" in detail.lower() or "not found" in detail.lower() or "nosuchtable" in detail.lower()
+
+def test_reset_tenant_endpoint(test_admin):
+    headers = {"Authorization": f"Bearer {test_admin['token']}"}
+    res = client.post("/v1/admin/reset-tenant", headers=headers)
+    print(f"\n[TEST RESET] Status: {res.status_code}, Body: {res.text}")
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"

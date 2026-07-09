@@ -11,7 +11,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.callbacks import BaseCallbackHandler
 from tools import (
     create_iceberg_table, ingest_csv_to_iceberg, query_iceberg_data,
-    run_generic_graph_analysis, sync_iceberg_to_graph_db, query_graph_db_cypher
+    run_generic_graph_analysis, sync_iceberg_to_graph_db, query_graph_db_cypher,
+    # DQE tools
+    distributed_sql_query, distributed_graph_query,
+    distributed_python_extract, multi_engine_query,
 )
 from contextvars import ContextVar
 from traffic_bus import traffic_bus, TrafficEvent
@@ -104,7 +107,12 @@ def create_iceberg_agent():
         query_iceberg_data,
         run_generic_graph_analysis,
         sync_iceberg_to_graph_db,
-        query_graph_db_cypher
+        query_graph_db_cypher,
+        # DQE tools — use these for advanced queries
+        distributed_sql_query,
+        distributed_graph_query,
+        distributed_python_extract,
+        multi_engine_query,
     ]
     
     prompt = ChatPromptTemplate.from_messages([
@@ -136,6 +144,27 @@ def create_iceberg_agent():
           - Example Cypher query: MATCH (a:Entity)-[r]->(b:Entity) RETURN a.id, b.id LIMIT 10
           - Always specify which graph_name to query.
           - Make sure Cypher queries specify appropriate RETURN fields (like return properties or node IDs) to yield clean, structured tabular outputs.
+
+        Distributed Query Engine (DQE) — Prefer these for complex or large-scale queries:
+        You have access to a production-grade Distributed Query Engine with three modes:
+
+        1. `distributed_sql_query` — Advanced DuckDB SQL with EXPLAIN plans and predicate pushdown.
+           Use this instead of `query_iceberg_data` for: aggregations, GROUP BY, ORDER BY, multi-column analytics.
+           Always use 'iceberg_table' as the table name in your SQL.
+
+        2. `distributed_graph_query` — Full graph algorithms (pagerank, betweenness_centrality,
+           degree_centrality, connected_components, find_cycles, shortest_path, community_detection).
+           Use this for: fraud ring detection, vendor collusion analysis, lineage clustering, network influence scoring.
+           Provide either a Cypher query string OR an algorithm name.
+
+        3. `distributed_python_extract` — Execute safe Python transformations.
+           Use this for: complex pandas operations, multi-step transformations, rolling windows, custom metrics.
+           The script must set 'result_df' as a pandas DataFrame.
+           Available: df, arrow_table, pd, pa, duckdb, json, datetime, re, math.
+
+        4. `multi_engine_query` — Fan-out queries across multiple engines in one call.
+           Use this when the user wants results from both SQL and Graph simultaneously.
+           Pass a JSON array of query specs.
         """),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "{input}"),

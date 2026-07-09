@@ -307,3 +307,252 @@ def query_graph_db_cypher(graph_name: str, cypher_query: str) -> str:
         return df.to_string()
     except Exception as e:
         return f"Error executing Cypher query: {str(e)}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DISTRIBUTED QUERY ENGINE TOOLS
+# These tools route through the DQE for advanced SQL, Graph, and Python queries.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _dqe() -> "QueryEngine":
+    """Lazy import of the module-level QueryEngine singleton."""
+    import sys, os as _os
+    _backend = _os.path.dirname(_os.path.abspath(__file__))
+    if _backend not in sys.path:
+        sys.path.insert(0, _backend)
+    from query_engine.executor import query_engine
+    return query_engine
+
+
+@tool
+def distributed_sql_query(namespace: str, table_name: str, sql: str, limit: int = 500) -> str:
+    """
+    Execute a DuckDB SQL query against an Apache Iceberg table using the Distributed Query Engine.
+
+    The primary Iceberg table is always available as 'iceberg_table' in your SQL.
+    Use standard DuckDB SQL syntax (SELECT, JOIN, GROUP BY, ORDER BY, WHERE, LIMIT, etc.)
+
+    Args:
+        namespace:   The Iceberg namespace (e.g. 'default', 'bronze', 'silver', 'gold').
+        table_name:  The Iceberg table name.
+        sql:         The SQL query. Always reference the main table as 'iceberg_table'.
+                     Example: "SELECT account_from, SUM(amount) FROM iceberg_table GROUP BY 1 ORDER BY 2 DESC LIMIT 10"
+        limit:       Maximum rows to return (default 500, max 50000).
+    """
+    try:
+        from query_engine.models import QueryJob, QueryMode
+        engine = _dqe()
+        job = QueryJob(
+            mode=QueryMode.SQL,
+            namespace=namespace,
+            table_name=table_name,
+            sql=sql,
+            limit=limit,
+        )
+        completed = engine.submit_sync(job)
+        if completed.status.value == "failed":
+            return f"❌ SQL query failed: {completed.error}"
+        r = completed.result
+        if not r or not r.rows:
+            return "Query executed successfully. 0 rows returned."
+        header = " | ".join(r.columns)
+        sep    = "-" * len(header)
+        lines  = [header, sep]
+        for row in r.rows[:50]:
+            lines.append(" | ".join(str(row.get(c, "")) for c in r.columns))
+        summary = (
+            f"\n\n✅ {r.total_rows} total rows"
+            + (" (truncated)" if r.truncated else "")
+            + f" | Engine: {r.engine_used} | {r.duration_ms}ms"
+        )
+        return "\n".join(lines) + summary
+    except Exception as exc:
+        return f"❌ distributed_sql_query error: {exc}"
+
+
+@tool
+def distributed_graph_query(
+    graph_name: str,
+    cypher: Optional[str] = None,
+    algorithm: Optional[str] = None,
+    filters: Optional[str] = None,
+) -> str:
+    """
+    Execute a Cypher-pattern query OR a graph algorithm against the persistent graph database
+    using the Distributed Query Engine.
+
+    Supported algorithms: pagerank, betweenness_centrality, degree_centrality,
+    connected_components, find_cycles, shortest_path, community_detection.
+
+    For shortest_path, pass filters as JSON: '{"source": "NODE_A", "target": "NODE_B"}'
+
+    Args:
+        graph_name: The workspace graph name (e.g. 'vendor_graph', 'pharma_graph').
+        cypher:     Cypher-style query. Example: "MATCH (a)-[r]->(b) RETURN a.node_id, b.node_id LIMIT 20"
+        algorithm:  Graph algorithm name. One of: pagerank | betweenness_centrality |
+                    degree_centrality | connected_components | find_cycles |
+                    shortest_path | community_detection
+        filters:    Optional JSON string of extra parameters (used by shortest_path).
+    """
+    try:
+        from query_engine.models import QueryJob, QueryMode
+        engine = _dqe()
+        parsed_filters: Optional[dict] = None
+        if filters:
+            try:
+                parsed_filters = json.loads(filters)
+            except Exception:
+                pass
+        job = QueryJob(
+            mode=QueryMode.GRAPH,
+            graph_name=graph_name,
+            cypher=cypher,
+            algorithm=algorithm,
+            filters=parsed_filters,
+            limit=500,
+        )
+        completed = engine.submit_sync(job)
+        if completed.status.value == "failed":
+            return f"❌ Graph query failed: {completed.error}"
+        r = completed.result
+        if not r or not r.rows:
+            return "Graph query returned 0 results."
+        header = " | ".join(r.columns)
+        sep    = "-" * len(header)
+        lines  = [header, sep]
+        for row in r.rows[:30]:
+            lines.append(" | ".join(str(row.get(c, "")) for c in r.columns))
+        summary = (
+            f"\n\n✅ {r.total_rows} results"
+            + (" (truncated)" if r.truncated else "")
+            + f" | Engine: {r.engine_used} | {r.duration_ms}ms"
+        )
+        plan_note = f"\nPlan: {r.execution_plan[:300]}" if r.execution_plan else ""
+        return "\n".join(lines) + summary + plan_note
+    except Exception as exc:
+        return f"❌ distributed_graph_query error: {exc}"
+
+
+@tool
+def distributed_python_extract(namespace: str, table_name: str, python_script: str, limit: int = 500) -> str:
+    """
+    Execute a safe Python extraction script against an Apache Iceberg table using the
+    Distributed Query Engine. The script must set 'result_df' (a pandas DataFrame) as output.
+
+    Available in the script scope: df (pandas DataFrame), arrow_table, pd, pa, duckdb,
+    json, datetime, re, math.
+
+    IMPORTANT security restrictions: No file I/O (open), no os/sys/subprocess imports,
+    no exec/eval calls. Scripts exceeding 30 seconds are terminated.
+
+    Args:
+        namespace:     The Iceberg namespace.
+        table_name:    The Iceberg table name.
+        python_script: Python code. Must set 'result_df' as a pandas DataFrame.
+                       Example:
+                           result_df = df[df['amount'] > 10000] \\
+                               .groupby('account_from')['amount'].sum() \\
+                               .reset_index()
+        limit:         Max rows to return (default 500).
+    """
+    try:
+        from query_engine.models import QueryJob, QueryMode
+        engine = _dqe()
+        job = QueryJob(
+            mode=QueryMode.PYTHON,
+            namespace=namespace,
+            table_name=table_name,
+            python_script=python_script,
+            limit=limit,
+        )
+        completed = engine.submit_sync(job)
+        if completed.status.value == "failed":
+            return f"❌ Python extraction failed: {completed.error}"
+        r = completed.result
+        if not r or not r.rows:
+            return "Python extraction executed successfully. result_df was empty."
+        header = " | ".join(r.columns)
+        sep    = "-" * len(header)
+        lines  = [header, sep]
+        for row in r.rows[:30]:
+            lines.append(" | ".join(str(row.get(c, "")) for c in r.columns))
+        summary = (
+            f"\n\n✅ {r.total_rows} rows extracted"
+            + (" (truncated)" if r.truncated else "")
+            + f" | Engine: {r.engine_used} | {r.duration_ms}ms"
+        )
+        return "\n".join(lines) + summary
+    except Exception as exc:
+        return f"❌ distributed_python_extract error: {exc}"
+
+
+@tool
+def multi_engine_query(queries_json: str) -> str:
+    """
+    Fan-out multiple queries across SQL / Graph / Python engines simultaneously and
+    return combined results. Results from all engines are merged into a single response.
+
+    Args:
+        queries_json: JSON array of query specifications. Each item must have:
+            - mode: "sql" | "graph" | "python"
+            - For sql: namespace, table_name, sql
+            - For graph: graph_name, and either cypher or algorithm
+            - For python: namespace, table_name, python_script
+            - Optional: limit (default 200 per query)
+
+            Example:
+            [
+              {"mode": "sql", "namespace": "default", "table_name": "transactions_10k",
+               "sql": "SELECT status, COUNT(*) as cnt FROM iceberg_table GROUP BY 1"},
+              {"mode": "graph", "graph_name": "vendor_graph", "algorithm": "pagerank"}
+            ]
+    """
+    try:
+        from query_engine.models import QueryJob, QueryMode
+        engine = _dqe()
+        specs = json.loads(queries_json)
+        if not isinstance(specs, list) or not specs:
+            return "❌ multi_engine_query requires a non-empty JSON array of query specs."
+        if len(specs) > 10:
+            return "❌ Maximum 10 queries per multi_engine_query call."
+
+        jobs = []
+        for spec in specs:
+            job = QueryJob(
+                mode=QueryMode(spec["mode"]),
+                namespace=spec.get("namespace"),
+                table_name=spec.get("table_name"),
+                sql=spec.get("sql"),
+                cypher=spec.get("cypher"),
+                graph_name=spec.get("graph_name"),
+                algorithm=spec.get("algorithm"),
+                python_script=spec.get("python_script"),
+                filters=spec.get("filters"),
+                limit=spec.get("limit", 200),
+            )
+            jobs.append(job)
+
+        output_sections = []
+        for i, job in enumerate(jobs):
+            completed = engine.submit_sync(job)
+            section_header = f"=== Query {i+1} [{job.mode.upper()}] ==="
+            if completed.status.value == "failed":
+                output_sections.append(f"{section_header}\n❌ {completed.error}")
+                continue
+            r = completed.result
+            if not r or not r.rows:
+                output_sections.append(f"{section_header}\n0 rows returned.")
+                continue
+            lines = [section_header]
+            lines.append(" | ".join(r.columns))
+            for row in r.rows[:20]:
+                lines.append(" | ".join(str(row.get(c, "")) for c in r.columns))
+            lines.append(
+                f"({r.total_rows} total rows | engine={r.engine_used} | {r.duration_ms}ms)"
+            )
+            output_sections.append("\n".join(lines))
+
+        return "\n\n".join(output_sections)
+    except Exception as exc:
+        return f"❌ multi_engine_query error: {exc}"
+

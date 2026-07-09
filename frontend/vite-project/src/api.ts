@@ -362,6 +362,18 @@ export const api = {
     return res.json();
   },
 
+  async resetTenantState(): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/v1/admin/reset-tenant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || err.detail || 'Failed to reset tenant state');
+    }
+    return res.json();
+  },
+
   // ── Audit trail logs ─────────────────────────────────────────────────
   async getAuditLogs(): Promise<AuditLog[]> {
     const res = await authFetch(`${BASE_URL}/v1/audit`);
@@ -523,3 +535,214 @@ export const api = {
     }
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISTRIBUTED QUERY ENGINE (DQE) — Types & Client
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type QueryMode = 'sql' | 'graph' | 'python';
+export type QueryStatus = 'pending' | 'running' | 'success' | 'failed';
+
+export interface DQEResult {
+  columns: string[];
+  rows: Record<string, any>[];
+  total_rows: number;
+  truncated: boolean;
+  execution_plan?: string;
+  engine_used?: string;
+  duration_ms?: number;
+}
+
+export interface DQEJob {
+  job_id: string;
+  mode: QueryMode;
+  status: QueryStatus;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  result?: DQEResult;
+  error?: string;
+}
+
+export interface DQEHistoryEntry {
+  job_id: string;
+  mode: QueryMode;
+  status: QueryStatus;
+  created_at: string;
+  completed_at?: string;
+  total_rows?: number;
+  error?: string;
+}
+
+export interface DQESubmitPayload {
+  mode: QueryMode;
+  // SQL
+  namespace?: string;
+  table_name?: string;
+  sql?: string;
+  // Graph
+  cypher?: string;
+  graph_name?: string;
+  algorithm?: string;
+  // Python
+  python_script?: string;
+  // Common
+  filters?: Record<string, any>;
+  limit?: number;
+}
+
+export interface DQEMultiPayload {
+  queries: DQESubmitPayload[];
+  merge_strategy?: 'union' | 'join_on_key';
+  join_key?: string;
+}
+
+export interface DQEMultiResult {
+  jobs: DQEJob[];
+  merged_result?: DQEResult;
+  merge_strategy: string;
+}
+
+export interface DQEModeInfo {
+  mode: QueryMode;
+  description: string;
+  required_fields: string[];
+  optional_fields?: string[];
+  supported_algorithms?: string[];
+  example_sql?: string;
+  example_cypher?: string;
+  example_script?: string;
+}
+
+/**
+ * Distributed Query Engine client.
+ * All methods require the user to be authenticated (Bearer token auto-attached).
+ */
+export const dqe = {
+
+  /**
+   * Submit a query job (SQL / Graph / Python) and wait for its result.
+   * Returns the completed DQEJob including result rows.
+   */
+  async submit(payload: DQESubmitPayload): Promise<DQEJob> {
+    const res = await authFetch(`${BASE_URL}/v1/query/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || err.error || 'DQE query failed');
+    }
+    return res.json();
+  },
+
+  /**
+   * Poll the status and result of a previously submitted job.
+   */
+  async getJob(jobId: string): Promise<DQEJob> {
+    const res = await authFetch(`${BASE_URL}/v1/query/${jobId}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `Job ${jobId} not found`);
+    }
+    return res.json();
+  },
+
+  /**
+   * Dry-run: get the execution plan for a query without running it.
+   */
+  async explain(payload: Omit<DQESubmitPayload, 'limit'>): Promise<{ mode: string; execution_plan: string }> {
+    const res = await authFetch(`${BASE_URL}/v1/query/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Explain failed');
+    }
+    return res.json();
+  },
+
+  /**
+   * Return the current user's recent query history (newest first).
+   */
+  async history(limit: number = 20): Promise<DQEHistoryEntry[]> {
+    const res = await authFetch(`${BASE_URL}/v1/query/history?limit=${limit}`);
+    if (!res.ok) throw new Error('Failed to fetch query history');
+    return res.json();
+  },
+
+  /**
+   * Fan-out multiple queries across SQL/Graph/Python engines.
+   * Results are union-merged if merge_strategy='union'.
+   */
+  async multi(payload: DQEMultiPayload): Promise<DQEMultiResult> {
+    const res = await authFetch(`${BASE_URL}/v1/query/multi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Multi-query failed');
+    }
+    return res.json();
+  },
+
+  /**
+   * Return supported query modes, required fields, and examples.
+   */
+  async getModes(): Promise<{ modes: DQEModeInfo[] }> {
+    const res = await authFetch(`${BASE_URL}/v1/query/modes`);
+    if (!res.ok) throw new Error('Failed to fetch DQE modes');
+    return res.json();
+  },
+
+  // ── Convenience helpers ──────────────────────────────────────────────────
+
+  /** Quick SQL query against an Iceberg table. */
+  async sql(namespace: string, tableName: string, sql: string, limit = 1000): Promise<DQEResult> {
+    const job = await this.submit({ mode: 'sql', namespace, table_name: tableName, sql, limit });
+    if (job.status === 'failed') throw new Error(job.error || 'SQL query failed');
+    return job.result!;
+  },
+
+  /** Graph algorithm on the persistent graph store. */
+  async graphAlgorithm(
+    graphName: string,
+    algorithm: string,
+    filters?: Record<string, any>,
+  ): Promise<DQEResult> {
+    const job = await this.submit({ mode: 'graph', graph_name: graphName, algorithm, filters });
+    if (job.status === 'failed') throw new Error(job.error || 'Graph algorithm failed');
+    return job.result!;
+  },
+
+  /** Cypher-pattern match on the persistent graph store. */
+  async graphCypher(graphName: string, cypher: string, limit = 500): Promise<DQEResult> {
+    const job = await this.submit({ mode: 'graph', graph_name: graphName, cypher, limit });
+    if (job.status === 'failed') throw new Error(job.error || 'Graph query failed');
+    return job.result!;
+  },
+
+  /** Safe Python transformation against an Iceberg table. */
+  async python(
+    namespace: string,
+    tableName: string,
+    pythonScript: string,
+    limit = 500,
+  ): Promise<DQEResult> {
+    const job = await this.submit({
+      mode: 'python',
+      namespace,
+      table_name: tableName,
+      python_script: pythonScript,
+      limit,
+    });
+    if (job.status === 'failed') throw new Error(job.error || 'Python extraction failed');
+    return job.result!;
+  },
+};
+
