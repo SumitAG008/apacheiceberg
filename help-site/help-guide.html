@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Help Guide — meldra guide suite</title>
+<link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+
+<header class="sitebar">
+  <a class="sitebar-brand" href="/">
+    <span class="name">meldra</span>
+    <span class="suite">Guide Suite</span>
+  </a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/help-guide" aria-current="page">Help Guide</a>
+    <a href="/business-case">Business Case</a>
+  </nav>
+</header>
+
+<main>
+  <div class="doc-header" id="what">
+    <p class="doc-kicker">Part I — Help Guide</p>
+    <h1>Understanding meldra</h1>
+    <p class="doc-dek">What it is, what everything is called, and how the pieces fit together — written for someone using the product, not building it.</p>
+  </div>
+
+  <div class="onpage">
+    <span>On this page</span>
+    <a href="#jargon">Jargon, Translated</a>
+    <a href="#flow">How Data Flows</a>
+    <a href="#personas">Who Uses What</a>
+    <a href="#status">Live vs. Roadmap</a>
+    <a href="#start">Getting Started</a>
+  </div>
+
+  <section>
+    <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, SuccessFactors, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
+  </section>
+
+  <section id="jargon">
+    <h2>Jargon, Translated</h2>
+    <dl class="glossary">
+      <div class="gterm"><dt>Apache Iceberg</dt><dd>The filing format your tables are saved in. A smarter version of a spreadsheet folder that remembers every past version of itself and never silently loses data.</dd></div>
+      <div class="gterm"><dt>Catalog</dt><dd>The index that knows which tables exist and where their files live — like a card catalog in a library.</dd></div>
+      <div class="gterm"><dt>Warehouse</dt><dd>The actual storage location (an S3 bucket, or a local folder in testing) where your table files physically sit.</dd></div>
+      <div class="gterm"><dt>Namespace</dt><dd>A folder for grouping related tables — e.g. <code>default</code>, <code>finance</code>, <code>hr</code>.</dd></div>
+      <div class="gterm"><dt>Bronze / Silver / Gold</dt><dd>How "clean" data is. Bronze = raw, as loaded. Silver = cleaned and deduplicated. Gold = ready for business reporting.</dd></div>
+      <div class="gterm"><dt>Snapshot / Time Travel</dt><dd>Every change is saved as a snapshot. Time Travel lets you view — or restore — the table exactly as it was earlier, useful for "what did this look like before the bad import."</dd></div>
+      <div class="gterm"><dt>Schema Evolution</dt><dd>Adding, removing, or renaming a column without rebuilding the whole table.</dd></div>
+      <div class="gterm"><dt>Data Contract</dt><dd>A rule on a table — e.g. "this column can never be empty." Contracts can block bad data from loading at all.</dd></div>
+      <div class="gterm"><dt>Ingestion</dt><dd>Loading data in, from a CSV file or a connected system like SuccessFactors.</dd></div>
+      <div class="gterm"><dt>Append / Overwrite / Upsert</dt><dd>Append adds new rows. Overwrite replaces everything. Upsert updates existing rows and adds new ones, matched on a key column.</dd></div>
+      <div class="gterm"><dt>RBAC</dt><dd>Rules about who can see what. A Business Analyst might see a vendor table with the bank account column blanked out; an Admin sees everything.</dd></div>
+      <div class="gterm"><dt>Column Masking</dt><dd>Redacting a specific column's real values for certain roles, instead of hiding the whole table.</dd></div>
+      <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore graph connections directly against your tables.</dd></div>
+      <div class="gterm"><dt>DuckDB</dt><dd>The engine that runs your SQL queries fast, without a separate database server.</dd></div>
+      <div class="gterm"><dt>Chat</dt><dd>Ask a question in plain English — "top 10 vendors by spend in EMEA" — and the AI figures out which table and query to use.</dd></div>
+      <div class="gterm"><dt>Graph tab</dt><dd>Your data as connections rather than rows — e.g. which vendors share a bank account, useful for spotting fraud rings.</dd></div>
+      <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — for compliance and troubleshooting.</dd></div>
+    </dl>
+  </section>
+
+  <section id="flow" class="wide">
+    <h2>How Data Actually Flows</h2>
+    <div class="flow">
+      <span class="flow-step">Source (CSV, SuccessFactors)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Ingest + Data Contracts</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step bronze">Bronze</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step silver">Silver</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step gold">Gold</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Query Lab / Chat / Graph</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Audit Log</span>
+    </div>
+  </section>
+
+  <section id="personas" class="wide">
+    <h2>Who Uses Which Tab</h2>
+    <div class="card-grid">
+      <div class="card"><h4>Data Engineer</h4><p>Connects sources, builds Bronze → Silver → Gold pipelines, sets Data Contracts, monitors ingestion runs.</p></div>
+      <div class="card"><h4>Data Architect</h4><p>Approves schema changes, sets naming standards, manages retention and PII masking rules.</p></div>
+      <div class="card"><h4>Business Analyst</h4><p>Searches the catalog in plain terms, asks questions in Chat, views dashboards. Never touches raw credentials or DDL.</p></div>
+      <div class="card"><h4>Admin</h4><p>Everything above, plus user roles, RBAC policy configuration, and destructive actions like dropping tables.</p></div>
+    </div>
+  </section>
+
+  <section id="status" class="wide">
+    <h2>What's Live Today vs. Roadmap</h2>
+    <p>Treat this table as the current source of truth, not the marketing copy.</p>
+    <table>
+      <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Iceberg ingestion (CSV, SuccessFactors OData)</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Data Quality Contracts (blocking bad loads)</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Time Travel / snapshots</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Query Lab — SQL mode</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Query Lab — Python extraction scripts</td><td><span class="badge live">Live</span> — sandboxed, Admin/Data Engineer only</td></tr>
+        <tr><td>Column-level RBAC masking</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Chat / AI Agent</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Audit log</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Graph tab — storing/viewing connections</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Graph tab — full Cypher query language</td><td><span class="badge roadmap">Roadmap</span></td></tr>
+        <tr><td>MCP Gateway (SAP BAPI, Snowflake, Fraud/IAM)</td><td><span class="badge demo">Demo</span></td></tr>
+        <tr><td>Single Sign-On (SSO)</td><td><span class="badge roadmap">Roadmap</span></td></tr>
+        <tr><td>Multi-tenant SaaS isolation</td><td><span class="badge roadmap">Roadmap</span> — in progress</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="start">
+    <h2>Getting Started — First 10 Minutes</h2>
+    <ol>
+      <li>Register an account (first account on a fresh instance becomes Admin automatically).</li>
+      <li>Verify your email with the code sent to you.</li>
+      <li>Go to <strong>Ingest</strong>, upload a sample CSV, review the auto-detected schema, and load it.</li>
+      <li>Go to <strong>Query Lab</strong>, run <code>SELECT * FROM iceberg_table LIMIT 10</code> against the table you just created.</li>
+      <li>Go to <strong>Chat</strong> and ask a plain-English question about the same table.</li>
+      <li>Go to <strong>Audit</strong> and see that both actions above were logged.</li>
+    </ol>
+  </section>
+
+  <div class="feedback">
+    Reviewing this as a beta tester? Reply with anything confusing, wrong, or missing — this suite is early and meant to be corrected.
+  </div>
+</main>
+
+</body>
+</html>

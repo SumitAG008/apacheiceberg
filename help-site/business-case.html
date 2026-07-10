@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Business Case Guide — meldra guide suite</title>
+<link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+
+<header class="sitebar">
+  <a class="sitebar-brand" href="/">
+    <span class="name">meldra</span>
+    <span class="suite">Guide Suite</span>
+  </a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/help-guide">Help Guide</a>
+    <a href="/business-case" aria-current="page">Business Case</a>
+  </nav>
+</header>
+
+<main>
+  <div class="doc-header" id="pitch">
+    <p class="doc-kicker">Part II — Business Case Guide</p>
+    <h1>Is meldra Right for You?</h1>
+    <p class="doc-dek">Who this is for, who it isn't for, real use cases, and an honest pros/cons list — written to help you decide, not to oversell it.</p>
+  </div>
+
+  <div class="onpage">
+    <span>On this page</span>
+    <a href="#fit">Good Fit For</a>
+    <a href="#notfit">Not (Yet) a Fit</a>
+    <a href="#cases">Real Use Cases</a>
+    <a href="#proscons">Pros &amp; Cons</a>
+    <a href="#checklist">Decision Checklist</a>
+  </div>
+
+  <section>
+    <p class="lead">Your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
+  </section>
+
+  <section id="fit">
+    <h2>Who This Is a Good Fit For</h2>
+    <p>meldra fits best if most of the following are true for you:</p>
+    <ul>
+      <li>You have data scattered across SAP, SuccessFactors, Salesforce, or plain CSV/Excel exports, with no single place it all lands.</li>
+      <li>You don't have — or don't want to hire — a dedicated data engineering team just to stand up a governed data lake.</li>
+      <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3), not locked inside a vendor's proprietary storage.</li>
+      <li>You need <strong>some</strong> governance — audit trails, column-level masking, contracts that block bad data — but not a full enterprise compliance program on day one.</li>
+      <li>Your team mixes technical people (SQL/Python in Query Lab) and non-technical people who'd rather just ask a question in Chat.</li>
+      <li>You're cost-sensitive and want to avoid the per-query, per-seat pricing that platforms like Snowflake or Databricks charge at scale.</li>
+    </ul>
+  </section>
+
+  <section id="notfit">
+    <h2>Who This Is NOT a Good Fit For — Yet</h2>
+    <p>Being upfront about this protects the relationship long-term.</p>
+    <ul>
+      <li>Companies needing <strong>petabyte-scale distributed compute</strong> across thousands of concurrent users.</li>
+      <li>Companies requiring <strong>live, certified integrations</strong> with SAP RFC/BAPI, Snowflake, or automated IAM/fraud systems today — those are currently illustrative demo flows, not working connections.</li>
+      <li>Companies that need <strong>SSO, SOC2/HIPAA-certified compliance, or full multi-tenant isolation</strong> as a signed contractual requirement right now.</li>
+      <li>A buyer looking for a fully non-technical, zero-setup product — someone on the team still needs to be comfortable configuring ingestion and RBAC policies.</li>
+    </ul>
+  </section>
+
+  <section id="cases" class="wide">
+    <h2>Real Use Cases</h2>
+
+    <div class="usecase">
+      <h4>A. Vendor Master Consolidation <span style="color:var(--ink-soft); font-weight:400;">— Procurement</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Vendor records duplicated across SAP, legacy ERPs, and portals cause duplicate payments and compliance risk.</div>
+      <div class="uc-row"><span class="uc-label">How meldra helps</span>Load vendor extracts into Bronze, apply a contract requiring <code>vendor_id</code> and a valid tax ID, deduplicate in Silver keeping the latest record, build a Gold "spend by region" table analysts query directly.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>you have vendor data in 2+ systems and no single deduplicated source of truth today.</div>
+    </div>
+
+    <div class="usecase">
+      <h4>B. SAP Reporting Offload <span style="color:var(--ink-soft); font-weight:400;">— Finance</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Heavy reporting queries against live SAP tables slow down the system everyone else uses for transactions.</div>
+      <div class="uc-row"><span class="uc-label">How meldra helps</span>Pull reporting-relevant tables into Iceberg via CSV/OData export, run reports against DuckDB/Query Lab instead of hitting SAP directly, use Time Travel to permanently pin month-end snapshots.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>ad-hoc finance reporting is currently competing with production SAP transactions for compute.</div>
+    </div>
+
+    <div class="usecase">
+      <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— SuccessFactors</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Attrition/compensation reporting is compiled manually, with raw PII exported into spreadsheets emailed around.</div>
+      <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real SuccessFactors OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>you already have SuccessFactors and do this reporting via spreadsheet exports today.</div>
+    </div>
+
+    <div class="usecase">
+      <h4>D. Vendor/Transaction Relationship Analysis</h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Fraud or collusion patterns — shared bank accounts, unusual new-vendor payment velocity — aren't visible in flat tables.</div>
+      <div class="uc-row"><span class="uc-label">How meldra helps</span>The Graph tab visualizes vendor-to-bank-account-to-address relationships from your existing tables.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>you want an exploratory first look now, understanding the query language itself is still basic. <span class="badge roadmap" style="margin-left:0.35rem;">Roadmap</span></div>
+    </div>
+  </section>
+
+  <section id="proscons" class="wide">
+    <h2>Pros and Cons, Stated Plainly</h2>
+    <div class="split">
+      <div class="split-col pros">
+        <h3>Pros</h3>
+        <ul>
+          <li><strong>No storage lock-in</strong> — your data lives in Apache Iceberg on your own S3, readable by any Iceberg-compatible tool.</li>
+          <li><strong>Governance built in, not bolted on</strong> — audit logging, data contracts, and RBAC masking from day one.</li>
+          <li><strong>One interface, two audiences</strong> — SQL/Python for engineers, plain-English Chat for analysts.</li>
+          <li><strong>Time Travel by default</strong> — every write is a recoverable snapshot, not a silent overwrite.</li>
+          <li><strong>Meaningfully cheaper</strong> for teams who don't need Databricks/Snowflake-scale compute.</li>
+        </ul>
+      </div>
+      <div class="split-col cons">
+        <h3>Cons — say these out loud first</h3>
+        <ul>
+          <li><strong>Young product.</strong> Expect rough edges; this is not a decade-mature platform.</li>
+          <li><strong>Single environment today.</strong> Multi-tenant isolation is in progress, best suited to one deployment per customer for now.</li>
+          <li><strong>Some integrations are illustrative</strong> — SAP/Snowflake/Fraud automation demonstrate the intended workflow, not live system connections yet.</li>
+          <li><strong>Graph query language is a simplified subset</strong>, not full Cypher, today.</li>
+          <li><strong>No SSO yet</strong> — access is email/password plus email OTP MFA.</li>
+          <li><strong>Needs one SQL-comfortable person</strong> on the team for full value.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="checklist">
+    <h2>Decision Checklist</h2>
+    <div class="checklist">
+      <h3 style="color: var(--live);">Move forward if —</h3>
+      <label><input type="checkbox" /> You have data scattered across 2+ source systems with no unified, governed landing zone.</label>
+      <label><input type="checkbox" /> You want to own your data in an open format rather than a vendor's proprietary store.</label>
+      <label><input type="checkbox" /> You can tolerate early-stage rough edges in exchange for cost and simplicity.</label>
+      <label><input type="checkbox" /> You have at least one person comfortable configuring ingestion/RBAC.</label>
+    </div>
+    <div class="checklist" style="margin-top: 1rem;">
+      <h3 style="color: var(--roadmap);">Wait, or look elsewhere for now, if —</h3>
+      <label><input type="checkbox" /> You have a hard contractual requirement for SSO, certified compliance, or live SAP/Snowflake integration on day one.</label>
+      <label><input type="checkbox" /> You need multiple customer organizations securely isolated on one shared instance today.</label>
+      <label><input type="checkbox" /> You need proven scale at petabyte / thousands-of-concurrent-users level.</label>
+    </div>
+  </section>
+
+  <div class="feedback">
+    Reviewing this as a beta tester? Reply with anything confusing, wrong, or missing — this suite is early and meant to be corrected.
+  </div>
+</main>
+
+</body>
+</html>
