@@ -37,7 +37,7 @@
   </div>
 
   <section>
-    <p class="lead">Your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
+    <p class="lead">meldra is an AI agent for your Iceberg lakehouse: tell it what you need — ingest a file, check a number, investigate a relationship — and it calls the right tools to do it. Underneath, your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
   </section>
 
   <section id="fit">
@@ -48,7 +48,7 @@
       <li>You don't have — or don't want to hire — a dedicated data engineering team just to stand up a governed data lake.</li>
       <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3), not locked inside a vendor's proprietary storage.</li>
       <li>You need <strong>some</strong> governance — audit trails, column-level masking, contracts that block bad data — but not a full enterprise compliance program on day one.</li>
-      <li>Your team mixes technical people (SQL/Python in Query Lab) and non-technical people who'd rather just ask a question in Chat.</li>
+      <li>Your team mixes technical people (SQL/Python in Query Lab directly) and non-technical people who'd rather just tell the Agent what they need in plain English.</li>
       <li>You're cost-sensitive and want to avoid the per-query, per-seat pricing that platforms like Snowflake or Databricks charge at scale.</li>
     </ul>
   </section>
@@ -102,9 +102,10 @@
       <div class="split-col pros">
         <h3>Pros</h3>
         <ul>
+          <li><strong>A real reasoning agent, not a search bar</strong> — the meldra Agent chains tool calls (ingest → query → analyze) to get you an answer, instead of one canned lookup at a time.</li>
           <li><strong>No storage lock-in</strong> — your data lives in Apache Iceberg on your own S3, readable by any Iceberg-compatible tool.</li>
           <li><strong>Governance built in, not bolted on</strong> — audit logging, data contracts, and RBAC masking from day one.</li>
-          <li><strong>One interface, two audiences</strong> — SQL/Python for engineers, plain-English Chat for analysts.</li>
+          <li><strong>One platform, two ways in</strong> — SQL/Python in Query Lab for engineers who want direct control, the Agent in plain English for everyone else, both calling the same underlying tools.</li>
           <li><strong>Time Travel by default</strong> — every write is a recoverable snapshot, not a silent overwrite.</li>
           <li><strong>Meaningfully cheaper</strong> for teams who don't need Databricks/Snowflake-scale compute.</li>
         </ul>
@@ -113,11 +114,12 @@
         <h3>Cons — say these out loud first</h3>
         <ul>
           <li><strong>Young product.</strong> Expect rough edges; this is not a decade-mature platform.</li>
+          <li><strong>The Agent doesn't yet enforce the same column masking as Query Lab</strong> in every path — don't rely on it for sensitive columns until that's closed.</li>
           <li><strong>Single environment today.</strong> Multi-tenant isolation is in progress, best suited to one deployment per customer for now.</li>
           <li><strong>Some integrations are illustrative</strong> — SAP/Snowflake/Fraud automation demonstrate the intended workflow, not live system connections yet.</li>
           <li><strong>Graph query language is a simplified subset</strong>, not full Cypher, today.</li>
           <li><strong>No SSO yet</strong> — access is email/password plus email OTP MFA.</li>
-          <li><strong>Needs one SQL-comfortable person</strong> on the team for full value.</li>
+          <li><strong>Needs one SQL-comfortable person</strong> on the team for full value, even though the Agent lowers that bar for everyday questions.</li>
         </ul>
       </div>
     </div>

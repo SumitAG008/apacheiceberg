@@ -37,7 +37,7 @@
   </div>
 
   <section>
-    <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, SuccessFactors, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
+    <p class="lead">meldra is an agentic data platform for Apache Iceberg. At its center is an AI agent that reads what you're trying to do — in plain English — and carries it out by calling the same tools a data engineer would use by hand: ingest a file, run a query, check a relationship in the graph, sync data across tables. Underneath, everything it touches lands in your own cloud storage as Apache Iceberg — validated, versioned, never silently overwritten. You own the storage. Nothing the Agent does is a black box — every step it takes is one of a fixed, visible set of tools.</p>
   </section>
 
   <section id="jargon">
@@ -55,11 +55,13 @@
       <div class="gterm"><dt>Append / Overwrite / Upsert</dt><dd>Append adds new rows. Overwrite replaces everything. Upsert updates existing rows and adds new ones, matched on a key column.</dd></div>
       <div class="gterm"><dt>RBAC</dt><dd>Rules about who can see what. A Business Analyst might see a vendor table with the bank account column blanked out; an Admin sees everything.</dd></div>
       <div class="gterm"><dt>Column Masking</dt><dd>Redacting a specific column's real values for certain roles, instead of hiding the whole table.</dd></div>
-      <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore graph connections directly against your tables.</dd></div>
+      <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore graph connections directly against your tables — the same tools the Agent reaches for, just driven by you instead of a plain-English request.</dd></div>
       <div class="gterm"><dt>DuckDB</dt><dd>The engine that runs your SQL queries fast, without a separate database server.</dd></div>
-      <div class="gterm"><dt>Chat</dt><dd>Ask a question in plain English — "top 10 vendors by spend in EMEA" — and the AI figures out which table and query to use.</dd></div>
+      <div class="gterm"><dt>The meldra Agent</dt><dd>An AI agent (built on Claude) with a fixed toolbox: create a table, ingest a CSV, run a SQL query, analyze a graph, sync data to the graph store, query the graph store. Ask it something in plain English — "top 10 vendors by spend in EMEA" — and it decides which tool(s) to call, in what order, runs them, and can use the result of one step to decide the next. That decision loop is what makes it "agentic" rather than a single fixed lookup.</dd></div>
+      <div class="gterm"><dt>Tool-calling</dt><dd>How the Agent actually <em>does</em> things instead of just talking. Each capability is exposed to it as a discrete, named action it can invoke with specific arguments — the same action you'd trigger by hand in Query Lab, just requested in plain English instead of clicked.</dd></div>
+      <div class="gterm"><dt>Agent Loop</dt><dd>The cycle the Agent runs per request: read what you asked → decide whether a tool is needed → call it → look at the result → decide the next step or give you a final answer. Capped at a fixed number of steps, so it can't run away indefinitely.</dd></div>
       <div class="gterm"><dt>Graph tab</dt><dd>Your data as connections rather than rows — e.g. which vendors share a bank account, useful for spotting fraud rings.</dd></div>
-      <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — for compliance and troubleshooting.</dd></div>
+      <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — including every tool call the Agent makes on your behalf — for compliance and troubleshooting.</dd></div>
     </dl>
   </section>
 
@@ -76,7 +78,7 @@
       <span class="flow-arrow">→</span>
       <span class="flow-step gold">Gold</span>
       <span class="flow-arrow">→</span>
-      <span class="flow-step">Query Lab / Chat / Graph</span>
+      <span class="flow-step">Query Lab / Agent / Graph</span>
       <span class="flow-arrow">→</span>
       <span class="flow-step">Audit Log</span>
     </div>
@@ -87,7 +89,7 @@
     <div class="card-grid">
       <div class="card"><h4>Data Engineer</h4><p>Connects sources, builds Bronze → Silver → Gold pipelines, sets Data Contracts, monitors ingestion runs.</p></div>
       <div class="card"><h4>Data Architect</h4><p>Approves schema changes, sets naming standards, manages retention and PII masking rules.</p></div>
-      <div class="card"><h4>Business Analyst</h4><p>Searches the catalog in plain terms, asks questions in Chat, views dashboards. Never touches raw credentials or DDL.</p></div>
+      <div class="card"><h4>Business Analyst</h4><p>Searches the catalog in plain terms, asks the Agent questions, views dashboards. Never touches raw credentials or DDL.</p></div>
       <div class="card"><h4>Admin</h4><p>Everything above, plus user roles, RBAC policy configuration, and destructive actions like dropping tables.</p></div>
     </div>
   </section>
@@ -104,7 +106,7 @@
         <tr><td>Query Lab — SQL mode</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Query Lab — Python extraction scripts</td><td><span class="badge live">Live</span> — sandboxed, Admin/Data Engineer only</td></tr>
         <tr><td>Column-level RBAC masking</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>Chat / AI Agent</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>The meldra Agent (plain-English, tool-calling)</td><td><span class="badge live">Live</span> — doesn't yet enforce the same column masking as Query Lab in every path</td></tr>
         <tr><td>Audit log</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Graph tab — storing/viewing connections</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Graph tab — full Cypher query language</td><td><span class="badge roadmap">Roadmap</span></td></tr>
@@ -122,8 +124,8 @@
       <li>Verify your email with the code sent to you.</li>
       <li>Go to <strong>Ingest</strong>, upload a sample CSV, review the auto-detected schema, and load it.</li>
       <li>Go to <strong>Query Lab</strong>, run <code>SELECT * FROM iceberg_table LIMIT 10</code> against the table you just created.</li>
-      <li>Go to <strong>Chat</strong> and ask a plain-English question about the same table.</li>
-      <li>Go to <strong>Audit</strong> and see that both actions above were logged.</li>
+      <li>Go to the <strong>Agent</strong> and ask a plain-English question about the same table — watch it choose a tool and run it.</li>
+      <li>Go to <strong>Audit</strong> and see that both actions above were logged, including the Agent's tool call.</li>
     </ol>
   </section>
 
