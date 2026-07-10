@@ -10,7 +10,7 @@ meldra is an agentic data platform for Apache Iceberg. At its center is an AI ag
 
 ---
 
-## 2. Jargon, translated
+## 2. Speak meldra
 
 | Term you'll see in the app | What it actually means |
 |---|---|
