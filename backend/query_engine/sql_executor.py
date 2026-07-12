@@ -68,7 +68,11 @@ class SQLExecutor:
         con.execute("SET enable_external_access=false;")
 
         # ── 1. Register primary Iceberg table ─────────────────────────────────
-        primary_arrow = self._load_iceberg(catalog, job.namespace, job.table_name, job.filters)
+        # The catalog read uses the tenant-scoped namespace; job.namespace
+        # stays the client-facing name for RBAC matching and display below.
+        from tenancy import scope_namespace
+        scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+        primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
 
         # Enforce full RBAC (table access, row filtering, column masking/
         # denial) at the data layer before DuckDB ever sees the data —
@@ -131,10 +135,12 @@ class SQLExecutor:
     def explain(self, job: QueryJob) -> str:
         """Return the DuckDB EXPLAIN plan without executing the full query."""
         try:
+            from tenancy import scope_namespace
             catalog = self._get_catalog()
             con = duckdb.connect(database=":memory:")
             con.execute("SET enable_external_access=false;")
-            primary_arrow = self._load_iceberg(catalog, job.namespace, job.table_name, job.filters)
+            scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+            primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
             con.register("iceberg_table", primary_arrow)
             explain_df = con.execute(f"EXPLAIN {job.sql}").fetchdf()
             return explain_df.to_string(index=False)

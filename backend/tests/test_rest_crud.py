@@ -39,51 +39,6 @@ def monkeypatch_module():
     yield mp
     mp.undo()
 
-@pytest.fixture(scope="module", autouse=True)
-def seeded_test_table():
-    """
-    Ensure default.transactions_10k exists before any test runs. The app's
-    own startup-event seeding (seed_demo_data) isn't guaranteed to fire
-    under a bare TestClient() (no lifespan context manager), so this test
-    module seeds its own minimal table directly rather than depending on
-    that side effect.
-    """
-    from catalog_setup import get_catalog, create_namespace_if_not_exists
-    from pyiceberg.schema import Schema
-    from pyiceberg.types import NestedField, LongType, StringType, DoubleType
-    import pyarrow as pa
-
-    catalog = get_catalog()
-    create_namespace_if_not_exists(catalog, "default")
-
-    identifier = ("default", "transactions_10k")
-    try:
-        catalog.load_table(identifier)
-    except Exception:
-        schema = Schema(
-            # LongType (int64) to match what pandas/pyarrow infers by default
-            # for a plain Python int list -- IntegerType (int32) would mismatch
-            # and fail the append, same issue documented in tools.py. Optional
-            # (not required) so other test modules that also touch this
-            # shared local-catalog table via a nullable-by-default pyarrow
-            # schema don't hit a required-vs-optional compatibility error.
-            NestedField(field_id=1, name="tx_id", field_type=LongType(), required=False),
-            NestedField(field_id=2, name="account_from", field_type=StringType(), required=False),
-            NestedField(field_id=3, name="account_to", field_type=StringType(), required=False),
-            NestedField(field_id=4, name="amount", field_type=DoubleType(), required=False),
-            NestedField(field_id=5, name="status", field_type=StringType(), required=False),
-        )
-        table = catalog.create_table(identifier, schema=schema)
-        table.append(pa.Table.from_pydict({
-            "tx_id": [1, 2, 3],
-            "account_from": ["ACC-100", "ACC-101", "ACC-102"],
-            "account_to": ["ACC-200", "ACC-201", "ACC-202"],
-            "amount": [100.0, 200.0, 300.0],
-            "status": ["COMPLETED", "PENDING", "COMPLETED"],
-        }))
-    yield
-
-
 @pytest.fixture(scope="module")
 def test_users():
     # Ensure auth schema and tables are fully initialized first
@@ -114,6 +69,7 @@ def test_users():
     assert res.status_code == 200
     admin_token = res.json()["access_token"]
     assert res.json()["user"]["role"] == "Admin"
+    admin_user_id = res.json()["user"]["id"]
 
     # Create analyst -- defaults to Business Analyst regardless of payload.
     res = client.post("/auth/register", json={"email": analyst_email, "password": pwd})
@@ -129,8 +85,57 @@ def test_users():
         "admin_token": admin_token,
         "analyst_token": analyst_token,
         "admin_email": admin_email,
-        "analyst_email": analyst_email
+        "analyst_email": analyst_email,
+        "admin_user_id": admin_user_id,
     }
+
+
+@pytest.fixture(scope="module", autouse=True)
+def seeded_test_table(test_users):
+    """
+    Ensure the admin test user's own tenant-scoped default.transactions_10k
+    exists before any test runs. Every API endpoint now translates the
+    client-facing "default" namespace into a real, tenant-scoped catalog
+    namespace (tenancy.scope_namespace) -- so this fixture has to seed data
+    into that SAME scoped location the admin's own requests will resolve to,
+    not the bare "default" namespace, which no tenant can see anymore.
+    """
+    from catalog_setup import get_catalog, create_namespace_if_not_exists
+    from tenancy import scope_namespace
+    from pyiceberg.schema import Schema
+    from pyiceberg.types import NestedField, LongType, StringType, DoubleType
+    import pyarrow as pa
+
+    catalog = get_catalog()
+    scoped_default = scope_namespace(test_users["admin_user_id"], "default")
+    create_namespace_if_not_exists(catalog, scoped_default)
+
+    identifier = (scoped_default, "transactions_10k")
+    try:
+        catalog.load_table(identifier)
+    except Exception:
+        schema = Schema(
+            # LongType (int64) to match what pandas/pyarrow infers by default
+            # for a plain Python int list -- IntegerType (int32) would mismatch
+            # and fail the append, same issue documented in tools.py. Optional
+            # (not required) so other test modules that also touch this
+            # shared local-catalog table via a nullable-by-default pyarrow
+            # schema don't hit a required-vs-optional compatibility error.
+            NestedField(field_id=1, name="tx_id", field_type=LongType(), required=False),
+            NestedField(field_id=2, name="account_from", field_type=StringType(), required=False),
+            NestedField(field_id=3, name="account_to", field_type=StringType(), required=False),
+            NestedField(field_id=4, name="amount", field_type=DoubleType(), required=False),
+            NestedField(field_id=5, name="status", field_type=StringType(), required=False),
+        )
+        table = catalog.create_table(identifier, schema=schema)
+        table.append(pa.Table.from_pydict({
+            "tx_id": [1, 2, 3],
+            "account_from": ["ACC-100", "ACC-101", "ACC-102"],
+            "account_to": ["ACC-200", "ACC-201", "ACC-202"],
+            "amount": [100.0, 200.0, 300.0],
+            "status": ["COMPLETED", "PENDING", "COMPLETED"],
+        }))
+    yield
 
 
 def test_registration_ignores_client_supplied_admin_role(test_users):
@@ -254,3 +259,24 @@ def test_rbac_user_role_assignment(test_users):
         headers=admin_headers,
     )
     assert res.status_code == 200
+
+
+def test_generate_api_token_requires_auth():
+    res = client.post("/auth/api-token")
+    assert res.status_code == 401
+
+
+def test_generate_api_token_works_as_bearer_credential(test_users):
+    admin_headers = {"Authorization": f"Bearer {test_users['admin_token']}"}
+    res = client.post("/auth/api-token", headers=admin_headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["token_type"] == "bearer"
+    assert body["api_token"]
+    assert body["expires_at"]
+
+    # The minted token authenticates real endpoints exactly like a normal
+    # access token -- this is what backend/mcp_server.py relies on.
+    api_headers = {"Authorization": f"Bearer {body['api_token']}"}
+    res2 = client.get("/v1/catalog/namespaces", headers=api_headers)
+    assert res2.status_code == 200

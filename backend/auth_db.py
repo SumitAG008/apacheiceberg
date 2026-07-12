@@ -499,19 +499,38 @@ def log_audit_pg(user_id: str, tier: str, action: str, details: str, status: str
         print(f"[auth_db] Audit log error: {e}")
 
 
-def get_audit_logs_pg(limit: int = 100):
+def get_audit_logs_pg(limit: int = 100, user_id: Optional[str] = None):
+    """
+    Fetch audit log entries. If `user_id` is given, scoped to just that
+    user's own actions (the tenant boundary — every account is its own
+    tenant, so "your audit trail" means "your user_id's rows", not the
+    platform's). Pass user_id=None only for genuinely platform-wide views
+    (there currently are none exposed to non-Admin callers).
+    """
     conn = _get_conn()
     try:
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, timestamp, user_id, tier, action, details, status
-            FROM auth.audit_logs
-            ORDER BY timestamp DESC
-            LIMIT %s
-            """,
-            (limit,),
-        )
+        if user_id is not None:
+            cur.execute(
+                """
+                SELECT id, timestamp, user_id, tier, action, details, status
+                FROM auth.audit_logs
+                WHERE user_id = %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+                """,
+                (user_id, limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, timestamp, user_id, tier, action, details, status
+                FROM auth.audit_logs
+                ORDER BY timestamp DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
         rows = cur.fetchall()
         return [dict(r) for r in rows]
     finally:

@@ -381,20 +381,16 @@ export const api = {
     return res.json();
   },
 
-  // ── MCP execution ────────────────────────────────────────────────────
-  async executeMcpTool(serverName: string, toolName: string, argumentsObj: Record<string, any>): Promise<{ logs: string[]; result: any; duration_ms: number }> {
-    const res = await authFetch(`${BASE_URL}/v1/mcp/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ server_name: serverName, tool_name: toolName, arguments: argumentsObj }),
-    });
+  // ── API token for external/programmatic clients (e.g. the real MCP server) ──
+  async generateApiToken(): Promise<{ api_token: string; expires_at: string; token_type: string }> {
+    const res = await authFetch(`${BASE_URL}/auth/api-token`, { method: 'POST' });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || err.detail || 'Failed to execute MCP tool call');
+      throw new Error(err.error || err.detail || 'Failed to generate API token');
     }
     return res.json();
   },
-  
+
   async getRecentTraffic(): Promise<any[]> {
     const res = await authFetch(`${BASE_URL}/v1/traffic/recent`);
     if (!res.ok) throw new Error('Failed to fetch recent traffic logs');

@@ -76,6 +76,7 @@ if not JWT_SECRET:
     print("[api/main] WARNING: JWT_SECRET_KEY env var was missing! Auto-generated a secure random signing key.")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+JWT_API_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_API_TOKEN_EXPIRE_DAYS", 90))
 
 app = FastAPI(
     title="Meldra AI — LakeMind Iceberg API",
@@ -395,11 +396,6 @@ class CypherRequest(BaseModel):
     graph_name: str
     query: str
 
-class MCPExecuteRequest(BaseModel):
-    server_name: str
-    tool_name: str
-    arguments: Dict[str, Any]
-
 # ── Auth Schemas ─────────────────────────
 class RegisterRequest(BaseModel):
     email: str
@@ -480,6 +476,17 @@ def _create_access_token(data: Dict[str, Any]) -> str:
     return jose_jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def _create_api_token(data: Dict[str, Any]) -> str:
+    """Long-lived token for external/programmatic clients (e.g. the MCP
+    server) that can't complete the interactive OTP login flow. Minted
+    on-demand by an already-authenticated user via POST /auth/api-token."""
+    payload = data.copy()
+    payload["exp"] = datetime.utcnow() + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
+    payload["iat"] = datetime.utcnow()
+    payload["type"] = "api"
+    return jose_jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
 def _create_temp_token(user_id: str, purpose: str = "mfa") -> str:
     """Short-lived token used to identify a pending MFA session (15 min)."""
     payload = {
@@ -519,7 +526,7 @@ def get_current_user(request: Request) -> Dict[str, Any]:
     token = auth_header.split(" ", 1)[1]
     try:
         payload = jose_jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if payload.get("type") != "access":
+        if payload.get("type") not in ("access", "api"):
             raise HTTPException(status_code=401, detail="Invalid token type")
         return payload
     except JWTError:
@@ -835,6 +842,34 @@ async def logout(request: Request, user: Dict[str, Any] = Depends(get_current_us
     return {"message": "Logged out successfully."}
 
 
+@app.post("/auth/api-token", tags=["Auth"])
+async def generate_api_token(user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Mint a long-lived API token for external/programmatic access — the same
+    RBAC- and tenant-scoped credential the real MCP server (backend/mcp_server.py)
+    and any other API client use. Requires an active session; shown once.
+    """
+    token = _create_api_token({
+        "sub": user["sub"],
+        "email": user.get("email"),
+        "tier": user.get("tier"),
+        "role": user.get("role", "Business Analyst"),
+    })
+    expires_at = datetime.utcnow() + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="generate_api_token",
+        details=f"Minted API token expiring {expires_at.isoformat()}Z",
+        status="success",
+    )
+    return {
+        "api_token": token,
+        "expires_at": expires_at.isoformat() + "Z",
+        "token_type": "bearer",
+    }
+
+
 # ─────────────────────────────────────────
 # META ENDPOINTS
 # ─────────────────────────────────────────
@@ -845,8 +880,12 @@ async def health_check():
 
 @app.get("/v1/audit", tags=["Audit"])
 async def get_audit_trail(user: Dict[str, Any] = Depends(get_current_user)):
+    # Every account is its own tenant, so "your audit trail" means your own
+    # actions -- not the whole platform's. Admins can see everything (the
+    # only cross-tenant view anywhere in the app, and an intentional one).
+    scoped_user_id = None if user.get("role") == "Admin" else user.get("sub")
     try:
-        logs = get_audit_logs_pg(limit=100)
+        logs = get_audit_logs_pg(limit=100, user_id=scoped_user_id)
         # Serialize datetime objects
         for log in logs:
             for k, v in log.items():
@@ -884,6 +923,16 @@ async def chat_endpoint(payload: ChatRequest, user: Dict[str, Any] = Depends(get
         else:
             chat_history.append(AIMessage(content=content))
 
+    # Thread this request's tenant + role into the Agent's tools via
+    # ContextVar (their signatures are fixed by the LLM tool-calling schema,
+    # so this can't be passed as a normal argument) — the Agent is then
+    # structurally scoped to this tenant's own data and this role's RBAC
+    # policies for every tool call it makes, not just trusted to behave.
+    from tenancy import get_current_tenant_id
+    from tools import current_tenant_id, current_user_role
+    tenant_token = current_tenant_id.set(get_current_tenant_id(user))
+    role_token = current_user_role.set(user.get("role", "Business Analyst"))
+
     try:
         result = agent.invoke({"input": payload.prompt, "chat_history": chat_history})
         raw_output = result.get("output", "") if isinstance(result, dict) else result
@@ -910,6 +959,9 @@ async def chat_endpoint(payload: ChatRequest, user: Dict[str, Any] = Depends(get
             status="error"
         )
         raise HTTPException(status_code=500, detail=f"Agent error: {err}")
+    finally:
+        current_tenant_id.reset(tenant_token)
+        current_user_role.reset(role_token)
 
     return ChatResponse(output=output_text)
 
@@ -988,9 +1040,16 @@ async def ingest_endpoint(
 ):
     from catalog_setup import get_catalog
     from tools import create_iceberg_table
+    from tenancy import get_current_tenant_id, scope_namespace
     import pyarrow as pa
     import pyarrow.csv as pv
-    
+
+    # Scope the namespace to this tenant once, up front — every reference
+    # to payload.namespace below (table creation, catalog load, audit log)
+    # then automatically operates on the tenant-isolated namespace without
+    # needing individual changes throughout this function.
+    payload.namespace = scope_namespace(get_current_tenant_id(user), payload.namespace)
+
     schema_str = json.dumps(payload.schema_json)
     
     try:
@@ -1151,6 +1210,8 @@ async def ingest_successfactors(
     Supports Basic Auth (username/password) and OAuth2 Client Credentials flow.
     Handles OData pagination ($skiptoken / @odata.nextLink) automatically.
     """
+    from tenancy import get_current_tenant_id, scope_namespace
+    payload.namespace = scope_namespace(get_current_tenant_id(user), payload.namespace)
     import requests
     import pyarrow as pa
     from catalog_setup import get_catalog
@@ -1315,7 +1376,8 @@ async def get_graph_stats_endpoint(
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     from graph_db import get_graph_stats
-    stats = get_graph_stats(graph_name)
+    from tenancy import get_current_tenant_id, scope_namespace
+    stats = get_graph_stats(scope_namespace(get_current_tenant_id(user), graph_name))
     if "error" in stats:
         log_audit(
             user_id=user.get("sub", "unknown"),
@@ -1335,8 +1397,9 @@ async def run_cypher_endpoint(
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     from graph_db import execute_cypher_query
+    from tenancy import get_current_tenant_id, scope_namespace
     try:
-        df = execute_cypher_query(payload.graph_name, payload.query)
+        df = execute_cypher_query(scope_namespace(get_current_tenant_id(user), payload.graph_name), payload.query)
         
         log_audit(
             user_id=user.get("sub", "unknown"),
@@ -1367,254 +1430,6 @@ async def run_cypher_endpoint(
             status="error"
         )
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/v1/mcp/execute", tags=["MCP"])
-async def execute_mcp_tool_endpoint(
-    payload: MCPExecuteRequest,
-    user: Dict[str, Any] = Depends(get_current_user)
-):
-    import time
-    start_time = time.time()
-    
-    server = payload.server_name
-    tool = payload.tool_name
-    args = payload.arguments
-    
-    logs = []
-    result = {}
-    
-    logs.append(f"[*] Connecting to MCP Server: '{server}'...")
-    logs.append(f"[*] Invoking Tool: '{tool}' with arguments: {json.dumps(args)}")
-    
-    # 1. Iceberg Catalog MCP Server
-    if "Iceberg" in server or "iceberg" in tool:
-        logs.append("[info] Resolving S3 warehouse credentials from AWS config...")
-        logs.append(f"[info] Accessing Glue Catalog in region: {os.environ.get('AWS_REGION', 'eu-west-2')}")
-        if tool == "list_iceberg_tables":
-            logs.append("[query] Scanning Glue database 'default'...")
-            result = {"tables": ["default.sap_bseg", "finance.fact_revenue", "supply_chain.stock_levels"]}
-        elif tool == "create_iceberg_table":
-            ns = args.get("namespace", "default")
-            tbl = args.get("table_name", "new_table")
-            logs.append(f"[ddl] Creating table metadata for {ns}.{tbl} on S3...")
-            logs.append(f"[ddl] Initializing schema with {len(args.get('schema_json', []))} columns...")
-            result = {
-                "status": "created",
-                "table": f"{ns}.{tbl}",
-                "s3_path": f"s3://your-bucket/iceberg-warehouse/{ns}.db/{tbl}",
-                "metadata_version": 1
-            }
-        elif tool == "query_iceberg_data":
-            q = args.get("sql_query", "")
-            logs.append(f"[sql] Executing query: {q}")
-            logs.append("[sql] Loading S3 metadata manifest list and statistics...")
-            logs.append("[sql] Running warm S3 parquet file scan using local DuckDB engine...")
-            if "sap_bseg" in q.lower():
-                result = {
-                    "columns": ["MANDT", "BUKRS", "BELNR", "GJAHR", "BUZEI", "DMBTR", "WAERS"],
-                    "rows": [
-                        {"MANDT": "100", "BUKRS": "US01", "BELNR": "1800000001", "GJAHR": 2026, "BUZEI": "001", "DMBTR": 45000.00, "WAERS": "USD"},
-                        {"MANDT": "100", "BUKRS": "US01", "BELNR": "1800000001", "GJAHR": 2026, "BUZEI": "002", "DMBTR": -45000.00, "WAERS": "USD"},
-                        {"MANDT": "100", "BUKRS": "UK01", "BELNR": "1800000002", "GJAHR": 2026, "BUZEI": "001", "DMBTR": 12500.50, "WAERS": "GBP"}
-                    ]
-                }
-            else:
-                result = {
-                    "columns": ["id", "val"],
-                    "rows": [{"id": 1, "val": "Sample A"}, {"id": 2, "val": "Sample B"}]
-                }
-        elif tool == "ingest_csv_to_iceberg":
-            logs.append(f"[ingest] Reading CSV file from path: {args.get('csv_path')}")
-            logs.append("[ingest] Validating schema constraints and types...")
-            logs.append("[ingest] Writing Apache Parquet files to S3 warehouse...")
-            logs.append("[ingest] Committing transaction metadata to Glue Catalog (atomically)...")
-            result = {
-                "status": "ingested",
-                "table": f"{args.get('namespace', 'default')}.{args.get('table_name', 'sap_bseg')}",
-                "rows_written": 1250,
-                "commit_snapshot_id": 4983274982739487
-            }
-        else:
-            result = {"message": "Iceberg tool executed successfully."}
-            
-    # 2. SAP BAPI & RFC MCP Agent
-    elif "SAP" in server or "sap" in tool or "bapi" in tool:
-        logs.append("[sap] Initializing PyRFC connection pool to SAP Application Server instance...")
-        logs.append("[sap] Authentication check: User SEC_ADMIN role verified.")
-        if tool == "approve_purchase_requisition":
-            pr = args.get("pr_number", "4500012345")
-            code = args.get("release_code", "A1")
-            logs.append(f"[sap] Invoking RFC function 'BAPI_PR_CHANGE' on host SAP-ECC-PRD...")
-            logs.append(f"[sap] Passing RELEASE_CODE: {code}, REQUISITION_NUMBER: {pr}")
-            result = {
-                "BAPI_RETURN": {
-                    "TYPE": "S",
-                    "ID": "ME",
-                    "NUMBER": "000",
-                    "MESSAGE": f"Purchase Requisition {pr} released successfully with code {code}."
-                }
-            }
-        elif tool == "release_billing_block":
-            so = args.get("sales_order", "1000293")
-            logs.append(f"[sap] Invoking RFC function 'BAPI_SALESORDER_CHANGE' on host SAP-ECC-PRD...")
-            logs.append(f"[sap] Setting BILLING_BLOCK to clear for Sales Order {so}")
-            result = {
-                "BAPI_RETURN": {
-                    "TYPE": "S",
-                    "ID": "V1",
-                    "NUMBER": "000",
-                    "MESSAGE": f"Sales Order {so} billing block removed successfully."
-                }
-            }
-        elif tool == "update_vendor_payment_term":
-            vendor = args.get("vendor_id", "V10001")
-            term = args.get("payment_term", "NT30")
-            logs.append(f"[sap] Invoking RFC function 'BAPI_VENDOR_CHANGE' on host SAP-ECC-PRD...")
-            logs.append(f"[sap] Setting ZTERM to {term} for Vendor {vendor} in company code {args.get('company_code', '1000')}")
-            result = {
-                "BAPI_RETURN": {
-                    "TYPE": "S",
-                    "ID": "FI",
-                    "NUMBER": "000",
-                    "MESSAGE": f"Vendor {vendor} payment terms updated successfully to {term}."
-                }
-            }
-        else:
-            result = {"message": "SAP RFC connection call completed."}
-            
-    # 3. Snowflake Zero-Copy MCP
-    elif "Snowflake" in server or "snowflake" in tool:
-        logs.append("[snowflake] Connecting to Snowflake database account SF_ENT_CORP...")
-        logs.append("[snowflake] Setting active role: ACCOUNTADMIN, warehouse: FIN_WH_XL...")
-        if tool == "revenue_trend_by_period":
-            logs.append("[snowflake] Scanning schema finance.fact_revenue using zero-copy metadata clone...")
-            result = [
-                {"period": "2026-04", "revenue": 1450000.00},
-                {"period": "2026-05", "revenue": 1620000.00},
-                {"period": "2026-06", "revenue": 1890000.00}
-            ]
-        elif tool == "variance_analysis":
-            dept = args.get("department_id", "DEP-100")
-            logs.append(f"[snowflake] Running actuals vs budget cross-join query for department: {dept}")
-            result = {
-                "department": dept,
-                "actual_spend": 420000.00,
-                "budgeted_spend": 450000.00,
-                "variance": -30000.00,
-                "status": "Under Budget"
-            }
-        elif tool == "top_vendors_by_spend":
-            n = args.get("top_n", 5)
-            logs.append(f"[snowflake] Querying finance.ap_invoices for top {n} vendors by total quarterly spend...")
-            result = [
-                {"rank": 1, "vendor": "Apex Logistics Ltd", "total_spend": 820000.00},
-                {"rank": 2, "vendor": "Techno Corp", "total_spend": 540000.00},
-                {"rank": 3, "vendor": "Prime Energy", "total_spend": 320000.00}
-            ]
-        else:
-            result = {"message": "Snowflake tool call completed."}
-            
-    # 4. Compliance Audit Trail MCP
-    elif "Compliance" in server or "audit" in tool:
-        logs.append("[compliance] Initializing cryptographic signature pipeline...")
-        logs.append("[compliance] Generating hash signature for transaction payload...")
-        logs.append("[compliance] Writing append-only audit event to S3 Iceberg log partition compliance.audit_log...")
-        import uuid
-        result = {
-            "status": "written",
-            "event_id": str(uuid.uuid4()),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "signature_hash": "a4f89d38c2901e91823f..."
-        }
-        
-    # 5. Autonomous Procurement MCP
-    elif "Procurement" in server or "procure" in tool:
-        logs.append("[agent] Scanning S3 Iceberg stock_levels database...")
-        logs.append("[agent] Safety stock breach detected on SKU: PCB-44A. Current qty: 45, Safety threshold: 100")
-        logs.append("[agent] Invoking Supplier Selection Graph sub-agent to select optimal supplier...")
-        logs.append("[agent] Supplier selected: Prime Electronics (Lead time: 2 days, score: 9.8)")
-        logs.append("[agent] Invoking SAP MM agent to raise Purchase Requisition BAPI call...")
-        result = {
-            "status": "success",
-            "stock_breach_detected": True,
-            "sku": "PCB-44A",
-            "reorder_quantity": 150,
-            "selected_supplier": "Prime Electronics",
-            "sap_pr_number": "4500018902",
-            "audit_trail_signature": "0f38b29f..."
-        }
-        
-    # 6. Zero-Trust IAM Provisioning MCP
-    elif "IAM" in server or "iam" in tool or "provision" in tool:
-        logs.append("[iam] Listening for employee status change events...")
-        logs.append("[iam] User status change event detected: 'TERMINATION' for user: johndoe@company.com")
-        logs.append("[iam] Initiating zero-trust multi-platform revocation protocol...")
-        logs.append("[iam] [1/3] Calling Okta API: Revoking active session tokens...")
-        logs.append("[iam] [2/3] Calling Azure Active Directory API: Disabling User Principal Name...")
-        logs.append("[iam] [3/3] Calling AWS IAM API: Removing user from policy groups...")
-        logs.append("[iam] All active access revoked successfully.")
-        result = {
-            "status": "access_revoked",
-            "user": "johndoe@company.com",
-            "revoked_services": ["okta", "azure_ad", "aws_iam"],
-            "verification_status": "complete",
-            "propagation_time_ms": 120
-        }
-        
-    # 7. Fraud Ring Detection MCP
-    elif "Fraud" in server or "fraud" in tool:
-        logs.append("[fraud] Loading latest inter-bank payment instruction batch...")
-        logs.append("[fraud] Connecting to Postgres AGE payment graph db schema 'payments_graph'...")
-        logs.append("[fraud] Executing multi-hop recursive Cypher loop traversal query...")
-        logs.append("[fraud] Cypher query: MATCH cycle = (a:Account)-[:SENT_TO*3..8]->(a) RETURN cycle")
-        logs.append("[fraud] Ring path detected: ACCT-8827 -> ACCT-9102 -> ACCT-0092 -> ACCT-8827 (Velocity: $450,000/24h)")
-        logs.append("[fraud] Triggering automatic account lock policy...")
-        result = {
-            "fraud_ring_detected": True,
-            "ring_members": ["ACCT-8827", "ACCT-9102", "ACCT-0092"],
-            "velocity_24h_usd": 450000.00,
-            "hops_count": 3,
-            "auto_freeze_status": "frozen",
-            "sar_flagged": True
-        }
-        
-    # 8. Multi-Agent Orchestration
-    elif "Orchestration" in server or "orchestrate" in tool:
-        logs.append("[orchestrator] Month-end closing process initiated...")
-        logs.append("[orchestrator] [Step 1] Triggering Ledger Reconciliation agent...")
-        logs.append("[orchestrator] [Step 2] Triggering FX Revaluation agent...")
-        logs.append("[orchestrator] [Step 3] Triggering Intercompany Elimination graph agent...")
-        logs.append("[orchestrator] [Step 4] Triggering Management Reporting agent...")
-        logs.append("[orchestrator] All sub-agents completed work successfully without errors.")
-        result = {
-            "close_status": "success",
-            "duration_minutes": 185,
-            "reconciled_company_codes": ["1000", "2000"],
-            "variance_adjusted": 0.00,
-            "board_report_hash": "df872a9b...",
-            "audit_trail_recorded": True
-        }
-    else:
-        logs.append("[info] Executing custom tool call...")
-        result = {"message": "Tool executed successfully.", "arguments": args}
-        
-    duration = int((time.time() - start_time) * 1000)
-    logs.append(f"[+] Execution completed successfully in {duration}ms.")
-    
-    log_audit(
-        user_id=user.get("sub", "unknown"),
-        tier=user.get("tier", "trial"),
-        action="mcp_execute_tool",
-        details=f"Server: {server} | Tool: {tool}",
-        status="success"
-    )
-    
-    return {
-        "logs": logs,
-        "result": result,
-        "duration_ms": duration
-    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1683,6 +1498,7 @@ async def dqe_submit(
     Poll `/v1/query/{job_id}` for results.
     """
     from query_engine.models import QueryJob, QueryMode, QuerySubmitRequest as _QSR
+    from tenancy import get_current_tenant_id
 
     if payload.mode == "python" and user.get("role", "Business Analyst") not in ["Admin", "Data Engineer"]:
         raise HTTPException(
@@ -1704,6 +1520,7 @@ async def dqe_submit(
             limit=payload.limit,
             submitted_by=user.get("sub"),
             role=user.get("role", "Business Analyst"),
+            tenant_id=get_current_tenant_id(user),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -1838,6 +1655,7 @@ async def dqe_multi(
     identical column schemas). Use join_on_key for key-based merging.
     """
     from query_engine.models import QueryJob, QueryMode, MultiQueryRequest as _MQR
+    from tenancy import get_current_tenant_id
     import asyncio as _asyncio
 
     if len(payload.queries) > 10:
@@ -1849,6 +1667,7 @@ async def dqe_multi(
             detail=f"Access Denied: Role '{user.get('role', 'Business Analyst')}' does not have permission to run Python extraction scripts."
         )
 
+    tenant_id = get_current_tenant_id(user)
     engine = _get_query_engine()
     jobs_to_run = []
     for q in payload.queries:
@@ -1865,7 +1684,8 @@ async def dqe_multi(
                 filters=q.filters,
                 limit=q.limit,
                 submitted_by=user.get("sub"),
-            role=user.get("role", "Business Analyst"),
+                role=user.get("role", "Business Analyst"),
+                tenant_id=tenant_id,
             )
             jobs_to_run.append(job)
         except ValueError as exc:
@@ -1994,19 +1814,31 @@ class DataContractRequest(BaseModel):
 @app.get("/v1/catalog/namespaces", tags=["Catalog"])
 async def list_namespaces(user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, filter_and_unscope_namespaces, scope_namespace
     try:
+        tenant_id = get_current_tenant_id(user)
         m_catalog = MeldraCatalog()
-        namespaces = m_catalog.list_namespaces()
-        return {"namespaces": namespaces}
+        all_namespaces = m_catalog.catalog.list_namespaces()
+        all_namespaces = [ns[0] if isinstance(ns, tuple) else ns for ns in all_namespaces]
+        visible = filter_and_unscope_namespaces(tenant_id, all_namespaces)
+        if not visible:
+            # First namespace for a brand-new tenant — create their own
+            # scoped "default", never a bare shared one.
+            m_catalog.create_namespace(scope_namespace(tenant_id, "default"))
+            visible = ["default"]
+        return {"namespaces": visible}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/catalog/namespaces", tags=["Catalog"])
 async def create_namespace(payload: CreateNamespaceRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
+    scoped_ns = scope_namespace(tenant_id, payload.namespace)
     try:
         m_catalog = MeldraCatalog()
-        m_catalog.create_namespace(payload.namespace)
+        m_catalog.create_namespace(scoped_ns)
         log_audit(
             user_id=user.get("sub", "unknown"),
             tier=user.get("tier", "trial"),
@@ -2031,9 +1863,12 @@ async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_cu
     if role not in ["Admin", "Data Architect"]:
         raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to delete namespaces.")
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
+    scoped_ns = scope_namespace(tenant_id, namespace)
     try:
         m_catalog = MeldraCatalog()
-        m_catalog.delete_namespace(namespace)
+        m_catalog.delete_namespace(scoped_ns)
         log_audit(
             user_id=user.get("sub", "unknown"),
             tier=user.get("tier", "trial"),
@@ -2055,9 +1890,11 @@ async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_cu
 @app.get("/v1/catalog/namespaces/{namespace}/tables", tags=["Catalog"])
 async def list_tables(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
     try:
         m_catalog = MeldraCatalog()
-        tables = m_catalog.list_tables(namespace)
+        tables = m_catalog.list_tables(scope_namespace(tenant_id, namespace))
         return {"tables": tables}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -2065,9 +1902,12 @@ async def list_tables(namespace: str, user: Dict[str, Any] = Depends(get_current
 @app.get("/v1/catalog/namespaces/{namespace}/tables/{table_name}", tags=["Catalog"])
 async def get_table_details(namespace: str, table_name: str, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
     try:
         m_catalog = MeldraCatalog()
-        details = m_catalog.get_table_details(namespace, table_name)
+        details = m_catalog.get_table_details(scope_namespace(tenant_id, namespace), table_name)
+        details["namespace"] = namespace  # report back the client-facing (unscoped) name
         return details
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -2078,10 +1918,12 @@ async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutio
     if role not in ["Admin", "Data Architect"]:
         raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to evolve schemas.")
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
     try:
         m_catalog = MeldraCatalog()
         actions_list = [act.dict() for act in payload.actions]
-        m_catalog.evolve_schema(namespace, table_name, actions_list)
+        m_catalog.evolve_schema(scope_namespace(tenant_id, namespace), table_name, actions_list)
         log_audit(
             user_id=user.get("sub", "unknown"),
             tier=user.get("tier", "trial"),
@@ -2103,8 +1945,10 @@ async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutio
 @app.post("/v1/ingest/raw", tags=["Ingestion"])
 async def ingest_raw_endpoint(payload: RawIngestRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog, MeldraValidator
+    from tenancy import get_current_tenant_id, scope_namespace
     import pyarrow as pa
-    
+
+    payload.namespace = scope_namespace(get_current_tenant_id(user), payload.namespace)
     m_catalog = MeldraCatalog()
     catalog = m_catalog.catalog
     identifier = (payload.namespace, payload.table_name)
@@ -2220,18 +2064,22 @@ async def ingest_raw_endpoint(payload: RawIngestRequest, user: Dict[str, Any] = 
 @app.post("/v1/catalog/query", tags=["Catalog"])
 async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
     import duckdb
+    tenant_id = get_current_tenant_id(user)
+    client_namespace = payload.namespace          # display name, used for RBAC policy matching
+    scoped_namespace = scope_namespace(tenant_id, payload.namespace)  # real catalog namespace
     try:
         m_catalog = MeldraCatalog()
-        tables = m_catalog.list_tables(payload.namespace)
-        
+        tables = m_catalog.list_tables(scoped_namespace)
+
         # Restrict SQL capabilities for secure query execution
         sql_upper = payload.sql.upper()
         forbidden_keywords = ["ATTACH", "COPY", "INSTALL", "LOAD"]
         for kw in forbidden_keywords:
             if kw in sql_upper:
                 raise Exception(f"SQL execution denied: Keyword '{kw}' is blocked for security.")
-                
+
         con = duckdb.connect(database=':memory:')
         con.execute("SET enable_external_access=false;")
 
@@ -2246,9 +2094,10 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
 
         for tbl_name in tables:
             try:
-                # Time travel scan
-                arrow_tbl = m_catalog.run_time_travel_scan(payload.namespace, tbl_name, payload.snapshot_id)
-                tbl_df = enforce_rbac(arrow_tbl.to_pandas(), payload.namespace, tbl_name, role)
+                # Time travel scan (tenant-scoped namespace for the actual
+                # catalog read, display namespace for RBAC policy matching)
+                arrow_tbl = m_catalog.run_time_travel_scan(scoped_namespace, tbl_name, payload.snapshot_id)
+                tbl_df = enforce_rbac(arrow_tbl.to_pandas(), client_namespace, tbl_name, role)
                 con.register(tbl_name, tbl_df)
             except Exception:
                 pass
@@ -2294,12 +2143,15 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
 @app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/maintenance", tags=["Catalog"])
 async def table_maintenance(namespace: str, table_name: str, payload: MaintenanceRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
+    scoped_ns = scope_namespace(tenant_id, namespace)
     try:
         m_catalog = MeldraCatalog()
         if payload.action == "optimize":
-            msg = m_catalog.optimize_table(namespace, table_name)
+            msg = m_catalog.optimize_table(scoped_ns, table_name)
         elif payload.action == "expire_snapshots":
-            msg = m_catalog.expire_snapshots(namespace, table_name)
+            msg = m_catalog.expire_snapshots(scoped_ns, table_name)
         else:
             raise Exception("Invalid maintenance action.")
             
@@ -2324,11 +2176,13 @@ async def table_maintenance(namespace: str, table_name: str, payload: Maintenanc
 @app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/contracts", tags=["Catalog"])
 async def save_data_contracts(namespace: str, table_name: str, payload: DataContractRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
     import json
+    tenant_id = get_current_tenant_id(user)
     try:
         m_catalog = MeldraCatalog()
         catalog = m_catalog.catalog
-        identifier = (namespace, table_name)
+        identifier = (scope_namespace(tenant_id, namespace), table_name)
         table = catalog.load_table(identifier)
         contract_json = json.dumps(payload.rules)
         table.transaction().set_properties({"data_contracts": contract_json}).commit()
@@ -2339,11 +2193,13 @@ async def save_data_contracts(namespace: str, table_name: str, payload: DataCont
 @app.get("/v1/catalog/namespaces/{namespace}/tables/{table_name}/contracts", tags=["Catalog"])
 async def get_data_contracts(namespace: str, table_name: str, user: Dict[str, Any] = Depends(get_current_user)):
     from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
     import json
+    tenant_id = get_current_tenant_id(user)
     try:
         m_catalog = MeldraCatalog()
         catalog = m_catalog.catalog
-        identifier = (namespace, table_name)
+        identifier = (scope_namespace(tenant_id, namespace), table_name)
         table = catalog.load_table(identifier)
         rules_str = table.properties.get("data_contracts", "[]")
         return {"rules": json.loads(rules_str)}
@@ -2363,9 +2219,11 @@ class GraphProjectRequest(BaseModel):
 async def project_table_to_graph(req: GraphProjectRequest, user: Dict[str, Any] = Depends(get_current_user)):
     from catalog_setup import get_catalog
     from graph_db import sync_dataframe_to_neo4j
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
     try:
         catalog = get_catalog()
-        table_identifier = f"{req.namespace}.{req.table_name}"
+        table_identifier = f"{scope_namespace(tenant_id, req.namespace)}.{req.table_name}"
         table = catalog.load_table(table_identifier)
         df = table.scan().to_arrow().to_pandas()
 
@@ -2376,7 +2234,7 @@ async def project_table_to_graph(req: GraphProjectRequest, user: Dict[str, Any] 
             )
 
         result = sync_dataframe_to_neo4j(
-            graph_name=req.graph_name,
+            graph_name=scope_namespace(tenant_id, req.graph_name),
             df=df,
             source_col=req.source_col,
             target_col=req.target_col,
@@ -2391,31 +2249,36 @@ async def project_table_to_graph(req: GraphProjectRequest, user: Dict[str, Any] 
 
 @app.post("/v1/admin/reset-tenant", tags=["Admin"])
 async def reset_tenant_state(user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Reset the CALLING TENANT's own data only. Previously this deleted every
+    other user's account platform-wide plus all RBAC policies and audit
+    logs globally — safe with a single shared tenant, catastrophic once
+    there's more than one, since any user's own Admin role let them wipe
+    every other tenant's account and data. Now scoped to: this tenant's own
+    Iceberg namespaces and this tenant's own graph nodes/edges. Other
+    accounts, global RBAC config, and the audit trail (kept for compliance
+    history, including across a reset) are untouched.
+    """
     role = user.get("role", "Business Analyst")
     if role != "Admin":
         raise HTTPException(
             status_code=403,
-            detail="Access Denied: Only users with the 'Admin' role can reset the tenant capacity."
+            detail="Access Denied: Only users with the 'Admin' role can reset their tenant."
         )
-    
+
     from auth_db import _get_conn
     from catalog_setup import get_catalog
-    
-    # 1. Clear database state (except active Admin)
+    from tenancy import get_current_tenant_id, tenant_prefix
+
+    tenant_id = get_current_tenant_id(user)
+    prefix = tenant_prefix(tenant_id)
+
+    # 1. Clear this tenant's own graph data only
     conn = _get_conn()
     try:
         cur = conn.cursor()
-        
-        # Delete all users EXCEPT the logged-in admin
-        admin_email = user.get("email")
-        cur.execute("DELETE FROM auth.users WHERE email != %s;", (admin_email,))
-        
-        # Clear all policies, nodes, edges, logs
-        cur.execute("DELETE FROM auth.rbac_policies;")
-        cur.execute("DELETE FROM auth.graph_nodes;")
-        cur.execute("DELETE FROM auth.graph_edges;")
-        cur.execute("DELETE FROM auth.audit_logs;")
-        
+        cur.execute("DELETE FROM auth.graph_nodes WHERE workspace_id LIKE %s;", (f"{prefix}%",))
+        cur.execute("DELETE FROM auth.graph_edges WHERE workspace_id LIKE %s;", (f"{prefix}%",))
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -2423,25 +2286,32 @@ async def reset_tenant_state(user: Dict[str, Any] = Depends(get_current_user)):
     finally:
         conn.close()
 
-    # 2. Clear S3/Local Iceberg catalog tables
+    # 2. Drop this tenant's own Iceberg tables/namespaces only
+    dropped = 0
     try:
         catalog = get_catalog()
-        tables = catalog.list_tables("default")
-        for t_ident in tables:
-            try:
-                catalog.drop_table(t_ident)
-            except Exception:
-                pass
+        for full_ns in catalog.list_namespaces():
+            full_ns_name = full_ns[0] if isinstance(full_ns, tuple) else full_ns
+            if not full_ns_name.startswith(prefix):
+                continue
+            for t_ident in catalog.list_tables(full_ns_name):
+                try:
+                    catalog.drop_table(t_ident)
+                    dropped += 1
+                except Exception:
+                    pass
     except Exception as e:
         print(f"[reset-tenant] Failed to drop catalog tables: {e}")
 
-    # 3. Re-seed demo transactions
-    try:
-        seed_demo_data()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to re-seed demo data: {str(e)}")
-        
-    return {"status": "success", "message": "Tenant state reset and demo data re-seeded successfully."}
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="reset_tenant",
+        details=f"Reset own tenant: dropped {dropped} table(s) and this tenant's graph data.",
+        status="success"
+    )
+
+    return {"status": "success", "message": f"Your tenant has been reset: {dropped} table(s) dropped."}
 
 
 class RBACPolicyItem(BaseModel):
@@ -2585,13 +2455,20 @@ async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)
             results.append(p)
             
     try:
+        from tenancy import get_current_tenant_id, filter_and_unscope_namespaces, scope_namespace
+        tenant_id = get_current_tenant_id(user)
         m_catalog = MeldraCatalog()
-        namespaces = m_catalog.list_namespaces()
+        all_namespaces = m_catalog.catalog.list_namespaces()
+        all_namespaces = [ns[0] if isinstance(ns, tuple) else ns for ns in all_namespaces]
+        # Only this tenant's own namespaces/tables can show up in search --
+        # otherwise search would leak every tenant's namespace/table names
+        # to anyone typing in the search box.
+        namespaces = filter_and_unscope_namespaces(tenant_id, all_namespaces)
         for ns in namespaces:
             if query in ns.lower():
                 results.append({"name": f"Namespace '{ns}'", "type": "namespace", "route": "studio-tab", "desc": f"Iceberg catalog namespace"})
-            
-            tables = m_catalog.list_tables(ns)
+
+            tables = m_catalog.list_tables(scope_namespace(tenant_id, ns))
             for tbl in tables:
                 if query in tbl.lower():
                     results.append({

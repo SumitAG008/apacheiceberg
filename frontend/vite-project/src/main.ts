@@ -92,6 +92,31 @@ const auditTimeline = document.getElementById('audit-timeline') as HTMLDivElemen
 const toastContainer = document.getElementById('toast-container') as HTMLDivElement;
 
 // ─────────────────────────────────────────
+// LOCALE PREFERENCE (number/date formatting)
+// ─────────────────────────────────────────
+const LOCALE_STORAGE_KEY = 'meldra_locale';
+const LOCALE_OPTIONS: Record<string, string> = {
+  'English': 'en-US',
+  'US English': 'en-US',
+  'UK English': 'en-GB',
+  'German': 'de-DE',
+  'French': 'fr-FR',
+};
+
+function getLocale(): string {
+  return localStorage.getItem(LOCALE_STORAGE_KEY) || 'en-US';
+}
+
+function setLocale(label: string) {
+  const code = LOCALE_OPTIONS[label] || 'en-US';
+  localStorage.setItem(LOCALE_STORAGE_KEY, code);
+  document.documentElement.lang = code;
+}
+
+// Apply stored (or default) locale to <html lang> immediately on load
+document.documentElement.lang = getLocale();
+
+// ─────────────────────────────────────────
 // UTILS & TOASTS
 // ─────────────────────────────────────────
 function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
@@ -733,7 +758,7 @@ async function handleCSVFile(file: File) {
     dropZone.innerHTML = `
       <i class="fa-solid fa-file-circle-check drop-zone-icon" style="color: var(--color-success);"></i>
       <span class="drop-zone-text">${file.name} uploaded successfully</span>
-      <span class="drop-zone-sub">${data.row_count.toLocaleString()} rows detected. Click to upload a different file</span>
+      <span class="drop-zone-sub">${data.row_count.toLocaleString(getLocale())} rows detected. Click to upload a different file</span>
     `;
     
     // Render Ingest parameters
@@ -765,7 +790,7 @@ async function handleCSVFile(file: File) {
         previewTbody.appendChild(tr);
       });
       
-      previewRowCount.innerText = `${data.row_count.toLocaleString()} rows`;
+      previewRowCount.innerText = `${data.row_count.toLocaleString(getLocale())} rows`;
       previewSection.style.display = 'flex';
     }
     
@@ -936,12 +961,17 @@ async function loadGraphStats() {
   graphStatNodes.innerText = '...';
   graphStatEdges.innerText = '...';
   graphStatActive.innerText = '...';
-  
+
+  // The backend's stats response doesn't echo back which graph was
+  // queried, so track the requested name locally instead of reading a
+  // field ("stats.graph_name") that was never actually in the response --
+  // that's what produced the literal "undefined" shown in the UI.
+  const requestedGraphName = 'pharma_graph';
   try {
-    const stats = await api.getGraphStats();
+    const stats = await api.getGraphStats(requestedGraphName);
     graphStatNodes.innerText = String(stats.nodes);
     graphStatEdges.innerText = String(stats.edges);
-    graphStatActive.innerText = stats.graph_name;
+    graphStatActive.innerText = requestedGraphName;
   } catch (err: any) {
     graphStatNodes.innerText = '⚠️';
     graphStatEdges.innerText = '⚠️';
@@ -1107,7 +1137,7 @@ async function loadAuditLogs() {
       let dateStr = log.timestamp;
       try {
         const d = new Date(log.timestamp);
-        dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        dateStr = d.toLocaleDateString(getLocale()) + ' ' + d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       } catch (e) {}
       
       card.innerHTML = `
@@ -1549,11 +1579,20 @@ function resetTests() {
   });
 }
 
-// ── MCP GATEWAY PLAYGROUND ──────────────────────────────────────────────
+// ── MCP GATEWAY ──────────────────────────────────────────────────────────
+// This tab drives meldra's own internal domain through the exact same
+// endpoints the rest of the app uses — no simulated servers, no fabricated
+// results. The same tools are also exposed as a real, spec-compliant MCP
+// (Model Context Protocol) stdio server at backend/mcp_server.py, so any
+// external MCP client (Claude Desktop, Claude Code, another agent) can
+// connect to this same domain — see the "Connect an external MCP client"
+// panel below for setup.
 interface MCPToolDef {
   name: string;
   description: string;
+  endpoint: string;
   sampleArgs: Record<string, any>;
+  execute: (args: Record<string, any>) => Promise<any>;
 }
 
 interface MCPServerDef {
@@ -1564,145 +1603,65 @@ interface MCPServerDef {
 
 const MCP_REGISTRY: MCPServerDef[] = [
   {
-    name: "Iceberg Catalog MCP Server",
-    description: "Interact with the Apache Iceberg Glue Catalog to list, create, and query data tables.",
+    name: "meldra Core Domain",
+    description: "meldra's own Apache Iceberg catalog, RBAC-aware SQL engine, and graph store — the same live, tenant-scoped API the rest of the app uses.",
     tools: [
       {
-        name: "list_iceberg_tables",
-        description: "List all Iceberg tables in a namespace from the Glue Catalog",
-        sampleArgs: { "namespace": "default" }
+        name: "list_namespaces",
+        description: "List the Iceberg namespaces visible to your tenant",
+        endpoint: "GET /v1/catalog/namespaces",
+        sampleArgs: {},
+        execute: async () => api.catalog.listNamespaces(),
       },
       {
-        name: "create_iceberg_table",
-        description: "Create a new Apache Iceberg table on S3 with a given schema",
-        sampleArgs: {
-          "namespace": "default",
-          "table_name": "sap_bseg",
-          "schema_json": [
-            { "name": "MANDT", "type": "string" },
-            { "name": "BUKRS", "type": "string" },
-            { "name": "BELNR", "type": "string" },
-            { "name": "GJAHR", "type": "long" },
-            { "name": "BUZEI", "type": "string" },
-            { "name": "DMBTR", "type": "double" }
-          ]
-        }
+        name: "list_tables",
+        description: "List the tables inside a namespace",
+        endpoint: "GET /v1/catalog/namespaces/{namespace}/tables",
+        sampleArgs: { "namespace": "default" },
+        execute: async (args) => api.catalog.listTables(args.namespace || "default"),
       },
       {
-        name: "query_iceberg_data",
-        description: "Run a SQL SELECT query on an existing Iceberg table via DuckDB",
-        sampleArgs: {
-          "namespace": "default",
-          "table_name": "sap_bseg",
-          "sql_query": "SELECT * FROM iceberg_table WHERE DMBTR > 10000 LIMIT 5"
-        }
+        name: "get_table_details",
+        description: "Get schema, row count, and snapshot metadata for a table",
+        endpoint: "GET /v1/catalog/namespaces/{namespace}/tables/{table_name}",
+        sampleArgs: { "namespace": "default", "table_name": "" },
+        execute: async (args) => api.catalog.getTableDetails(args.namespace || "default", args.table_name),
       },
       {
-        name: "ingest_csv_to_iceberg",
-        description: "Parse and ingest a CSV file into an Iceberg table on S3",
-        sampleArgs: {
-          "csv_path": "c:/Users/sumit/Documents/icebergAgent/sample_data.csv",
-          "namespace": "default",
-          "table_name": "sap_bseg"
-        }
-      }
-    ]
-  },
-  {
-    name: "SAP BAPI & RFC MCP Agent",
-    description: "RFC gateway mapping natural language parameters to secure SAP BAPIs on host SAP-ECC-PRD.",
-    tools: [
-      {
-        name: "approve_purchase_requisition",
-        description: "Release a SAP Purchase Requisition (PR) for procurement approval",
-        sampleArgs: { "pr_number": "4500012345", "release_code": "A1" }
+        name: "query_table",
+        description: "Run a DuckDB SQL query against a table, with RBAC row filtering and column masking enforced server-side",
+        endpoint: "POST /v1/catalog/query",
+        sampleArgs: { "namespace": "default", "sql": "SELECT * FROM your_table LIMIT 10" },
+        execute: async (args) => api.catalog.runQuery(args.sql, args.namespace || "default"),
       },
       {
-        name: "release_billing_block",
-        description: "Remove a billing block from a SAP sales order",
-        sampleArgs: { "sales_order": "1000293", "billing_block": "01" }
+        name: "graph_stats",
+        description: "Get node/edge counts for a graph",
+        endpoint: "GET /v1/graph/stats",
+        sampleArgs: { "graph_name": "pharma_graph" },
+        execute: async (args) => api.getGraphStats(args.graph_name || "pharma_graph"),
       },
       {
-        name: "update_vendor_payment_term",
-        description: "Update the payment term for a SAP vendor in FI-AP",
-        sampleArgs: { "vendor_id": "V10001", "payment_term": "NT30", "company_code": "1000" }
-      }
-    ]
-  },
-  {
-    name: "Snowflake Zero-Copy MCP",
-    description: "Zero-copy data lakehouse connectivity tool facilitating warehouse analytics.",
-    tools: [
-      {
-        name: "revenue_trend_by_period",
-        description: "Get monthly revenue totals grouped by cost centre",
-        sampleArgs: { "period_from": "2026-01", "period_to": "2026-06", "cost_centre": "CC-100" }
+        name: "run_cypher",
+        description: "Run a Cypher query against a graph",
+        endpoint: "POST /v1/graph/cypher",
+        sampleArgs: { "graph_name": "pharma_graph", "cypher_query": "MATCH (a)-[r]->(b) RETURN a, r, b LIMIT 10" },
+        execute: async (args) => api.executeCypherQuery(args.cypher_query, args.graph_name || "pharma_graph"),
       },
       {
-        name: "variance_analysis",
-        description: "Compare actual vs planned spend for a department",
-        sampleArgs: { "department_id": "DEP-100", "fiscal_year": 2026 }
+        name: "list_rbac_policies",
+        description: "List configured RBAC column/table policies (Admin role only)",
+        endpoint: "GET /v1/rbac/policies",
+        sampleArgs: {},
+        execute: async () => api.rbac.getPolicies(),
       },
       {
-        name: "top_vendors_by_spend",
-        description: "Rank vendors by total AP invoice spend in a fiscal period",
-        sampleArgs: { "top_n": 5, "fiscal_quarter": "Q2-2026" }
-      }
-    ]
-  },
-  {
-    name: "Real-Time Audit Trail MCP",
-    description: "Automated SOX/SOC2 audit logger that signs and stores immutable audit entries on S3.",
-    tools: [
-      {
-        name: "log_audit_event",
-        description: "Log an append-only audit event directly into the S3 compliance ledger",
-        sampleArgs: { "action": "DATA_ACCESS", "user": "finance-analyst@company.com", "details": "Read table default.sap_bseg" }
-      }
-    ]
-  },
-  {
-    name: "Autonomous Procurement MCP",
-    description: "Triggers procurement lifecycle loops in response to safety stock breaches.",
-    tools: [
-      {
-        name: "trigger_procurement_flow",
-        description: "Trigger the autonomous procurement flow for an under-stocked material",
-        sampleArgs: { "sku": "PCB-44A", "trigger_reason": "SAFETY_BREACH" }
-      }
-    ]
-  },
-  {
-    name: "Zero-Trust IAM Provisioning MCP",
-    description: "Automated employee onboarding/offboarding workflow mediating Okta, AD, and AWS.",
-    tools: [
-      {
-        name: "sync_employee_termination",
-        description: "Trigger instant zero-trust revocation of credentials for a terminated employee",
-        sampleArgs: { "employee_id": "EMP-9023", "email": "johndoe@company.com" }
-      }
-    ]
-  },
-  {
-    name: "Fraud Ring Detection MCP",
-    description: "AGE Graph database recursive Cypher loop traversal for anti-collusion protection.",
-    tools: [
-      {
-        name: "detect_payment_rings",
-        description: "Detect circular payment rings above a transaction velocity threshold",
-        sampleArgs: { "min_hops": 3, "max_hops": 8, "threshold_usd": 10000.00 }
-      }
-    ]
-  },
-  {
-    name: "Multi-Agent A2A Orchestration",
-    description: "Month-end closing mediator orchestrating complex sub-agent task dependencies.",
-    tools: [
-      {
-        name: "run_month_end_close",
-        description: "Execute the autonomous multi-agent month-end financial close orchestration chain",
-        sampleArgs: { "fiscal_period": "2026-06", "reconciliation_mode": "strict" }
-      }
+        name: "list_recent_audit_events",
+        description: "List recent audit log events for your tenant",
+        endpoint: "GET /v1/audit",
+        sampleArgs: {},
+        execute: async () => api.getAuditLogs(),
+      },
     ]
   }
 ];
@@ -1736,11 +1695,11 @@ function buildMcpTab() {
     
     item.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
-        <span class="blog-nav-domain" style="color: var(--color-primary); margin: 0; font-size: 0.65rem;">Port ${8001 + srvIdx}</span>
+        <span class="blog-nav-domain" style="color: var(--color-primary); margin: 0; font-size: 0.65rem;">Live</span>
         <span class="status-dot online" style="margin-left: auto;"></span>
       </div>
-      <h4>${srv.name.split(' MCP')[0]}</h4>
-      <span>${srv.tools.length} active tools</span>
+      <h4>${srv.name}</h4>
+      <span>${srv.tools.length} tools</span>
     `;
 
     item.addEventListener('click', () => {
@@ -1808,39 +1767,32 @@ function buildMcpTab() {
     btnExecute.disabled = true;
     btnExecute.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Invoking...';
     durationBadge.style.display = 'none';
-    consoleEl.innerHTML = '<span style="color: #64748b;">[~] Executing...</span>';
+    consoleEl.innerHTML = `<span style="color: #38bdf8;">[*] ${tool.endpoint}</span>`;
     resultEl.textContent = '{}';
 
+    const startTime = performance.now();
     try {
-      const res = await api.executeMcpTool(srv.name, tool.name, parsedArgs);
-      
-      // Update logs
-      consoleEl.innerHTML = '';
-      res.logs.forEach(line => {
-        const span = document.createElement('span');
-        if (line.startsWith('[*]')) {
-          span.style.color = '#38bdf8';
-        } else if (line.startsWith('[+]')) {
-          span.style.color = '#34d399';
-        } else if (line.startsWith('[error]') || line.startsWith('[-]')) {
-          span.style.color = '#f87171';
-        } else if (line.startsWith('[info]')) {
-          span.style.color = '#cbd5e1';
-        } else if (line.startsWith('[sql]') || line.startsWith('[sap]') || line.startsWith('[snowflake]') || line.startsWith('[compliance]') || line.startsWith('[agent]') || line.startsWith('[iam]') || line.startsWith('[fraud]') || line.startsWith('[orchestrator]')) {
-          span.style.color = '#fb923c';
-        } else {
-          span.style.color = '#94a3b8';
-        }
-        span.textContent = line;
-        consoleEl.appendChild(span);
-      });
+      const result = await tool.execute(parsedArgs);
+      const durationMs = Math.round(performance.now() - startTime);
 
-      // Update Result and Duration
-      resultEl.textContent = JSON.stringify(res.result, null, 2);
-      durationBadge.textContent = `${res.duration_ms}ms`;
+      consoleEl.innerHTML = '';
+      const reqLine = document.createElement('span');
+      reqLine.style.color = '#38bdf8';
+      reqLine.textContent = `[*] ${tool.endpoint}`;
+      consoleEl.appendChild(reqLine);
+      const okLine = document.createElement('span');
+      okLine.style.color = '#34d399';
+      okLine.textContent = `[+] Request completed in ${durationMs}ms.`;
+      consoleEl.appendChild(okLine);
+
+      resultEl.textContent = JSON.stringify(result, null, 2);
+      durationBadge.textContent = `${durationMs}ms`;
       durationBadge.style.display = 'inline-block';
     } catch (e: any) {
-      consoleEl.innerHTML = `<span style="color: #f87171;">[-] API Execution failed: ${e.message || e}</span>`;
+      consoleEl.innerHTML = `
+        <span style="color: #38bdf8;">[*] ${tool.endpoint}</span>
+        <span style="color: #f87171;">[-] Request failed: ${e.message || e}</span>
+      `;
       resultEl.textContent = JSON.stringify({ error: e.message || e }, null, 2);
     } finally {
       btnExecute.disabled = false;
@@ -3193,7 +3145,7 @@ function initUserControls() {
       const settingsCreated = document.getElementById('settings-info-created');
       if (settingsCreated && userProfile.created_at) {
         const date = new Date(userProfile.created_at);
-        settingsCreated.textContent = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        settingsCreated.textContent = date.toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' });
       }
     } catch (err) {
       console.error('Failed to load user settings data:', err);
@@ -3287,6 +3239,53 @@ function initUserControls() {
       btnSettingsUpdatePwd.disabled = false;
       btnSettingsUpdatePwd.innerHTML = '<i class="fa-solid fa-key"></i> Update Password';
     }
+  });
+
+  // Locale preference (drives number/date formatting via getLocale())
+  const settingsLocaleSelect = document.getElementById('settings-locale-select') as HTMLSelectElement;
+  if (settingsLocaleSelect) {
+    const currentCode = getLocale();
+    for (const opt of Array.from(settingsLocaleSelect.options)) {
+      if (LOCALE_OPTIONS[opt.value] === currentCode) {
+        settingsLocaleSelect.value = opt.value;
+        break;
+      }
+    }
+    settingsLocaleSelect.addEventListener('change', () => {
+      setLocale(settingsLocaleSelect.value);
+      showToast(`Locale set to ${settingsLocaleSelect.value}.`, 'success');
+    });
+  }
+
+  // API token generation (real MCP server / external client auth)
+  const btnGenerateApiToken = document.getElementById('btn-generate-api-token') as HTMLButtonElement;
+  const apiTokenDisplay = document.getElementById('settings-api-token-display') as HTMLDivElement;
+  const apiTokenValue = document.getElementById('settings-api-token-value') as HTMLInputElement;
+  const apiTokenExpiry = document.getElementById('settings-api-token-expiry') as HTMLParagraphElement;
+  const btnCopyApiToken = document.getElementById('btn-copy-api-token') as HTMLButtonElement;
+
+  btnGenerateApiToken?.addEventListener('click', async () => {
+    btnGenerateApiToken.disabled = true;
+    btnGenerateApiToken.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+    try {
+      const res = await api.generateApiToken();
+      apiTokenValue.value = res.api_token;
+      const expiryDate = new Date(res.expires_at);
+      apiTokenExpiry.textContent = `Expires ${expiryDate.toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' })}. This token won't be shown again — generate a new one if you lose it.`;
+      apiTokenDisplay.style.display = 'block';
+      showToast('API token generated.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to generate API token.', 'error');
+    } finally {
+      btnGenerateApiToken.disabled = false;
+      btnGenerateApiToken.innerHTML = '<i class="fa-solid fa-key"></i> Generate API Token';
+    }
+  });
+
+  btnCopyApiToken?.addEventListener('click', () => {
+    if (!apiTokenValue.value) return;
+    navigator.clipboard.writeText(apiTokenValue.value);
+    showToast('Copied to clipboard.', 'success');
   });
 
   // Load saved desktop sidebar state on initialization
@@ -3684,7 +3683,7 @@ function renderTrafficInspector() {
     <div>
       <h4 style="color:#fff; margin:0 0 0.5rem 0; font-size:0.85rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.35rem;">${headerTitle}</h4>
       <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:0.75rem;">
-        <span>Timestamp: ${new Date(event.timestamp).toLocaleTimeString()}</span>
+        <span>Timestamp: ${new Date(event.timestamp).toLocaleTimeString(getLocale())}</span>
         <span>Latency: ${event.latency_ms ? event.latency_ms.toFixed(0) + 'ms' : 'N/A'}</span>
       </div>
     </div>
@@ -6852,34 +6851,12 @@ function initRowFiltersEditor() {
   }
 }
 
-function initHelpGuideSubtabs() {
-  const helpBtns = document.querySelectorAll('.help-section-btn') as NodeListOf<HTMLElement>;
-  helpBtns.forEach(btn => {
-    btn.onclick = () => {
-      helpBtns.forEach(b => {
-        b.classList.remove('active');
-        b.style.color = 'var(--text-muted)';
-      });
-      btn.classList.add('active');
-      btn.style.color = 'var(--color-primary)';
-      
-      const targetId = btn.getAttribute('data-helpsection')!;
-      const contents = document.querySelectorAll('.help-section-content');
-      contents.forEach(c => (c as HTMLElement).style.display = 'none');
-      
-      const targetEl = document.getElementById(targetId);
-      if (targetEl) targetEl.style.display = 'block';
-    };
-  });
-}
-
 function initFabricSaaS() {
   initExperienceSwitcher();
   initCommandPalette();
   initPythonWorkspace();
   initRbacPoliciesEditor();
   initRowFiltersEditor();
-  initHelpGuideSubtabs();
 
   // Set default experience to Engineering Studio
   applyExperience('engineering');
@@ -7167,7 +7144,7 @@ function dqeRenderHistory(history: DQEHistoryEntry[]) {
     const statusIcon = h.status === 'success' ? '✅' : h.status === 'failed' ? '❌' : '⏳';
     const statusClass = h.status === 'success' ? 'dqe-hist-ok' : h.status === 'failed' ? 'dqe-hist-fail' : 'dqe-hist-pend';
     const rows = h.total_rows !== undefined ? h.total_rows.toLocaleString() : '—';
-    const t = h.created_at ? new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+    const t = h.created_at ? new Date(h.created_at).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="padding:0.3rem 0.5rem;"><span class="badge ${modeClass}" style="font-size:0.62rem;">${h.mode.toUpperCase()}</span></td>

@@ -3,6 +3,7 @@ import json
 import duckdb
 import pandas as pd
 import pyarrow as pa
+from contextvars import ContextVar
 from typing import Optional
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
@@ -19,6 +20,25 @@ from pyiceberg.types import (
 from catalog_setup import get_catalog, create_namespace_if_not_exists
 from langchain.tools import tool
 from graph_db import sync_dataframe_to_age, execute_cypher_query
+from tenancy import scope_namespace
+
+# The chat Agent's tools have fixed signatures the LLM calls directly (its
+# tool-calling schema), so tenant context can't be added as an extra
+# parameter without changing what the model sees. Threaded via ContextVar
+# instead — same pattern agent.py already uses for current_request_id.
+# Set in api/main.py's /v1/chat handler before invoking the agent; every
+# tool below scopes its own namespace/graph_name through it, so the Agent
+# is structurally unable to touch another tenant's data, not just trusted
+# not to.
+current_tenant_id: ContextVar[str] = ContextVar("current_tenant_id", default="")
+current_user_role: ContextVar[str] = ContextVar("current_user_role", default="Business Analyst")
+
+
+def _scoped_ns(namespace: str) -> str:
+    """Scope a namespace to the current request's tenant, if one is set
+    (falls back to unscoped for direct/non-agent callers, e.g. tests)."""
+    tenant_id = current_tenant_id.get()
+    return scope_namespace(tenant_id, namespace) if tenant_id else namespace
 
 def get_pyiceberg_type(type_str: str):
     type_str = type_str.lower()
@@ -53,9 +73,10 @@ def create_iceberg_table(namespace: str, table_name: str, schema_json: str) -> s
         schema_json: A JSON string representing the schema. Format: [{"name": "col1", "type": "string"}, {"name": "col2", "type": "int"}]
     """
     try:
+        scoped_namespace = _scoped_ns(namespace)
         catalog = get_catalog()
-        create_namespace_if_not_exists(catalog, namespace)
-        
+        create_namespace_if_not_exists(catalog, scoped_namespace)
+
         schema_list = json.loads(schema_json)
         fields = []
         for i, col in enumerate(schema_list):
@@ -66,17 +87,17 @@ def create_iceberg_table(namespace: str, table_name: str, schema_json: str) -> s
                 required=False
             )
             fields.append(field)
-            
+
         iceberg_schema = Schema(*fields)
-        identifier = (namespace, table_name)
-        
+        identifier = (scoped_namespace, table_name)
+
         # Check if table exists
         try:
             catalog.load_table(identifier)
             return f"Table {namespace}.{table_name} already exists."
         except:
             pass
-            
+
         table = catalog.create_table(identifier, schema=iceberg_schema)
         return f"Successfully created table {namespace}.{table_name}."
     except Exception as e:
@@ -95,9 +116,9 @@ def ingest_csv_to_iceberg(namespace: str, table_name: str, csv_path: str) -> str
     try:
         if not os.path.exists(csv_path):
             return f"Error: CSV file not found at {csv_path}"
-            
+
         catalog = get_catalog()
-        identifier = (namespace, table_name)
+        identifier = (_scoped_ns(namespace), table_name)
         table = catalog.load_table(identifier)
         
         # Read CSV with pandas, convert to pyarrow table
@@ -155,24 +176,35 @@ def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
     """
     try:
         catalog = get_catalog()
-        identifier = (namespace, table_name)
-        
+        identifier = (_scoped_ns(namespace), table_name)
+
         try:
             table = catalog.load_table(identifier)
         except Exception as e:
             return f"Error: Table {namespace}.{table_name} not found."
-            
+
         # Get PyArrow table for querying with DuckDB
         # Using scan().to_arrow() is the efficient way to read Iceberg data
         con = duckdb.connect(database=':memory:')
         con.execute("SET enable_external_access=false;")
         iceberg_table = table.scan().to_arrow()
-        con.register("iceberg_table", iceberg_table)
-        
+
+        # Enforce full RBAC (table access, row filtering, column masking/
+        # denial) before the Agent ever sees this data — it's the same
+        # underlying data Query Lab serves, so it gets the same protection,
+        # not a separate unmasked path just because a different tool
+        # happened to load it.
+        from rbac_utils import enforce_rbac, TableAccessDenied
+        try:
+            masked_df = enforce_rbac(iceberg_table.to_pandas(), namespace, table_name, current_user_role.get())
+        except TableAccessDenied as e:
+            return f"Error: {e}"
+        con.register("iceberg_table", masked_df)
+
         # Execute query using duckdb
         # DuckDB automatically finds the local variable `iceberg_table`
         result = con.execute(sql_query).fetchdf()
-        
+
         # Convert result to string/JSON representation for the agent
         return result.to_string()
     except Exception as e:
@@ -193,10 +225,10 @@ def run_generic_graph_analysis(namespace: str, table_name: str, source_node_col:
     """
     try:
         catalog = get_catalog()
-        identifier = (namespace, table_name)
+        identifier = (_scoped_ns(namespace), table_name)
         table = catalog.load_table(identifier)
         df = table.scan().to_arrow().to_pandas()
-        
+
         if filter_query:
             try:
                 df = df.query(filter_query)
@@ -273,18 +305,18 @@ def sync_iceberg_to_graph_db(namespace: str, table_name: str, source_node_col: s
     """
     try:
         catalog = get_catalog()
-        identifier = (namespace, table_name)
+        identifier = (_scoped_ns(namespace), table_name)
         table = catalog.load_table(identifier)
         df = table.scan().to_arrow().to_pandas()
-        
+
         if df.empty:
             return "No data in the Iceberg table to synchronize."
-            
+
         if source_node_col not in df.columns or target_node_col not in df.columns:
             return f"Error: Columns {source_node_col} and/or {target_node_col} do not exist in the table."
-            
+
         # Call graph_db helper to sync dataframe to Neo4j
-        result_message = sync_dataframe_to_age(graph_name, df, source_node_col, target_node_col, edge_label)
+        result_message = sync_dataframe_to_age(_scoped_ns(graph_name), df, source_node_col, target_node_col, edge_label)
         return result_message
     except Exception as e:
         return f"Error executing sync: {str(e)}"
@@ -302,7 +334,7 @@ def query_graph_db_cypher(graph_name: str, cypher_query: str) -> str:
         cypher_query: The pure Cypher query to execute.
     """
     try:
-        df = execute_cypher_query(graph_name, cypher_query)
+        df = execute_cypher_query(_scoped_ns(graph_name), cypher_query)
         if df.empty:
             return "Query executed successfully, but returned 0 results."
         return df.to_string()

@@ -80,6 +80,12 @@ class QueryJob(BaseModel):
     # ONLY (never from client-supplied request fields), used to enforce
     # column-level masking/denial at the data layer before execution.
     role: str = "Business Analyst"
+    # Tenant (= submitting user's own account id), set server-side ONLY.
+    # Executors use this to translate `namespace`/`graph_name` into the real,
+    # tenant-scoped catalog namespace before touching the catalog — RBAC and
+    # everything else in this job continues to use the client-facing
+    # (unscoped) name, exactly as the submitter typed it.
+    tenant_id: str = ""
 
     @model_validator(mode="after")
     def _validate_mode_fields(self) -> "QueryJob":

@@ -1517,7 +1517,11 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   font-family: var(--font-sans);
   font-size: 1.2rem;
   font-weight: 700;
-  color: var(--text-main);
+  /* .settings-modal-box has a hardcoded white background (unlike the rest
+     of the dark-themed app), so text here needs its own dark color rather
+     than --text-main, which is a near-white shade meant for dark
+     backgrounds -- using it here made the title nearly invisible. */
+  color: #0f172a;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1578,14 +1582,16 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 .info-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-dim);
+  /* Same white-modal issue as .settings-modal-title above -- dark colors
+     here, not the dark-theme --text-dim/--text-main variables. */
+  color: #64748b;
   text-transform: uppercase;
 }
 
 .info-value {
   font-size: 0.88rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: #0f172a;
   word-break: break-all;
 }
 

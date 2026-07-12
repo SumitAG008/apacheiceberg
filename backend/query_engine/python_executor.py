@@ -186,7 +186,11 @@ class PythonExecutor:
         t0 = time.perf_counter()
 
         # ── 1. Load Iceberg data ──────────────────────────────────────────────
-        arrow_table = self._load_iceberg(job.namespace, job.table_name, job.filters)
+        # Catalog read uses the tenant-scoped namespace; job.namespace stays
+        # the client-facing name for RBAC matching.
+        from tenancy import scope_namespace
+        scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+        arrow_table = self._load_iceberg(scoped_ns, job.table_name, job.filters)
         df = arrow_table.to_pandas()
 
         # Enforce full RBAC (table access, row filtering, column masking/

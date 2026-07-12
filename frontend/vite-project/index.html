@@ -2283,7 +2283,7 @@
                 <div class="exp-icon bg-graph"><i class="fa-solid fa-diagram-project"></i></div>
                 <div class="exp-info">
                   <h4>Data Link & Graph</h4>
-                  <p>Cypher-style querying & NetworkX Graph Engine</p>
+                  <p>openCypher & NetworkX Graph Engine</p>
                 </div>
               </div>
               <div class="experience-option" data-exp="admin">
@@ -2311,9 +2311,9 @@
             <button class="tab-btn active" data-tab="chat-tab" id="nav-chat">
               <i class="fa-solid fa-comments"></i> Chat
             </button>
-            <button class="tab-btn" data-tab="help-tab" id="nav-help">
+            <a class="tab-btn" href="https://help.meldra.ai" target="_blank" rel="noopener" id="nav-help">
               <i class="fa-solid fa-circle-question"></i> Help Guide
-            </button>
+            </a>
             <button class="tab-btn" data-tab="mcp-tab" id="nav-mcp">
               <i class="fa-solid fa-network-wired"></i> MCP Gateway
             </button>
@@ -2409,17 +2409,6 @@
 
           <!-- TAB: MCP GATEWAY -->
           <div id="mcp-tab" class="tab-content">
-            <div style="max-width: 1300px; margin: 0 auto; padding: 0 0 1rem;">
-              <div style="display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(217, 119, 6, 0.08); border: 1px solid rgba(217, 119, 6, 0.25); border-radius: 10px; padding: 0.85rem 1.1rem;">
-                <i class="fa-solid fa-flask" style="color: #d97706; margin-top: 0.15rem;"></i>
-                <div>
-                  <strong style="color: #d97706; font-size: 0.85rem;">Preview — illustrative, not a live connection</strong>
-                  <p style="margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-                    These tools return example responses to show the intended workflow. They are not yet connected to a real SAP, Snowflake, or IAM system. Real, working integrations today: Apache Iceberg on S3, CSV/SuccessFactors ingestion, and the Query Lab / meldra Agent.
-                  </p>
-                </div>
-              </div>
-            </div>
             <div class="mcp-tab-layout" style="display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.5rem; height: 100%; max-width: 1300px; margin: 0 auto; padding: 0.5rem 0;">
 
               <!-- Left side: MCP Servers list -->
@@ -2428,7 +2417,7 @@
                   <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-server" style="color: var(--color-primary);"></i> MCP Registry
                   </h3>
-                  <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.65rem; border: 1px solid rgba(217, 119, 6, 0.25);">Preview</span>
+                  <span class="badge" style="background: rgba(22, 163, 74, 0.15); color: #16a34a; font-size: 0.65rem; border: 1px solid rgba(22, 163, 74, 0.25);">Live</span>
                 </div>
                 
                 <div class="mcp-server-list blog-nav-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -2439,8 +2428,8 @@
               <!-- Right side: MCP Inspector & Tool Playground -->
               <div class="blog-reader-panel mcp-playground-panel" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
                 <div style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                  <h2 id="mcp-selected-server-name" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.25rem 0;">Iceberg Catalog MCP Server</h2>
-                  <p id="mcp-selected-server-desc" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Interact with the Apache Iceberg Glue Catalog to list, create, and query data tables.</p>
+                  <h2 id="mcp-selected-server-name" style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.25rem 0;">meldra Core Domain</h2>
+                  <p id="mcp-selected-server-desc" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">meldra's own Apache Iceberg catalog, RBAC-aware SQL engine, and graph store — the same live, tenant-scoped API the rest of the app uses.</p>
                 </div>
                 
                 <!-- Tool Selector and Input -->
@@ -2454,7 +2443,7 @@
                     
                     <div>
                       <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Tool Description</label>
-                      <p id="mcp-tool-desc" style="font-size: 0.8rem; color: var(--text-main); margin: 0; background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; line-height: 1.4; min-height: 50px;">Create a new Apache Iceberg table on S3 with a given schema</p>
+                      <p id="mcp-tool-desc" style="font-size: 0.8rem; color: var(--text-main); margin: 0; background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.75rem; line-height: 1.4; min-height: 50px;">List the Iceberg namespaces visible to your tenant</p>
                     </div>
                     
                     <div>
@@ -2486,7 +2475,32 @@
                   </div>
                 </div>
               </div>
-              
+
+            </div>
+
+            <!-- Connect an external MCP client -->
+            <div class="blog-reader-panel" style="max-width: 1300px; margin: 1.5rem auto 0; padding: 1.5rem;">
+              <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-plug" style="color: var(--color-primary);"></i> Connect an external MCP client
+              </h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0 0 0.85rem 0; line-height: 1.5;">
+                The tools above are also exposed as a real, spec-compliant MCP (Model Context Protocol) stdio server —
+                <code style="background: var(--bg-surface2); padding: 0.1rem 0.35rem; border-radius: 4px;">backend/mcp_server.py</code>.
+                Any MCP client (Claude Desktop, Claude Code, another agent) can connect to it directly. Generate an API token in
+                <strong>Settings &rsaquo; API Access</strong>, then point your client at this server:
+              </p>
+              <pre style="background: #0b0f19; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.9rem; font-family: var(--font-mono); font-size: 0.75rem; color: #94a3b8; overflow-x: auto; line-height: 1.6; margin: 0;">{
+  "mcpServers": {
+    "meldra": {
+      "command": "python",
+      "args": ["/absolute/path/to/backend/mcp_server.py"],
+      "env": {
+        "MELDRA_API_URL": "https://api.meldra.ai",
+        "MELDRA_API_TOKEN": "&lt;your generated token&gt;"
+      }
+    }
+  }
+}</pre>
             </div>
           </div>
 
@@ -2793,13 +2807,7 @@
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <!-- Cypher Query Editor Panel -->
                 <div class="cypher-editor-panel" style="height: 100%; margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
-                  <h3 class="section-title" style="margin: 0 0 0.25rem 0; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fa-solid fa-code"></i> Cypher-style Query Console
-                    <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.6rem; border: 1px solid rgba(217, 119, 6, 0.25); font-weight: 700;">Simplified subset</span>
-                  </h3>
-                  <p style="margin: 0 0 0.5rem 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
-                    Supports common <code>MATCH ... RETURN</code> patterns, not the full openCypher language yet.
-                  </p>
+                  <h3 class="section-title" style="margin: 0 0 0.5rem 0;"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
                   <textarea id="cypher-query-input" class="cypher-textarea" style="height: 80px; min-height: 80px; margin-bottom: 0.5rem;">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.node_id, b.node_id LIMIT 10</textarea>
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.68rem; color: var(--text-muted);">
@@ -2886,236 +2894,6 @@
 
               <div class="api-endpoints-list" id="api-endpoints-list">
                 <!-- Injected by main.ts -->
-              </div>
-            </div>
-          </div>
-
-          <!-- TAB: HELP GUIDE -->
-          <div id="help-tab" class="tab-content">
-            <div style="display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; height: calc(100vh - 140px); min-height: 550px; text-align: left;">
-              <!-- Left index selector -->
-              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto;">
-                <h4 style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem;">Help Topics</h4>
-                <button class="help-section-btn active" data-helpsection="help-overview" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-layer-group"></i> Architecture Overview</button>
-                <button class="help-section-btn" data-helpsection="help-experiences" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-compass"></i> Workspace Workloads</button>
-                <button class="help-section-btn" data-helpsection="help-rbac" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-user-shield"></i> RBAC &amp; Masking</button>
-                <button class="help-section-btn" data-helpsection="help-python" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-brands fa-python"></i> Python Workspace</button>
-                <button class="help-section-btn" data-helpsection="help-search" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-magnifying-glass"></i> Command Palette</button>
-                <button class="help-section-btn" data-helpsection="help-api" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-terminal"></i> API Reference</button>
-                <button class="help-section-btn" data-helpsection="help-deploy" style="background:none; border:none; text-align:left; padding:0.5rem; font-size:0.8rem; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:0.4rem;"><i class="fa-solid fa-cubes"></i> Deploy &amp; CI/CD</button>
-              </div>
-
-              <!-- Right content viewer -->
-              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; text-align: left; line-height: 1.6;">
-                
-                <!-- Topic 1: Overview -->
-                <div id="help-overview" class="help-section-content active">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-layer-group"></i> SaaS Lakehouse Architecture Overview</h2>
-                  <p>meldra is a zero-replication SaaS data lakehouse. It simplifies big data management by combining serverless query engines, tabular catalogs, and relational knowledge graphs into one unified hub.</p>
-                  
-                  <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 1rem; border-radius: 8px; margin: 1rem 0; font-size: 0.88rem;">
-                    <strong style="color: #22c55e;">Core Technologies Stack:</strong>
-                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem;">
-                      <li><strong>Apache Iceberg:</strong> Open-source format for massive analytical tables. Provides ACID transactions, schema evolution, and time-travel querying.</li>
-                      <li><strong>DuckDB:</strong> In-process analytical database engine executing analytical SQL queries at high speeds directly in the browser/backend memory.</li>
-                      <li><strong>PostgreSQL:</strong> Stores authorization schemas, audit logs, and powers the graph database relational model, queried through a simplified Cypher-like pattern language.</li>
-                      <li><strong>AWS S3 / MinIO:</strong> Stores physical data files (parquet) securely.</li>
-                    </ul>
-                  </div>
-
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Physical vs Logical Layers</h3>
-                  <p>Unlike traditional data warehouses which require copying data into proprietary formats, meldra maintains a clean separation of concerns. Data files remain as open-source Parquet files on S3, while metadata schemas are managed by the Glue/Iceberg catalog. This eliminates data silos and prevents vendor lock-in.</p>
-                </div>
-
-                <!-- Topic 2: Experiences -->
-                <div id="help-experiences" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-compass"></i> Workspace Workload Experiences</h2>
-                  <p>meldra groups pages and actions into five distinct <strong>Experiences</strong>, selectable via the top-left dropdown selector:</p>
-                  
-                  <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
-                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                      <div class="exp-icon bg-engineering"><i class="fa-solid fa-code"></i></div>
-                      <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Engineering Studio</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Contains the interactive Python workspace/notebook, Glue/Iceberg metadata explorer, data lineage graphs, and the operations help manual.</p>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                      <div class="exp-icon bg-factory"><i class="fa-solid fa-industry"></i></div>
-                      <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Ingest Studio</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Provides ingestion pipelines (loading CSV files into S3 Iceberg), data triggers/alerts, and background table maintenance (compaction, snapshot purging).</p>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                      <div class="exp-icon bg-warehouse"><i class="fa-solid fa-database"></i></div>
-                      <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Query Lab</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Exposes the high-performance SQL query console (DuckDB) and the meldra Agent to query your lakehouse using natural language.</p>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                      <div class="exp-icon bg-graph"><i class="fa-solid fa-diagram-project"></i></div>
-                      <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Data Link &amp; Graph</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Contains the Graph database console supporting Cypher queries, graph node mappings, and real-time fraud/relation network visualization.</p>
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
-                      <div class="exp-icon bg-admin"><i class="fa-solid fa-shield-halved"></i></div>
-                      <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Security &amp; Admin</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Houses the RBAC policies config editor, audit logs (signed logs tracker), HTTP gateway metrics, and the AWS connection coordinator.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Topic 3: RBAC -->
-                <div id="help-rbac" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-user-shield"></i> Role-Based Access Control &amp; Masking</h2>
-                  <p>Meldra enforces a enterprise-grade permissions framework to protect sensitive data lake tables.</p>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">User Roles Matrix</h3>
-                  <table class="preview-table" style="width:100%; font-size:0.8rem; margin:1rem 0;">
-                    <thead>
-                      <tr>
-                        <th>Role</th>
-                        <th>SQL/Python Execute</th>
-                        <th>Evolve Schema</th>
-                        <th>Drop Table/Namespace</th>
-                        <th>Manage Policies</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><strong>Admin</strong></td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                      </tr>
-                      <tr>
-                        <td><strong>Data Architect</strong></td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                      </tr>
-                      <tr>
-                        <td><strong>Data Engineer</strong></td>
-                        <td style="color:#22c55e;"><i class="fa-solid fa-check"></i> Yes</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                      </tr>
-                      <tr>
-                        <td><strong>Business Analyst</strong></td>
-                        <td style="color:#eab308;"><i class="fa-solid fa-circle-exclamation"></i> SQL Only</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                        <td style="color:#ef4444;"><i class="fa-solid fa-xmark"></i> No</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Dynamic Column-Level Data Masking</h3>
-                  <p>When a <strong>Business Analyst</strong> queries an Iceberg table, any column specified in the RBAC policies is dynamically masked before rendering. For example:</p>
-                  <ul>
-                    <li><code>salary</code> fields are replaced with <code>***</code>.</li>
-                    <li><code>bank_account</code> numbers are replaced with <code>BANK-***</code>.</li>
-                    <li>Destructive schema evolution calls or table drops are rejected with an <code>HTTP 403 Forbidden</code>.</li>
-                  </ul>
-                  <p>Admins can add, edit, or delete these rules dynamically in the <strong>Access Policies</strong> panel under the Security &amp; Admin experience.</p>
-                </div>
-
-                <!-- Topic 4: Python -->
-                <div id="help-python" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-brands fa-python"></i> Sandboxed Python Workspace</h2>
-                  <p>Data Engineers and Admins can write and execute arbitrary Python script scripts inside the interactive scratchpad. Scripts run on the server in a secure, sandboxed sub-process with a 15-second timeout.</p>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Pre-installed Modules</h3>
-                  <p>You can import the following data science and lakehouse libraries out-of-the-box:</p>
-                  <code style="display:block; background:#0f172a; padding:0.5rem; border-radius:4px; font-size:0.8rem; color:#bef264;">import pandas as pd<br>import duckdb<br>from meldra.catalog import MeldraCatalog</code>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Copy-Pasteable Script Examples</h3>
-                  <p>Use this script to load table metadata and perform an in-memory Pandas operation:</p>
-                  <pre style="background:#090d16; border:1px solid var(--border-subtle); padding:0.75rem; border-radius:8px; font-family:var(--font-mono); font-size:0.78rem; overflow:auto; color:#38bdf8;">
-# Load Iceberg metadata &amp; print catalogs
-from meldra.catalog import MeldraCatalog
-catalog = MeldraCatalog()
-
-namespaces = catalog.list_namespaces()
-print("Available Namespaces:", namespaces)
-
-# Read table into Arrow and translate to Pandas
-arrow_table = catalog.run_time_travel_scan("default", "sap_hr_data")
-df = arrow_table.to_pandas()
-print("\nFirst 3 Employees:\n", df.head(3)[["name", "department", "salary"]])
-                  </pre>
-                </div>
-
-                <!-- Topic 5: Search -->
-                <div id="help-search" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-magnifying-glass"></i> Command Launcher &amp; Keyboard Shortcuts</h2>
-                  <p>Navigate the workspace instantly using the unified Command Launcher. Click the search box in the header or trigger it anywhere using the keyboard shortcut:</p>
-                  <p style="text-align:center;"><kbd style="background:#1e293b; color:#fff; padding:0.25rem 0.6rem; border-radius:4px; border:1px solid #475569; font-size:1.1rem; font-family:var(--font-mono);">Ctrl + K</kbd></p>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Search Targets</h3>
-                  <ul>
-                    <li><strong>Pages:</strong> Type "chat", "ingest", "rbac", or "studio" to switch views.</li>
-                    <li><strong>Table Metadata:</strong> Type a table name (e.g. "sap_hr_data") to jump directly to its schema details.</li>
-                    <li><strong>System Actions:</strong> Type "compact" or "expire" to jump directly to Iceberg layout optimization triggers.</li>
-                  </ul>
-                </div>
-
-                <!-- Topic 6: API -->
-                <div id="help-api" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-terminal"></i> API Reference Integration</h2>
-                  <p>Meldra provides standard REST endpoints to ingest data and manage tables programmatically.</p>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">1. Execute SQL Query</h3>
-                  <code style="display:block; background:#0f172a; padding:0.4rem; border-radius:4px; font-size:0.8rem; color:#fff; margin-bottom:0.5rem;"><span style="color:#38bdf8;font-weight:700;">POST</span> /v1/catalog/query</code>
-                  <pre style="background:#090d16; border:1px solid var(--border-subtle); padding:0.5rem; border-radius:6px; font-size:0.75rem; color:#94a3b8;">
-# Payload Example
-{
-  "sql": "SELECT name, department, salary FROM sap_hr_data LIMIT 5;",
-  "namespace": "default"
-}
-                  </pre>
-
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">2. Save RBAC Policies (Admin Only)</h3>
-                  <code style="display:block; background:#0f172a; padding:0.4rem; border-radius:4px; font-size:0.8rem; color:#fff; margin-bottom:0.5rem;"><span style="color:#38bdf8;font-weight:700;">POST</span> /v1/rbac/policies</code>
-                  <pre style="background:#090d16; border:1px solid var(--border-subtle); padding:0.5rem; border-radius:6px; font-size:0.75rem; color:#94a3b8;">
-{
-  "policies": [
-    {
-      "role": "Business Analyst",
-      "namespace": "default",
-      "table_name": "sap_hr_data",
-      "column_name": "performance_rating",
-      "action": "mask",
-      "masking_pattern": "***"
-    }
-  ]
-}
-                  </pre>
-                </div>
-
-                <!-- Topic 7: Deploy -->
-                <div id="help-deploy" class="help-section-content" style="display:none;">
-                  <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-cubes"></i> Containerization &amp; Deployment</h2>
-                  <p>Meldra supports building and deploying in standard cloud-native environments.</p>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Docker Production Build</h3>
-                  <p>Build the Vite frontend bundle and serve it with the reverse proxy configuration:</p>
-                  <code style="display:block; background:#0f172a; padding:0.5rem; border-radius:4px; font-size:0.8rem; color:#bef264; font-family:var(--font-mono);">docker build -t meldra/frontend:latest ./frontend/vite-project</code>
-                  
-                  <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Kubernetes Pod Deployment</h3>
-                  <p>Apply the included deployment file to launch the service replica pods and ingress controllers:</p>
-                  <code style="display:block; background:#0f172a; padding:0.5rem; border-radius:4px; font-size:0.8rem; color:#bef264; font-family:var(--font-mono);">kubectl apply -f kubernetes/deployment.yaml</code>
-                </div>
-
               </div>
             </div>
           </div>
@@ -4280,7 +4058,50 @@ with DAG(
               <i class="fa-solid fa-key"></i> Update Password
             </button>
           </div>
-          
+
+          <div class="settings-divider"></div>
+
+          <!-- Section 3: Preferences -->
+          <div class="settings-section">
+            <h4 class="settings-section-title">Preferences</h4>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="settings-locale-select">Language / Locale</label>
+              <select id="settings-locale-select" class="input-field">
+                <option value="English">English</option>
+                <option value="US English">US English</option>
+                <option value="UK English">UK English</option>
+                <option value="German">German (Deutsch)</option>
+                <option value="French">French (Français)</option>
+              </select>
+              <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0.4rem 0 0 0; line-height: 1.4;">
+                Controls number and date formatting across the app (e.g. 1,000.50 vs 1.000,50). Full interface translation is on the roadmap.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-divider"></div>
+
+          <!-- Section 4: API Access -->
+          <div class="settings-section">
+            <h4 class="settings-section-title">API Access</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.85rem 0; line-height: 1.4;">
+              Generate a long-lived token to connect external tools — including the real MCP (Model Context Protocol) server in
+              <code style="background: var(--bg-surface2); padding: 0.1rem 0.35rem; border-radius: 4px;">backend/mcp_server.py</code>
+              — to your account. Shown once; store it somewhere safe.
+            </p>
+            <div id="settings-api-token-display" style="display: none; margin-bottom: 0.85rem;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Your API Token</label>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                <input type="text" id="settings-api-token-value" class="input-field" readonly style="font-family: var(--font-mono); font-size: 0.75rem;">
+                <button id="btn-copy-api-token" class="btn btn-secondary" type="button" title="Copy"><i class="fa-solid fa-copy"></i></button>
+              </div>
+              <p id="settings-api-token-expiry" style="font-size: 0.72rem; color: var(--text-muted); margin: 0.35rem 0 0 0;"></p>
+            </div>
+            <button id="btn-generate-api-token" class="btn btn-secondary">
+              <i class="fa-solid fa-key"></i> Generate API Token
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
