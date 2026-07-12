@@ -2235,18 +2235,20 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
         con = duckdb.connect(database=':memory:')
         con.execute("SET enable_external_access=false;")
 
-        # Apply column-level RBAC at the data layer, BEFORE registering with
-        # DuckDB — denied columns are dropped and masked columns redacted in
-        # the source frame, so no amount of aliasing/subquerying in the SQL
-        # can expose the real values. See rbac_utils.apply_rbac_to_dataframe.
-        from rbac_utils import apply_rbac_to_dataframe
+        # Apply full RBAC (table access, row filtering, column masking/denial)
+        # at the data layer, BEFORE registering with DuckDB — so no amount of
+        # aliasing/subquerying in the SQL can expose the real values or the
+        # existence of a table this role can't see. See rbac_utils.enforce_rbac.
+        # A table this role has no access to is simply never registered — it
+        # fails as "table not found" rather than confirming it exists.
+        from rbac_utils import enforce_rbac
         role = user.get("role", "Business Analyst")
 
         for tbl_name in tables:
             try:
                 # Time travel scan
                 arrow_tbl = m_catalog.run_time_travel_scan(payload.namespace, tbl_name, payload.snapshot_id)
-                tbl_df = apply_rbac_to_dataframe(arrow_tbl.to_pandas(), payload.namespace, tbl_name, role)
+                tbl_df = enforce_rbac(arrow_tbl.to_pandas(), payload.namespace, tbl_name, role)
                 con.register(tbl_name, tbl_df)
             except Exception:
                 pass
@@ -2457,6 +2459,16 @@ class UpdateUserRoleRequest(BaseModel):
     email: str
     role: str
 
+class RowFilterItem(BaseModel):
+    role: str
+    namespace: str
+    table_name: str          # or "*" for every table in the namespace
+    filter_expression: str   # pandas .query() expression, e.g. "region == 'EMEA'"
+    description: Optional[str] = None
+
+class SaveRowFiltersRequest(BaseModel):
+    filters: List[RowFilterItem]
+
 @app.get("/v1/rbac/policies", tags=["RBAC"])
 async def get_rbac_policies(user: Dict[str, Any] = Depends(get_current_user)):
     if user.get("role", "Business Analyst") != "Admin":
@@ -2487,6 +2499,53 @@ async def save_rbac_policies(payload: SavePoliciesRequest, user: Dict[str, Any] 
             """, (item.role, item.namespace, item.table_name, item.column_name, item.action, item.masking_pattern))
         conn.commit()
         return {"status": "success", "message": "RBAC policies updated."}
+    finally:
+        conn.close()
+
+@app.get("/v1/rbac/row-filters", tags=["RBAC"])
+async def get_row_filters(user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role", "Business Analyst") != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can view row-level filters.")
+    from auth_db import _get_conn
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, role, namespace, table_name, filter_expression, description, created_at "
+            "FROM auth.rbac_row_filters ORDER BY created_at DESC;"
+        )
+        rows = cur.fetchall()
+        return [
+            {**dict(r), "created_at": r["created_at"].isoformat() if r["created_at"] else None}
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+@app.post("/v1/rbac/row-filters", tags=["RBAC"])
+async def save_row_filters(payload: SaveRowFiltersRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can modify row-level filters.")
+    from auth_db import _get_conn
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth.rbac_row_filters;")
+        for item in payload.filters:
+            cur.execute("""
+                INSERT INTO auth.rbac_row_filters (role, namespace, table_name, filter_expression, description)
+                VALUES (%s, %s, %s, %s, %s);
+            """, (item.role, item.namespace, item.table_name, item.filter_expression, item.description))
+        conn.commit()
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="save_row_filters",
+            details=f"Replaced row-level filter set ({len(payload.filters)} filters)",
+            status="success"
+        )
+        return {"status": "success", "message": "Row-level filters updated."}
     finally:
         conn.close()
 

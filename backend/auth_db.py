@@ -98,8 +98,23 @@ def init_auth_schema():
                 namespace       TEXT NOT NULL,
                 table_name      TEXT NOT NULL,
                 column_name     TEXT NOT NULL,
-                action          TEXT NOT NULL DEFAULT 'mask',  -- 'mask' | 'deny'
+                -- 'mask' | 'deny' for a real column, or 'deny' with
+                -- column_name = '__TABLE__' to deny the entire table/namespace
+                -- to this role (namespace-level when table_name = '*').
+                action          TEXT NOT NULL DEFAULT 'mask',
                 masking_pattern TEXT NOT NULL DEFAULT '***'
+            );
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS auth.rbac_row_filters (
+                id                BIGSERIAL PRIMARY KEY,
+                role              TEXT NOT NULL,
+                namespace         TEXT NOT NULL,
+                table_name        TEXT NOT NULL,  -- or '*' for every table in the namespace
+                filter_expression TEXT NOT NULL,  -- pandas .query() expression, e.g. "region == 'EMEA'"
+                description       TEXT,
+                created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
             );
         """)
 
@@ -163,6 +178,7 @@ def init_auth_schema():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON auth.sessions(user_id);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON auth.audit_logs(timestamp DESC);")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_rbac_role ON auth.rbac_policies(role);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_rbac_row_filters_role ON auth.rbac_row_filters(role);")
 
         conn.commit()
         print("[auth_db] Auth schema initialised successfully with geo, membership, expiration, and RBAC parameters.")

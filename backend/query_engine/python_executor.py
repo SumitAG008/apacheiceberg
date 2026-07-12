@@ -189,11 +189,12 @@ class PythonExecutor:
         arrow_table = self._load_iceberg(job.namespace, job.table_name, job.filters)
         df = arrow_table.to_pandas()
 
-        # Enforce column-level RBAC before the script ever sees the data —
-        # the sandbox has no way to distinguish "masked" from "real" data,
-        # so redaction must happen here, not on the script's output.
-        from rbac_utils import apply_rbac_to_dataframe
-        df = apply_rbac_to_dataframe(df, job.namespace, job.table_name, job.role)
+        # Enforce full RBAC (table access, row filtering, column masking/
+        # denial) before the script ever sees the data — the sandbox has no
+        # way to distinguish "masked"/"filtered" from real data, so this
+        # must happen here, not on the script's output.
+        from rbac_utils import enforce_rbac
+        df = enforce_rbac(df, job.namespace, job.table_name, job.role)
         import pyarrow as _pa
         arrow_table = _pa.Table.from_pandas(df, preserve_index=False)
 

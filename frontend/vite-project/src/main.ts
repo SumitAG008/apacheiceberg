@@ -6734,6 +6734,124 @@ function initRbacPoliciesEditor() {
   }
 }
 
+let activeRowFilters: any[] = [];
+
+async function loadRowFilters() {
+  const tbody = document.getElementById('row-filters-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading row-level filters...</td></tr>';
+
+  try {
+    activeRowFilters = await api.rbac.getRowFilters();
+    renderRowFilters();
+  } catch (err: any) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding: 1.5rem;">Failed to load row filters: ${err.message}</td></tr>`;
+  }
+}
+
+function renderRowFilters() {
+  const tbody = document.getElementById('row-filters-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (activeRowFilters.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; font-style:italic; padding: 1.5rem; color:var(--text-muted);">No row-level filters defined. Click Add Filter.</td></tr>';
+    return;
+  }
+
+  activeRowFilters.forEach((f, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <select class="input-field rf-role-select" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">
+          <option value="Admin" ${f.role === 'Admin' ? 'selected' : ''}>Admin</option>
+          <option value="Data Engineer" ${f.role === 'Data Engineer' ? 'selected' : ''}>Data Engineer</option>
+          <option value="Data Architect" ${f.role === 'Data Architect' ? 'selected' : ''}>Data Architect</option>
+          <option value="Business Analyst" ${f.role === 'Business Analyst' ? 'selected' : ''}>Business Analyst</option>
+        </select>
+      </td>
+      <td><input type="text" class="input-field rf-ns-input" value="${f.namespace}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 100px;"></td>
+      <td><input type="text" class="input-field rf-tbl-input" value="${f.table_name}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 120px;"></td>
+      <td><input type="text" class="input-field rf-expr-input" value="${f.filter_expression}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 200px; font-family: var(--font-mono);"></td>
+      <td><input type="text" class="input-field rf-desc-input" value="${f.description || ''}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 140px;"></td>
+      <td style="text-align: center;">
+        <button class="btn btn-secondary btn-sm rf-delete-row-btn" data-idx="${idx}" style="padding: 0.25rem 0.5rem; color: #ef4444;" title="Delete Filter">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const delButtons = tbody.querySelectorAll('.rf-delete-row-btn') as NodeListOf<HTMLButtonElement>;
+  delButtons.forEach(btn => {
+    btn.onclick = () => {
+      const idx = parseInt(btn.getAttribute('data-idx')!);
+      activeRowFilters.splice(idx, 1);
+      renderRowFilters();
+    };
+  });
+}
+
+function initRowFiltersEditor() {
+  const btnAdd = document.getElementById('btn-add-row-filter');
+  const btnSave = document.getElementById('btn-save-row-filters');
+
+  if (btnAdd) {
+    btnAdd.onclick = () => {
+      activeRowFilters.push({
+        role: 'Business Analyst',
+        namespace: 'default',
+        table_name: '*',
+        filter_expression: "region == 'EMEA'",
+        description: ''
+      });
+      renderRowFilters();
+    };
+  }
+
+  if (btnSave) {
+    btnSave.onclick = async () => {
+      const tbody = document.getElementById('row-filters-tbody');
+      if (!tbody) return;
+
+      const rows = tbody.querySelectorAll('tr');
+      const filters: any[] = [];
+
+      for (const row of Array.from(rows)) {
+        const roleSel = row.querySelector('.rf-role-select') as HTMLSelectElement;
+        const nsIn = row.querySelector('.rf-ns-input') as HTMLInputElement;
+        const tblIn = row.querySelector('.rf-tbl-input') as HTMLInputElement;
+        const exprIn = row.querySelector('.rf-expr-input') as HTMLInputElement;
+        const descIn = row.querySelector('.rf-desc-input') as HTMLInputElement;
+
+        if (roleSel && nsIn && tblIn && exprIn) {
+          filters.push({
+            role: roleSel.value,
+            namespace: nsIn.value.trim(),
+            table_name: tblIn.value.trim(),
+            filter_expression: exprIn.value.trim(),
+            description: descIn ? descIn.value.trim() : ''
+          });
+        }
+      }
+
+      btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+      try {
+        await api.rbac.saveRowFilters(filters);
+        showToast('Row-level filters saved successfully.');
+        activeRowFilters = filters;
+        renderRowFilters();
+      } catch (err: any) {
+        showToast(`Failed to save row filters: ${err.message}`, 'error');
+      } finally {
+        btnSave.innerHTML = '<i class="fa-solid fa-save"></i> Save Filters';
+      }
+    };
+  }
+}
+
 function initHelpGuideSubtabs() {
   const helpBtns = document.querySelectorAll('.help-section-btn') as NodeListOf<HTMLElement>;
   helpBtns.forEach(btn => {
@@ -6760,16 +6878,18 @@ function initFabricSaaS() {
   initCommandPalette();
   initPythonWorkspace();
   initRbacPoliciesEditor();
+  initRowFiltersEditor();
   initHelpGuideSubtabs();
-  
+
   // Set default experience to Engineering Studio
   applyExperience('engineering');
   applyUserRoleControls();
-  
-  // Load policies on Access Policies sub-tab click
+
+  // Load policies + row filters on Access Policies sub-tab click
   const rbacTabBtn = document.getElementById('btn-studio-rbac-tab');
   if (rbacTabBtn) {
     rbacTabBtn.addEventListener('click', loadRbacPolicies);
+    rbacTabBtn.addEventListener('click', loadRowFilters);
   }
 }
 

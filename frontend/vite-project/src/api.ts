@@ -512,6 +512,23 @@ export const api = {
       }
       return res.json();
     },
+    async getRowFilters(): Promise<any[]> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/row-filters`);
+      if (!res.ok) throw new Error('Failed to load row-level filters');
+      return res.json();
+    },
+    async saveRowFilters(filters: any[]): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/row-filters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filters }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to save row-level filters');
+      }
+      return res.json();
+    },
     async updateUserRole(email: string, role: string): Promise<any> {
       const res = await authFetch(`${BASE_URL}/v1/rbac/user-role`, {
         method: 'POST',

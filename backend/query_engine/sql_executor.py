@@ -70,11 +70,13 @@ class SQLExecutor:
         # ── 1. Register primary Iceberg table ─────────────────────────────────
         primary_arrow = self._load_iceberg(catalog, job.namespace, job.table_name, job.filters)
 
-        # Enforce column-level RBAC at the data layer before DuckDB ever sees
-        # the columns — denied columns are dropped and masked columns
-        # redacted, so aliasing in the SQL cannot expose the real values.
-        from rbac_utils import apply_rbac_to_dataframe
-        primary_df = apply_rbac_to_dataframe(
+        # Enforce full RBAC (table access, row filtering, column masking/
+        # denial) at the data layer before DuckDB ever sees the data —
+        # aliasing in the SQL cannot expose the real values, and a role with
+        # no access to this table gets TableAccessDenied propagated as a
+        # failed job (caught by the executor's run loop) rather than data.
+        from rbac_utils import enforce_rbac
+        primary_df = enforce_rbac(
             primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
         )
         con.register("iceberg_table", primary_df)

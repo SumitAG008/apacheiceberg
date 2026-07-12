@@ -3435,8 +3435,9 @@ with DAG(
                     <div style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.8rem; color: #f87171; line-height: 1.45;">
                       <i class="fa-solid fa-circle-exclamation"></i>
                       <strong>Role Hierarchy Policy:</strong> Non-Admin roles cannot alter policies. <em>Business Analyst</em> is subject to column-level data masking for sensitive fields by default. Destructive actions (dropping namespace/table) require <em>Admin</em> or <em>Data Architect</em> roles.
+                      To deny a role an entire table (or every table in a namespace), add a rule with Column Name set to <code>__TABLE__</code> and Action set to <code>deny</code> — use <code>*</code> as the Table Name for a namespace-wide deny.
                     </div>
-                    
+
                     <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 8px;">
                       <table class="preview-table" id="rbac-policies-table" style="width: 100%; margin: 0; font-size: 0.8rem;">
                         <thead>
@@ -3451,6 +3452,45 @@ with DAG(
                           </tr>
                         </thead>
                         <tbody id="rbac-policies-tbody">
+                          <!-- Filled dynamically -->
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <!-- ROW-LEVEL FILTERS -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; margin-top: 1rem;">
+                      <div>
+                        <h3 style="font-size: 1.1rem; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                          <i class="fa-solid fa-filter" style="color: #f59e0b;"></i> Row-Level Filters
+                        </h3>
+                        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                          Restrict which rows a role can see, e.g. "region == 'EMEA'". Multiple filters for the same role/table combine with AND.
+                        </p>
+                      </div>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button id="btn-add-row-filter" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus"></i> Add Filter</button>
+                        <button id="btn-save-row-filters" class="btn btn-primary btn-sm"><i class="fa-solid fa-save"></i> Save Filters</button>
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(245, 158, 11, 0.04); border: 1px solid rgba(245, 158, 11, 0.15); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.8rem; color: #b45309; line-height: 1.45;">
+                      <i class="fa-solid fa-circle-info"></i>
+                      Filter Expression uses pandas <code>.query()</code> syntax against the table's real column names (evaluated before masking, so it can reference a column that's later masked). A filter referencing a column the table doesn't have returns zero rows rather than all rows.
+                    </div>
+
+                    <div style="overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                      <table class="preview-table" id="row-filters-table" style="width: 100%; margin: 0; font-size: 0.8rem;">
+                        <thead>
+                          <tr>
+                            <th>User Role</th>
+                            <th>Namespace</th>
+                            <th>Table Name</th>
+                            <th>Filter Expression</th>
+                            <th>Description</th>
+                            <th style="width: 80px; text-align: center;">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="row-filters-tbody">
                           <!-- Filled dynamically -->
                         </tbody>
                       </table>
