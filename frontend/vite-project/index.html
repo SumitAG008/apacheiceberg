@@ -2283,7 +2283,7 @@
                 <div class="exp-icon bg-graph"><i class="fa-solid fa-diagram-project"></i></div>
                 <div class="exp-info">
                   <h4>Data Link & Graph</h4>
-                  <p>openCypher & NetworkX Graph Engine</p>
+                  <p>Cypher-style querying & NetworkX Graph Engine</p>
                 </div>
               </div>
               <div class="experience-option" data-exp="admin">
@@ -2409,15 +2409,26 @@
 
           <!-- TAB: MCP GATEWAY -->
           <div id="mcp-tab" class="tab-content">
+            <div style="max-width: 1300px; margin: 0 auto; padding: 0 0 1rem;">
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem; background: rgba(217, 119, 6, 0.08); border: 1px solid rgba(217, 119, 6, 0.25); border-radius: 10px; padding: 0.85rem 1.1rem;">
+                <i class="fa-solid fa-flask" style="color: #d97706; margin-top: 0.15rem;"></i>
+                <div>
+                  <strong style="color: #d97706; font-size: 0.85rem;">Preview — illustrative, not a live connection</strong>
+                  <p style="margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                    These tools return example responses to show the intended workflow. They are not yet connected to a real SAP, Snowflake, or IAM system. Real, working integrations today: Apache Iceberg on S3, CSV/SuccessFactors ingestion, and the Query Lab / meldra Agent.
+                  </p>
+                </div>
+              </div>
+            </div>
             <div class="mcp-tab-layout" style="display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.5rem; height: 100%; max-width: 1300px; margin: 0 auto; padding: 0.5rem 0;">
-              
+
               <!-- Left side: MCP Servers list -->
               <div class="mcp-servers-sidebar" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
                   <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-server" style="color: var(--color-primary);"></i> MCP Registry
                   </h3>
-                  <span class="badge" style="background: rgba(22, 163, 74, 0.15); color: #16a34a; font-size: 0.65rem; border: 1px solid rgba(22, 163, 74, 0.25);">8 Active</span>
+                  <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.65rem; border: 1px solid rgba(217, 119, 6, 0.25);">Preview</span>
                 </div>
                 
                 <div class="mcp-server-list blog-nav-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -2782,7 +2793,13 @@
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <!-- Cypher Query Editor Panel -->
                 <div class="cypher-editor-panel" style="height: 100%; margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
-                  <h3 class="section-title" style="margin: 0 0 0.5rem 0;"><i class="fa-solid fa-code"></i> openCypher Query Console</h3>
+                  <h3 class="section-title" style="margin: 0 0 0.25rem 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-code"></i> Cypher-style Query Console
+                    <span class="badge" style="background: rgba(217, 119, 6, 0.15); color: #d97706; font-size: 0.6rem; border: 1px solid rgba(217, 119, 6, 0.25); font-weight: 700;">Simplified subset</span>
+                  </h3>
+                  <p style="margin: 0 0 0.5rem 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+                    Supports common <code>MATCH ... RETURN</code> patterns, not the full openCypher language yet.
+                  </p>
                   <textarea id="cypher-query-input" class="cypher-textarea" style="height: 80px; min-height: 80px; margin-bottom: 0.5rem;">MATCH (a:Entity)-[r]->(b:Entity) RETURN a.node_id, b.node_id LIMIT 10</textarea>
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.68rem; color: var(--text-muted);">
