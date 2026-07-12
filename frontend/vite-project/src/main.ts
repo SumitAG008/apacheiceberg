@@ -6287,14 +6287,14 @@ setTimeout(() => {
 
 
 // ─────────────────────────────────────────
-// MICROSOFT FABRIC SAAS EXPERIENCE SWITCHER & CONTROLLER
+// meldra WORKSPACE EXPERIENCE SWITCHER & CONTROLLER
 // ─────────────────────────────────────────
 function applyExperience(expName: string) {
   const currentExpTitle = document.getElementById('current-experience-title');
   const expTitleMap: Record<string, string> = {
-    engineering: 'Synapse Data Engineering',
-    factory: 'Synapse Data Factory',
-    warehouse: 'Synapse Data Warehouse',
+    engineering: 'Engineering Studio',
+    factory: 'Ingest Studio',
+    warehouse: 'Query Lab',
     graph: 'Link & Graph',
     admin: 'Security & Admin'
   };
@@ -6589,39 +6589,21 @@ function initCommandPalette() {
 }
 
 function initPythonWorkspace() {
-  const btnRunPython = document.getElementById('btn-run-python');
-  const pythonEditor = document.getElementById('studio-python-editor') as HTMLTextAreaElement;
+  const btnRunPython = document.getElementById('btn-run-python') as HTMLButtonElement | null;
   const pythonOutput = document.getElementById('studio-python-output') as HTMLElement;
-  
-  if (btnRunPython && pythonEditor && pythonOutput) {
-    btnRunPython.onclick = async () => {
-      btnRunPython.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Executing...';
-      pythonOutput.textContent = 'Running Python script in sandboxed environment...';
-      
-      try {
-        const code = pythonEditor.value;
-        const res = await api.studio.executePython(code);
-        pythonOutput.innerHTML = '';
-        
-        if (res.stderr) {
-          const stderrSpan = document.createElement('span');
-          stderrSpan.style.color = '#ef4444';
-          stderrSpan.textContent = res.stderr;
-          pythonOutput.appendChild(stderrSpan);
-        }
-        if (res.stdout) {
-          const stdoutText = document.createTextNode(res.stdout);
-          pythonOutput.appendChild(stdoutText);
-        }
-        if (!res.stdout && !res.stderr) {
-          pythonOutput.textContent = 'Execution finished successfully with no stdout/stderr output.';
-        }
-      } catch (err: any) {
-        pythonOutput.innerHTML = `<span style="color:#ef4444;">Execution Error: ${err.message}</span>`;
-      } finally {
-        btnRunPython.innerHTML = '<i class="fa-solid fa-play"></i> Run Script';
-      }
-    };
+
+  // Free-form script execution has been retired — it ran arbitrary code with
+  // the server's real environment and could not be safely sandboxed. Use
+  // Query Lab's Python mode instead: it runs AST-restricted transformation
+  // scripts scoped to a single table (must set `result_df`), not free-form
+  // scripts with full host access.
+  if (btnRunPython && pythonOutput) {
+    btnRunPython.disabled = true;
+    btnRunPython.title = 'Retired for security reasons — use Query Lab → Python mode instead';
+    pythonOutput.innerHTML =
+      '<span style="color:#9FB0BC;">Free-form script execution has been retired here for security reasons. ' +
+      'Use <strong>Query Lab → Python mode</strong> instead — it runs sandboxed transformation scripts ' +
+      'scoped to one table (set <code>result_df</code> as your output) rather than arbitrary code with full server access.</span>';
   }
 }
 
@@ -6780,7 +6762,7 @@ function initFabricSaaS() {
   initRbacPoliciesEditor();
   initHelpGuideSubtabs();
   
-  // Set default experience to Synapse Data Engineering
+  // Set default experience to Engineering Studio
   applyExperience('engineering');
   applyUserRoleControls();
   

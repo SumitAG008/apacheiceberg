@@ -191,11 +191,16 @@
         inset: 0;
         z-index: 9990;
         background-color: #fafafa;
-        background-image: 
+        background-image:
           linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
           linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
         background-size: 24px 24px;
         overflow-y: auto;
+        /* GPU-accelerated momentum scrolling on iOS — without this, a fixed
+           full-screen container with its own internal scroll is prone to
+           visible tearing/clipping mid-scroll on Safari, exactly the
+           "wavering" symptom seen on mobile. */
+        -webkit-overflow-scrolling: touch;
         color: #0f172a;
         font-family: var(--font-sans);
         display: flex;
@@ -2256,22 +2261,22 @@
               <div class="experience-option active" data-exp="engineering">
                 <div class="exp-icon bg-engineering"><i class="fa-solid fa-code"></i></div>
                 <div class="exp-info">
-                  <h4>Synapse Data Engineering</h4>
-                  <p>Spark, Python & Workspace Schemas</p>
+                  <h4>Engineering Studio</h4>
+                  <p>Python Notebooks, Metadata &amp; Lineage</p>
                 </div>
               </div>
               <div class="experience-option" data-exp="factory">
                 <div class="exp-icon bg-factory"><i class="fa-solid fa-industry"></i></div>
                 <div class="exp-info">
-                  <h4>Synapse Data Factory</h4>
+                  <h4>Ingest Studio</h4>
                   <p>CSV Ingestion & Maintenance Tasks</p>
                 </div>
               </div>
               <div class="experience-option" data-exp="warehouse">
                 <div class="exp-icon bg-warehouse"><i class="fa-solid fa-database"></i></div>
                 <div class="exp-info">
-                  <h4>Synapse Data Warehouse</h4>
-                  <p>SQL Editor & AI Chat Copilot</p>
+                  <h4>Query Lab</h4>
+                  <p>SQL Editor &amp; the meldra Agent</p>
                 </div>
               </div>
               <div class="experience-option" data-exp="graph">
@@ -2889,47 +2894,47 @@
                 <!-- Topic 1: Overview -->
                 <div id="help-overview" class="help-section-content active">
                   <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-layer-group"></i> SaaS Lakehouse Architecture Overview</h2>
-                  <p>Meldra is a state-of-the-art, zero-replication SaaS data lakehouse styled and modeled after <strong>Microsoft Fabric</strong>. It simplifies big data management by combining serverless query engines, tabular catalogs, and relational knowledge graphs into one unified hub.</p>
+                  <p>meldra is a zero-replication SaaS data lakehouse. It simplifies big data management by combining serverless query engines, tabular catalogs, and relational knowledge graphs into one unified hub.</p>
                   
                   <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 1rem; border-radius: 8px; margin: 1rem 0; font-size: 0.88rem;">
                     <strong style="color: #22c55e;">Core Technologies Stack:</strong>
                     <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem;">
                       <li><strong>Apache Iceberg:</strong> Open-source format for massive analytical tables. Provides ACID transactions, schema evolution, and time-travel querying.</li>
                       <li><strong>DuckDB:</strong> In-process analytical database engine executing analytical SQL queries at high speeds directly in the browser/backend memory.</li>
-                      <li><strong>PostgreSQL &amp; Apache AGE:</strong> Stores authorization schemas, audit logs, and powers the graph database relational model using Cypher.</li>
+                      <li><strong>PostgreSQL:</strong> Stores authorization schemas, audit logs, and powers the graph database relational model, queried through a simplified Cypher-like pattern language.</li>
                       <li><strong>AWS S3 / MinIO:</strong> Stores physical data files (parquet) securely.</li>
                     </ul>
                   </div>
 
                   <h3 style="color: var(--text-main); font-size: 1.1rem; margin-top: 1.5rem;">Physical vs Logical Layers</h3>
-                  <p>Unlike traditional data warehouses which require copying data into proprietary formats, Meldra maintains a clean separation of concerns. Data files remain as open-source Parquet files on S3, while metadata schemas are managed by the Glue/Iceberg catalog. This eliminates data silos and prevents vendor lock-in.</p>
+                  <p>Unlike traditional data warehouses which require copying data into proprietary formats, meldra maintains a clean separation of concerns. Data files remain as open-source Parquet files on S3, while metadata schemas are managed by the Glue/Iceberg catalog. This eliminates data silos and prevents vendor lock-in.</p>
                 </div>
 
                 <!-- Topic 2: Experiences -->
                 <div id="help-experiences" class="help-section-content" style="display:none;">
                   <h2 style="color: var(--color-primary); margin-top: 0; font-size: 1.5rem;"><i class="fa-solid fa-compass"></i> Workspace Workload Experiences</h2>
-                  <p>To match Microsoft Fabric's workload separation, Meldra groups pages and actions into five distinct <strong>Experiences</strong>, selectable via the top-left dropdown selector:</p>
+                  <p>meldra groups pages and actions into five distinct <strong>Experiences</strong>, selectable via the top-left dropdown selector:</p>
                   
                   <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
                     <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
                       <div class="exp-icon bg-engineering"><i class="fa-solid fa-code"></i></div>
                       <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Synapse Data Engineering</h4>
+                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Engineering Studio</h4>
                         <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Contains the interactive Python workspace/notebook, Glue/Iceberg metadata explorer, data lineage graphs, and the operations help manual.</p>
                       </div>
                     </div>
                     <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
                       <div class="exp-icon bg-factory"><i class="fa-solid fa-industry"></i></div>
                       <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Synapse Data Factory</h4>
+                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Ingest Studio</h4>
                         <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Provides ingestion pipelines (loading CSV files into S3 Iceberg), data triggers/alerts, and background table maintenance (compaction, snapshot purging).</p>
                       </div>
                     </div>
                     <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
                       <div class="exp-icon bg-warehouse"><i class="fa-solid fa-database"></i></div>
                       <div>
-                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Synapse Data Warehouse</h4>
-                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Exposes the high-performance SQL query console (DuckDB) and the AI Chat Copilot to query your lakehouse using natural language.</p>
+                        <h4 style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#fff;">Query Lab</h4>
+                        <p style="margin:0; font-size:0.78rem; color:var(--text-muted);">Exposes the high-performance SQL query console (DuckDB) and the meldra Agent to query your lakehouse using natural language.</p>
                       </div>
                     </div>
                     <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.02); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-subtle);">

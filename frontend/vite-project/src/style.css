@@ -61,7 +61,15 @@ body {
   font-family: var(--font-body);
   background: var(--bg-primary);
   color: var(--text-main);
+  /* 100vh is calculated against Safari's largest possible viewport (address
+     bar collapsed) — on load, with the address bar still showing, the real
+     visible area is smaller, causing clipped content that visibly "waves"
+     as the bar animates in/out during scroll. 100dvh tracks the actual
+     current viewport instead. Keep the 100vh line as a fallback for older
+     browsers that don't support dvh yet (the dvh rule below overrides it
+     wherever supported). */
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   line-height: 1.55;
@@ -74,7 +82,7 @@ body {
 button, input, textarea, select { font-family: inherit; color: inherit; }
 
 /* ─── App Shell ─── */
-.app-container { display: flex; height: 100vh; width: 100vw; }
+.app-container { display: flex; height: 100vh; height: 100dvh; width: 100vw; }
 
 /* ══════════════════════════════════════
    SIDEBAR
@@ -386,7 +394,9 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 .tab-content {
   width: 100%;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
   display: none;
   flex-direction: column;
   padding: 1.75rem 2.5rem;
@@ -1657,6 +1667,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
     left: -300px;
     width: 280px;
     height: 100vh;
+    height: 100dvh;
     z-index: 100;
     transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
@@ -2698,6 +2709,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(8px);
   z-index: 100000;

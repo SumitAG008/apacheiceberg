@@ -483,19 +483,10 @@ export const api = {
     }
   },
   // ── Studio / Notebook & Command Search ────────────────────────────────────
+  // Note: free-form executePython() was removed along with the backend
+  // /v1/studio/execute-python endpoint (unsandboxed RCE). Use Query Lab's
+  // Python mode (api.query.submit with mode: "python") instead.
   studio: {
-    async executePython(script: string): Promise<{ stdout: string; stderr: string; exit_code: number }> {
-      const res = await authFetch(`${BASE_URL}/v1/studio/execute-python`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || err.detail || 'Failed to execute Python script');
-      }
-      return res.json();
-    },
     async search(q: string): Promise<any[]> {
       const res = await authFetch(`${BASE_URL}/v1/studio/search?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('Search failed');
