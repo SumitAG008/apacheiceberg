@@ -236,16 +236,20 @@ class TestProtectedRoutes:
         res = client.get("/v1/config/aws")
         assert res.status_code == 401
 
-    def test_get_aws_config_authenticated(self, test_user_credentials):
-        """GET /v1/config/aws must return config for authenticated user."""
+    def test_get_aws_config_denied_for_non_admin(self, test_user_credentials):
+        """
+        GET /v1/config/aws is Admin-only (AWS warehouse config is
+        sensitive, shared process-wide state). This user registers as a
+        default Business Analyst, so the correct behavior is a 403, not a
+        200 -- this test previously asserted the pre-hardening behavior.
+        """
         email = test_user_credentials["email"]
         password = test_user_credentials["password"]
         access_token = _full_login(email, password)
 
         headers = {"Authorization": f"Bearer {access_token}"}
         res = client.get("/v1/config/aws", headers=headers)
-        assert res.status_code == 200, f"Fetching config failed: {res.text}"
-        assert "s3_warehouse_uri" in res.json()
+        assert res.status_code == 403, f"Expected non-admin to be denied, got: {res.text}"
 
     def test_audit_logs_retrieval(self, test_user_credentials):
         """GET /v1/audit must return a list of audit events for authenticated user."""

@@ -65,14 +65,23 @@ class SQLExecutor:
 
         catalog = self._get_catalog()
         con = duckdb.connect(database=":memory:")
+        con.execute("SET enable_external_access=false;")
 
         # ── 1. Register primary Iceberg table ─────────────────────────────────
         primary_arrow = self._load_iceberg(catalog, job.namespace, job.table_name, job.filters)
-        con.register("iceberg_table", primary_arrow)
+
+        # Enforce column-level RBAC at the data layer before DuckDB ever sees
+        # the columns — denied columns are dropped and masked columns
+        # redacted, so aliasing in the SQL cannot expose the real values.
+        from rbac_utils import apply_rbac_to_dataframe
+        primary_df = apply_rbac_to_dataframe(
+            primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
+        )
+        con.register("iceberg_table", primary_df)
 
         # Also register with fully-qualified alias so multi-table joins work
         fq_name = f"{job.namespace}__{job.table_name}"
-        con.register(fq_name, primary_arrow)
+        con.register(fq_name, primary_df)
 
         # ── 2. Execution plan (EXPLAIN) ────────────────────────────────────────
         explain_text: Optional[str] = None
@@ -122,6 +131,7 @@ class SQLExecutor:
         try:
             catalog = self._get_catalog()
             con = duckdb.connect(database=":memory:")
+            con.execute("SET enable_external_access=false;")
             primary_arrow = self._load_iceberg(catalog, job.namespace, job.table_name, job.filters)
             con.register("iceberg_table", primary_arrow)
             explain_df = con.execute(f"EXPLAIN {job.sql}").fetchdf()

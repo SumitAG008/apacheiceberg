@@ -109,14 +109,18 @@ def test_destructive_action_restriction(test_users):
     assert res.status_code == 403
     assert "Access Denied" in res.json()["error"]
 
-def test_python_workspace_sandbox(test_users):
-    headers = {"Authorization": f"Bearer {test_users['admin_token']}"}
-    script = "print('Hello from sandbox!')"
-    res = client.post("/v1/studio/execute-python", json={"script": script}, headers=headers)
-    assert res.status_code == 200
-    assert "Hello from sandbox!" in res.json()["stdout"]
-
-def test_python_workspace_analyst_denied(test_users):
-    headers = {"Authorization": f"Bearer {test_users['analyst_token']}"}
-    res = client.post("/v1/studio/execute-python", json={"script": "print(1)"}, headers=headers)
-    assert res.status_code == 403
+def test_python_workspace_endpoint_removed(test_users):
+    """
+    /v1/studio/execute-python ran arbitrary user-submitted Python via a raw
+    subprocess with the server's real environment -- confirmed exploitable
+    (a getattr-chain proof-of-concept reached os.system()) and removed
+    entirely rather than patched. It must stay gone for every role,
+    including Admin. Use Query Lab's AST-sandboxed Python mode instead
+    (POST /v1/query/submit with mode="python"), which is scoped to a single
+    table and cannot access the filesystem or environment.
+    """
+    admin_headers = {"Authorization": f"Bearer {test_users['admin_token']}"}
+    analyst_headers = {"Authorization": f"Bearer {test_users['analyst_token']}"}
+    for headers in (admin_headers, analyst_headers):
+        res = client.post("/v1/studio/execute-python", json={"script": "print(1)"}, headers=headers)
+        assert res.status_code == 404

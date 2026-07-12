@@ -21,6 +21,10 @@ httpx>=0.27.0
 bcrypt>=4.0.0
 # Graph community detection (DQE)
 python-louvain>=0.16
+# Graph pagerank algorithm (DQE) -- pinned below 1.14 because scipy>=1.14
+# pulls in numpy>=2.0, which conflicts with langchain's numpy<2.0.0 pin
+scipy<1.14
+numpy<2.0.0,>=1.26.0
 
 # Testing and Load Testing
 pytest>=8.0.0

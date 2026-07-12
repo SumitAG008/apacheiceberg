@@ -608,7 +608,7 @@ class TestQueryEngineRouter:
 # ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
-def test_client(sample_arrow_table):
+def test_client():
     """Create a FastAPI TestClient with mocked Iceberg + auth."""
     try:
         from fastapi.testclient import TestClient
@@ -691,7 +691,7 @@ class TestDQEEndpoints:
                     "mode": "python",
                     "namespace": "default",
                     "table_name": "transactions_10k",
-                    "python_script": "result_df = df[df['amount'] > 2000]",
+                    "python_script": "result_df = df[(df['amount'] > 2000) & (df['status'] == 'COMPLETED')]",
                     "limit": 50,
                 },
                 headers=_auth_headers(),
@@ -699,7 +699,9 @@ class TestDQEEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "success"
-        assert data["result"]["total_rows"] == 2  # 2500 and 9999 and 15000 > 2000 = 3 but status
+        # amount > 2000: 2500 (COMPLETED), 9999 (COMPLETED), 15000 (FAILED) -- the
+        # status filter excludes the FAILED row, leaving 2.
+        assert data["result"]["total_rows"] == 2
 
     def test_submit_invalid_mode(self, test_client):
         resp = test_client.post(

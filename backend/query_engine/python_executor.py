@@ -49,12 +49,24 @@ BLOCKED_MODULES: Set[str] = {
     "os", "sys", "subprocess", "socket", "shutil", "pathlib",
     "importlib", "ctypes", "multiprocessing", "threading",
     "signal", "resource", "tempfile", "glob",
+    "builtins", "gc", "inspect", "types", "code", "codeop",
+    "marshal", "pickle", "copyreg", "atexit", "traceback",
 }
 
 BLOCKED_BUILTINS: Set[str] = {
     "exec", "eval", "compile", "open", "__import__", "breakpoint",
     "input", "print",  # print is blocked to avoid stdout pollution; use result_df
     "vars", "dir", "globals", "locals",
+    "getattr", "setattr", "delattr",  # block indirect dunder access (sandbox-escape gadget chains)
+}
+
+# String literals that must never appear as an argument to getattr/setattr/delattr
+# (defense in depth — those builtins are already blocked entirely above, but this
+# also catches obfuscated re-implementations via string formatting on identifiers).
+BLOCKED_ATTR_NAMES: Set[str] = {
+    "__class__", "__base__", "__bases__", "__mro__", "__subclasses__",
+    "__globals__", "__code__", "__closure__", "__func__", "__self__",
+    "__builtins__", "__dict__", "__getattribute__", "__reduce__", "__reduce_ex__",
 }
 
 
@@ -108,6 +120,13 @@ class _SecurityVisitor(ast.NodeVisitor):
             raise SecurityError(
                 f"Access to dunder attribute '{node.attr}' is not permitted."
             )
+        # Block bare references to dangerous names even without an immediate call
+        # (e.g. `g = some_obj.getattr` followed by `g(...)` later), which would
+        # otherwise dodge the Call-based BLOCKED_BUILTINS check below.
+        if node.attr in BLOCKED_BUILTINS:
+            raise SecurityError(
+                f"Access to '.{node.attr}' is not permitted in Python extraction scripts."
+            )
         self.generic_visit(node)
 
 
@@ -146,12 +165,12 @@ def _build_namespace(df: pd.DataFrame, arrow_table: pa.Table) -> Dict[str, Any]:
             "abs": abs, "all": all, "any": any, "bool": bool,
             "bytes": bytes, "chr": chr, "dict": dict, "enumerate": enumerate,
             "filter": filter, "float": float, "format": format, "frozenset": frozenset,
-            "getattr": getattr, "hasattr": hasattr, "hash": hash,
+            "hasattr": hasattr, "hash": hash,
             "int": int, "isinstance": isinstance, "issubclass": issubclass,
             "iter": iter, "len": len, "list": list, "map": map, "max": max,
             "min": min, "next": next, "ord": ord, "pow": pow, "print": lambda *a, **k: None,
             "range": range, "repr": repr, "reversed": reversed, "round": round,
-            "set": set, "setattr": setattr, "slice": slice, "sorted": sorted,
+            "set": set, "slice": slice, "sorted": sorted,
             "str": str, "sum": sum, "tuple": tuple, "type": type, "zip": zip,
             "True": True, "False": False, "None": None,
         },
@@ -169,6 +188,14 @@ class PythonExecutor:
         # ── 1. Load Iceberg data ──────────────────────────────────────────────
         arrow_table = self._load_iceberg(job.namespace, job.table_name, job.filters)
         df = arrow_table.to_pandas()
+
+        # Enforce column-level RBAC before the script ever sees the data —
+        # the sandbox has no way to distinguish "masked" from "real" data,
+        # so redaction must happen here, not on the script's output.
+        from rbac_utils import apply_rbac_to_dataframe
+        df = apply_rbac_to_dataframe(df, job.namespace, job.table_name, job.role)
+        import pyarrow as _pa
+        arrow_table = _pa.Table.from_pandas(df, preserve_index=False)
 
         # ── 2. AST security scan ──────────────────────────────────────────────
         _ast_security_scan(job.python_script)

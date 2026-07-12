@@ -76,6 +76,10 @@ class QueryJob(BaseModel):
     result: Optional[QueryResult] = None
     error: Optional[str] = None
     submitted_by: Optional[str] = None   # user ID from JWT
+    # RBAC role of the submitting user — set server-side from the JWT payload
+    # ONLY (never from client-supplied request fields), used to enforce
+    # column-level masking/denial at the data layer before execution.
+    role: str = "Business Analyst"
 
     @model_validator(mode="after")
     def _validate_mode_fields(self) -> "QueryJob":

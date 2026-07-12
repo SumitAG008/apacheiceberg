@@ -542,7 +542,9 @@ async def register(payload: RegisterRequest, request: Request):
         reg_ip = reg_ip.split(",")[0].strip()
     else:
         reg_ip = request.client.host if request.client else "127.0.0.1"
-        
+
+    check_register_rate_limit(reg_ip)
+
     # Extract country geography
     reg_country = (
         request.headers.get("cf-ipcountry") or 
@@ -609,6 +611,22 @@ def check_login_rate_limit(email: str):
 
 def record_failed_login(email: str):
     failed_logins[email].append(time.time())
+
+# Rate limiting cache for registration attempts, keyed by IP (unlike login,
+# every registration attempt uses a different email, so email-keying would
+# do nothing to stop mass account creation / OTP-email spam from one source).
+registration_attempts = defaultdict(list)
+
+def check_register_rate_limit(ip: str):
+    now = time.time()
+    attempts = [t for t in registration_attempts[ip] if now - t < 3600]
+    attempts.append(now)
+    registration_attempts[ip] = attempts
+    if len(attempts) > 5:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many registration attempts from this address. Please try again later."
+        )
 
 
 @app.post("/auth/login", tags=["Auth"])
@@ -1613,9 +1631,44 @@ def _get_query_engine():
     return query_engine
 
 
+# ─── DQE Pydantic request models (defined here, directly, not as string
+# forward-references) ────────────────────────────────────────────────────
+# FastAPI decides how to parse each parameter (as a JSON body vs. a query
+# param) once, at route-registration time, using whatever type it can
+# resolve at that exact moment. A string annotation like payload: "Foo"
+# only resolves if `Foo` is already a name in this module's namespace when
+# the @app.post(...) decorator runs. These classes must therefore be
+# defined and directly referenced (no quotes) BEFORE the routes below.
+class _DQESubmitRequest(BaseModel):
+    mode: str
+    namespace: Optional[str] = None
+    table_name: Optional[str] = None
+    sql: Optional[str] = None
+    cypher: Optional[str] = None
+    graph_name: Optional[str] = None
+    algorithm: Optional[str] = None
+    python_script: Optional[str] = None
+    filters: Optional[Dict[str, Any]] = None
+    limit: int = 1000
+
+class _DQEExplainRequest(BaseModel):
+    mode: str
+    namespace: Optional[str] = None
+    table_name: Optional[str] = None
+    sql: Optional[str] = None
+    cypher: Optional[str] = None
+    graph_name: Optional[str] = None
+    python_script: Optional[str] = None
+
+class _DQEMultiRequest(BaseModel):
+    queries: List[_DQESubmitRequest]
+    merge_strategy: str = "union"
+    join_key: Optional[str] = None
+
+
 @app.post("/v1/query/submit", tags=["Query Engine"])
 async def dqe_submit(
-    payload: "QuerySubmitRequest",
+    payload: _DQESubmitRequest,
     user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
@@ -1631,6 +1684,12 @@ async def dqe_submit(
     """
     from query_engine.models import QueryJob, QueryMode, QuerySubmitRequest as _QSR
 
+    if payload.mode == "python" and user.get("role", "Business Analyst") not in ["Admin", "Data Engineer"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access Denied: Role '{user.get('role', 'Business Analyst')}' does not have permission to run Python extraction scripts."
+        )
+
     try:
         job = QueryJob(
             mode=QueryMode(payload.mode),
@@ -1644,6 +1703,7 @@ async def dqe_submit(
             filters=payload.filters,
             limit=payload.limit,
             submitted_by=user.get("sub"),
+            role=user.get("role", "Business Analyst"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -1673,6 +1733,40 @@ async def dqe_submit(
     }
 
 
+@app.get("/v1/query/modes", tags=["Query Engine"])
+async def dqe_modes(user: Dict[str, Any] = Depends(get_current_user)):
+    """Return supported query modes, required fields, and example payloads."""
+    engine = _get_query_engine()
+    return {"modes": engine.supported_modes()}
+
+
+@app.get("/v1/query/history", tags=["Query Engine"])
+async def dqe_history(
+    limit: int = 20,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Return the authenticated user's recent query job history, newest first."""
+    engine = _get_query_engine()
+    jobs = engine.list_for_user(user.get("sub"), limit=limit)
+    return [
+        {
+            "job_id": j.job_id,
+            "mode": j.mode,
+            "status": j.status,
+            "created_at": j.created_at.isoformat() + "Z",
+            "completed_at": j.completed_at.isoformat() + "Z" if j.completed_at else None,
+            "total_rows": j.result.total_rows if j.result else None,
+            "error": j.error,
+        }
+        for j in jobs
+    ]
+
+
+# NOTE: /v1/query/{job_id} must be registered AFTER every other static
+# /v1/query/<literal> route above (modes, history) — Starlette matches routes
+# in registration order, so a static route registered after this catch-all
+# would be shadowed by it (e.g. GET /v1/query/modes would be swallowed as a
+# job-id lookup for job "modes" and incorrectly 404).
 @app.get("/v1/query/{job_id}", tags=["Query Engine"])
 async def dqe_get_job(
     job_id: str,
@@ -1702,7 +1796,7 @@ async def dqe_get_job(
 
 @app.post("/v1/query/explain", tags=["Query Engine"])
 async def dqe_explain(
-    payload: "QueryExplainRequest",
+    payload: _DQEExplainRequest,
     user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
@@ -1731,31 +1825,9 @@ async def dqe_explain(
     return {"mode": payload.mode, "execution_plan": plan}
 
 
-@app.get("/v1/query/history", tags=["Query Engine"])
-async def dqe_history(
-    limit: int = 20,
-    user: Dict[str, Any] = Depends(get_current_user),
-):
-    """Return the authenticated user's recent query job history, newest first."""
-    engine = _get_query_engine()
-    jobs = engine.list_for_user(user.get("sub"), limit=limit)
-    return [
-        {
-            "job_id": j.job_id,
-            "mode": j.mode,
-            "status": j.status,
-            "created_at": j.created_at.isoformat() + "Z",
-            "completed_at": j.completed_at.isoformat() + "Z" if j.completed_at else None,
-            "total_rows": j.result.total_rows if j.result else None,
-            "error": j.error,
-        }
-        for j in jobs
-    ]
-
-
 @app.post("/v1/query/multi", tags=["Query Engine"])
 async def dqe_multi(
-    payload: "MultiQueryRequest",
+    payload: _DQEMultiRequest,
     user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
@@ -1770,6 +1842,12 @@ async def dqe_multi(
 
     if len(payload.queries) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 queries per multi-request.")
+
+    if any(q.mode == "python" for q in payload.queries) and user.get("role", "Business Analyst") not in ["Admin", "Data Engineer"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access Denied: Role '{user.get('role', 'Business Analyst')}' does not have permission to run Python extraction scripts."
+        )
 
     engine = _get_query_engine()
     jobs_to_run = []
@@ -1787,6 +1865,7 @@ async def dqe_multi(
                 filters=q.filters,
                 limit=q.limit,
                 submitted_by=user.get("sub"),
+            role=user.get("role", "Business Analyst"),
             )
             jobs_to_run.append(job)
         except ValueError as exc:
@@ -1840,51 +1919,6 @@ async def dqe_multi(
         "merged_result": merged_result,
         "merge_strategy": payload.merge_strategy,
     }
-
-
-@app.get("/v1/query/modes", tags=["Query Engine"])
-async def dqe_modes(user: Dict[str, Any] = Depends(get_current_user)):
-    """Return supported query modes, required fields, and example payloads."""
-    engine = _get_query_engine()
-    return {"modes": engine.supported_modes()}
-
-
-# ─── DQE Pydantic request helpers (local to this file) ─────────────────────
-
-class _DQESubmitRequest(BaseModel):
-    mode: str
-    namespace: Optional[str] = None
-    table_name: Optional[str] = None
-    sql: Optional[str] = None
-    cypher: Optional[str] = None
-    graph_name: Optional[str] = None
-    algorithm: Optional[str] = None
-    python_script: Optional[str] = None
-    filters: Optional[Dict[str, Any]] = None
-    limit: int = 1000
-
-class _DQEExplainRequest(BaseModel):
-    mode: str
-    namespace: Optional[str] = None
-    table_name: Optional[str] = None
-    sql: Optional[str] = None
-    cypher: Optional[str] = None
-    graph_name: Optional[str] = None
-    python_script: Optional[str] = None
-
-class _DQEMultiRequest(BaseModel):
-    queries: List[_DQESubmitRequest]
-    merge_strategy: str = "union"
-    join_key: Optional[str] = None
-
-# Re-wire the endpoints to use the local Pydantic classes
-# (overwrite the forward-reference annotations FastAPI needs at startup)
-dqe_submit.__annotations__["payload"]  = _DQESubmitRequest
-dqe_explain.__annotations__["payload"] = _DQEExplainRequest
-dqe_multi.__annotations__["payload"]   = _DQEMultiRequest
-
-# Rebuild FastAPI route dependencies
-app.openapi_schema = None   # invalidate cached schema so FastAPI re-reads annotations
 
 
 # ── Live Traffic WebSocket & REST Fallback ──────────────────────────────────
@@ -2200,46 +2234,27 @@ async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(ge
                 
         con = duckdb.connect(database=':memory:')
         con.execute("SET enable_external_access=false;")
-        
+
+        # Apply column-level RBAC at the data layer, BEFORE registering with
+        # DuckDB — denied columns are dropped and masked columns redacted in
+        # the source frame, so no amount of aliasing/subquerying in the SQL
+        # can expose the real values. See rbac_utils.apply_rbac_to_dataframe.
+        from rbac_utils import apply_rbac_to_dataframe
+        role = user.get("role", "Business Analyst")
+
         for tbl_name in tables:
             try:
                 # Time travel scan
                 arrow_tbl = m_catalog.run_time_travel_scan(payload.namespace, tbl_name, payload.snapshot_id)
-                con.register(tbl_name, arrow_tbl)
+                tbl_df = apply_rbac_to_dataframe(arrow_tbl.to_pandas(), payload.namespace, tbl_name, role)
+                con.register(tbl_name, tbl_df)
             except Exception:
                 pass
-                
+
         start_time = time.time()
         result_df = con.execute(payload.sql).fetchdf()
         duration_ms = (time.time() - start_time) * 1000
 
-        # Apply dynamic column-level RBAC policies
-        role = user.get("role", "Business Analyst")
-        from auth_db import _get_conn
-        conn = _get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT namespace, table_name, column_name, action, masking_pattern FROM auth.rbac_policies WHERE role = %s;", (role,))
-        policies = cur.fetchall()
-        conn.close()
-        
-        for pol in policies:
-            col_to_mask = pol["column_name"]
-            tbl_to_mask = pol["table_name"]
-            action = pol["action"]
-            pattern = pol["masking_pattern"]
-            
-            if col_to_mask in result_df.columns and (tbl_to_mask.lower() in payload.sql.lower() or tbl_to_mask == "*"):
-                if action == "mask":
-                    result_df[col_to_mask] = result_df[col_to_mask].astype(object)
-                    if pattern == "***":
-                        result_df[col_to_mask] = "***"
-                    elif pattern == "###.##":
-                        result_df[col_to_mask] = 0.00
-                    else:
-                        result_df[col_to_mask] = result_df[col_to_mask].apply(lambda x: pattern if pd.notna(x) else None)
-                elif action == "deny":
-                    raise Exception(f"Access Denied: Your role '{role}' is not authorized to query column '{col_to_mask}' of table '{tbl_to_mask}'.")
-        
         preview_rows = result_df.head(100).to_dict(orient="records")
         for row in preview_rows:
             for k, v in row.items():
@@ -2442,11 +2457,10 @@ class UpdateUserRoleRequest(BaseModel):
     email: str
     role: str
 
-class PythonExecuteRequest(BaseModel):
-    script: str
-
 @app.get("/v1/rbac/policies", tags=["RBAC"])
 async def get_rbac_policies(user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role", "Business Analyst") != "Admin":
+        raise HTTPException(status_code=403, detail="Only Admins can view RBAC policies.")
     from auth_db import _get_conn
     conn = _get_conn()
     try:
@@ -2490,68 +2504,6 @@ async def update_user_role(payload: UpdateUserRoleRequest, user: Dict[str, Any] 
         return {"status": "success", "message": f"User {payload.email} role updated to {payload.role}."}
     finally:
         conn.close()
-
-@app.post("/v1/studio/execute-python", tags=["Studio"])
-async def execute_python_script(payload: PythonExecuteRequest, user: Dict[str, Any] = Depends(get_current_user)):
-    role = user.get("role", "Business Analyst")
-    if role not in ["Admin", "Data Engineer"]:
-        raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to execute Python scripts.")
-    
-    import sys
-    import subprocess
-    import tempfile
-    
-    # Write script to temporary file
-    temp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "scratch")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=temp_dir, delete=False) as f:
-        # Prepend path setups
-        f.write("import os\n")
-        f.write("import sys\n")
-        backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        # Escape path backslashes for Windows safety
-        escaped_backend_path = backend_path.replace("\\", "\\\\")
-        f.write(f"sys.path.insert(0, '{escaped_backend_path}')\n")
-        f.write(payload.script)
-        temp_file_path = f.name
-        
-    try:
-        env = os.environ.copy()
-        # Remove critical keys from runtime subprocess environment for sandbox security
-        for key in ["ANTHROPIC_API_KEY", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GRAPH_DB_PASSWORD", "GRAPH_DB_USER"]:
-            env.pop(key, None)
-            
-        result = subprocess.run(
-            [sys.executable, temp_file_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            env=env,
-            cwd=backend_path
-        )
-        return {
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "exit_code": result.returncode
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "stdout": "",
-            "stderr": "Execution Timeout: Code took longer than 15 seconds to run.",
-            "exit_code": -1
-        }
-    except Exception as e:
-        return {
-            "stdout": "",
-            "stderr": f"Execution Error: {str(e)}",
-            "exit_code": -2
-        }
-    finally:
-        try:
-            os.remove(temp_file_path)
-        except Exception:
-            pass
 
 @app.get("/v1/studio/search", tags=["Studio"])
 async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)):
