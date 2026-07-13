@@ -2485,6 +2485,16 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
    ========================================================================== */
 
 /* Experience Switcher container & button */
+.header-greeting {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-left: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
 .experience-switcher-container {
   position: relative;
   margin-right: auto;

@@ -25,7 +25,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File, Cookie, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import jwt as jose_jwt, JWTError
@@ -59,8 +59,21 @@ from auth_db import (
     log_audit_pg,
     get_audit_logs_pg,
     verify_password,
+    get_or_create_sso_user,
 )
+import oidc
 from mfa_service import send_email_otp
+from roles import (
+    ALL_ROLES,
+    ROLE_DESCRIPTIONS,
+    ROLE_ADMIN,
+    ROLE_BUSINESS_ANALYST,
+    CAN_RUN_PYTHON,
+    CAN_MANAGE_SCHEMA,
+    CAN_MANAGE_RBAC,
+    CAN_INGEST,
+    DASHBOARD_ONLY_ROLES,
+)
 
 # Import existing agent creator
 try:
@@ -842,6 +855,86 @@ async def logout(request: Request, user: Dict[str, Any] = Depends(get_current_us
     return {"message": "Logged out successfully."}
 
 
+@app.get("/auth/sso/status", tags=["Auth"])
+async def sso_status():
+    """Public — lets the frontend know whether to show a 'Sign in with X'
+    button at all, and what to label it. No secrets in the response."""
+    configured = oidc.is_configured()
+    return {"configured": configured, "provider_name": oidc.provider_name() if configured else None}
+
+
+@app.get("/auth/sso/login", tags=["Auth"])
+async def sso_login():
+    """Redirects the browser to the configured identity provider's login page."""
+    if not oidc.is_configured():
+        raise HTTPException(status_code=501, detail="SSO is not configured on this deployment.")
+    try:
+        url = oidc.build_authorization_url()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach the identity provider: {e}")
+    return RedirectResponse(url)
+
+
+@app.get("/auth/sso/callback", tags=["Auth"])
+async def sso_callback(code: str = "", state: str = "", error: str = ""):
+    """
+    The IdP redirects the browser here after login. Exchanges the
+    authorization code for a verified id_token (see oidc.exchange_code_for_claims),
+    looks up or provisions the local user by the email claim, and redirects
+    to the frontend carrying our own access + refresh tokens — the SSO user
+    ends up in exactly the same session state a password+MFA login produces.
+    """
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+    if error:
+        return RedirectResponse(f"{frontend_url}/?sso_error={error}")
+
+    if not oidc.is_configured():
+        raise HTTPException(status_code=501, detail="SSO is not configured on this deployment.")
+
+    if not state or not oidc.consume_state(state):
+        return RedirectResponse(f"{frontend_url}/?sso_error=invalid_state")
+
+    try:
+        claims = oidc.exchange_code_for_claims(code)
+    except Exception as e:
+        log_audit_pg("unknown", "trial", "sso_login", f"Code exchange/verification failed: {e}", "error")
+        return RedirectResponse(f"{frontend_url}/?sso_error=exchange_failed")
+
+    email = claims.get("email")
+    if not email:
+        return RedirectResponse(f"{frontend_url}/?sso_error=no_email_claim")
+
+    user = get_or_create_sso_user(email, provider=oidc.provider_name())
+    update_last_login(user["id"])
+
+    access_token = _create_access_token({
+        "sub": user["id"],
+        "email": user["email"],
+        "tier": user["tier"],
+        "role": user.get("user_role", "Business Analyst"),
+    })
+    refresh_token = create_session(user["id"])
+
+    log_audit_pg(user["id"], user["tier"], "sso_login", f"SSO login via {oidc.provider_name()} for {email}", "success")
+
+    import json as _json
+    import base64 as _base64
+    user_payload = _base64.urlsafe_b64encode(_json.dumps({
+        "id": user["id"],
+        "email": user["email"],
+        "mfa_method": user.get("mfa_method", "email"),
+        "is_verified": True,
+        "tier": user["tier"],
+        "role": user.get("user_role", "Business Analyst"),
+        "subscription_status": user.get("subscription_status", "active"),
+    }).encode()).decode()
+
+    return RedirectResponse(
+        f"{frontend_url}/?sso_access_token={access_token}&sso_refresh_token={refresh_token}&sso_user={user_payload}"
+    )
+
+
 @app.post("/auth/api-token", tags=["Auth"])
 async def generate_api_token(user: Dict[str, Any] = Depends(get_current_user)):
     """
@@ -1038,6 +1131,11 @@ async def ingest_endpoint(
     payload: IngestRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ):
+    if user.get("role", "Business Analyst") not in CAN_INGEST:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access Denied: Role '{user.get('role')}' does not have permission to ingest data."
+        )
     from catalog_setup import get_catalog
     from tools import create_iceberg_table
     from tenancy import get_current_tenant_id, scope_namespace
@@ -1210,6 +1308,11 @@ async def ingest_successfactors(
     Supports Basic Auth (username/password) and OAuth2 Client Credentials flow.
     Handles OData pagination ($skiptoken / @odata.nextLink) automatically.
     """
+    if user.get("role", "Business Analyst") not in CAN_INGEST:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access Denied: Role '{user.get('role')}' does not have permission to ingest data."
+        )
     from tenancy import get_current_tenant_id, scope_namespace
     payload.namespace = scope_namespace(get_current_tenant_id(user), payload.namespace)
     import requests
@@ -1500,7 +1603,13 @@ async def dqe_submit(
     from query_engine.models import QueryJob, QueryMode, QuerySubmitRequest as _QSR
     from tenancy import get_current_tenant_id
 
-    if payload.mode == "python" and user.get("role", "Business Analyst") not in ["Admin", "Data Engineer"]:
+    if user.get("role", "Business Analyst") in DASHBOARD_ONLY_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user.get('role')}' is dashboard-only — use Catalog and Observability instead of ad-hoc queries."
+        )
+
+    if payload.mode == "python" and user.get("role", "Business Analyst") not in CAN_RUN_PYTHON:
         raise HTTPException(
             status_code=403,
             detail=f"Access Denied: Role '{user.get('role', 'Business Analyst')}' does not have permission to run Python extraction scripts."
@@ -1658,10 +1767,16 @@ async def dqe_multi(
     from tenancy import get_current_tenant_id
     import asyncio as _asyncio
 
+    if user.get("role", "Business Analyst") in DASHBOARD_ONLY_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user.get('role')}' is dashboard-only — use Catalog and Observability instead of ad-hoc queries."
+        )
+
     if len(payload.queries) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 queries per multi-request.")
 
-    if any(q.mode == "python" for q in payload.queries) and user.get("role", "Business Analyst") not in ["Admin", "Data Engineer"]:
+    if any(q.mode == "python" for q in payload.queries) and user.get("role", "Business Analyst") not in CAN_RUN_PYTHON:
         raise HTTPException(
             status_code=403,
             detail=f"Access Denied: Role '{user.get('role', 'Business Analyst')}' does not have permission to run Python extraction scripts."
@@ -1860,7 +1975,7 @@ async def create_namespace(payload: CreateNamespaceRequest, user: Dict[str, Any]
 @app.delete("/v1/catalog/namespaces/{namespace}", tags=["Catalog"])
 async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
-    if role not in ["Admin", "Data Architect"]:
+    if role not in CAN_MANAGE_SCHEMA:
         raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to delete namespaces.")
     from meldra import MeldraCatalog
     from tenancy import get_current_tenant_id, scope_namespace
@@ -1915,7 +2030,7 @@ async def get_table_details(namespace: str, table_name: str, user: Dict[str, Any
 @app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/schema", tags=["Catalog"])
 async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutionRequest, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
-    if role not in ["Admin", "Data Architect"]:
+    if role not in CAN_MANAGE_SCHEMA:
         raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to evolve schemas.")
     from meldra import MeldraCatalog
     from tenancy import get_current_tenant_id, scope_namespace
@@ -1944,6 +2059,11 @@ async def evolve_schema(namespace: str, table_name: str, payload: SchemaEvolutio
 
 @app.post("/v1/ingest/raw", tags=["Ingestion"])
 async def ingest_raw_endpoint(payload: RawIngestRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role", "Business Analyst") not in CAN_INGEST:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access Denied: Role '{user.get('role')}' does not have permission to ingest data."
+        )
     from meldra import MeldraCatalog, MeldraValidator
     from tenancy import get_current_tenant_id, scope_namespace
     import pyarrow as pa
@@ -2063,6 +2183,11 @@ async def ingest_raw_endpoint(payload: RawIngestRequest, user: Dict[str, Any] = 
 
 @app.post("/v1/catalog/query", tags=["Catalog"])
 async def execute_query(payload: QueryRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role", "Business Analyst") in DASHBOARD_ONLY_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user.get('role')}' is dashboard-only — use Catalog and Observability instead of ad-hoc queries."
+        )
     from meldra import MeldraCatalog
     from tenancy import get_current_tenant_id, scope_namespace
     import duckdb
@@ -2341,7 +2466,7 @@ class SaveRowFiltersRequest(BaseModel):
 
 @app.get("/v1/rbac/policies", tags=["RBAC"])
 async def get_rbac_policies(user: Dict[str, Any] = Depends(get_current_user)):
-    if user.get("role", "Business Analyst") != "Admin":
+    if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can view RBAC policies.")
     from auth_db import _get_conn
     conn = _get_conn()
@@ -2355,7 +2480,7 @@ async def get_rbac_policies(user: Dict[str, Any] = Depends(get_current_user)):
 @app.post("/v1/rbac/policies", tags=["RBAC"])
 async def save_rbac_policies(payload: SavePoliciesRequest, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
-    if role != "Admin":
+    if role not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can modify RBAC policies.")
     from auth_db import _get_conn
     conn = _get_conn()
@@ -2374,7 +2499,7 @@ async def save_rbac_policies(payload: SavePoliciesRequest, user: Dict[str, Any] 
 
 @app.get("/v1/rbac/row-filters", tags=["RBAC"])
 async def get_row_filters(user: Dict[str, Any] = Depends(get_current_user)):
-    if user.get("role", "Business Analyst") != "Admin":
+    if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can view row-level filters.")
     from auth_db import _get_conn
     conn = _get_conn()
@@ -2395,7 +2520,7 @@ async def get_row_filters(user: Dict[str, Any] = Depends(get_current_user)):
 @app.post("/v1/rbac/row-filters", tags=["RBAC"])
 async def save_row_filters(payload: SaveRowFiltersRequest, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
-    if role != "Admin":
+    if role not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can modify row-level filters.")
     from auth_db import _get_conn
     conn = _get_conn()
@@ -2422,8 +2547,14 @@ async def save_row_filters(payload: SaveRowFiltersRequest, user: Dict[str, Any] 
 @app.post("/v1/rbac/user-role", tags=["RBAC"])
 async def update_user_role(payload: UpdateUserRoleRequest, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
-    if role != "Admin":
+    if role not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can modify user roles.")
+
+    if payload.role not in ALL_ROLES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"'{payload.role}' is not a recognised role. Valid roles: {', '.join(ALL_ROLES)}."
+        )
     from auth_db import _get_conn
     conn = _get_conn()
     try:
@@ -2433,6 +2564,22 @@ async def update_user_role(payload: UpdateUserRoleRequest, user: Dict[str, Any] 
         return {"status": "success", "message": f"User {payload.email} role updated to {payload.role}."}
     finally:
         conn.close()
+
+@app.get("/v1/rbac/roles", tags=["RBAC"])
+async def list_roles(user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    All personas the platform recognises, with a one-line description of
+    what each can do — lets the frontend render a real role picker (for
+    Admins assigning roles) instead of a hardcoded list that drifts from
+    roles.py. Available to any authenticated user since it's just naming
+    the personas, not granting anything.
+    """
+    return {
+        "roles": [
+            {"name": r, "description": ROLE_DESCRIPTIONS[r]}
+            for r in ALL_ROLES
+        ]
+    }
 
 @app.get("/v1/studio/search", tags=["Studio"])
 async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)):

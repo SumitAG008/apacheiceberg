@@ -2,9 +2,10 @@
 """
 query_engine/graph_executor.py — Graph query execution engine.
 
-Loads the PostgreSQL-backed graph (auth.graph_nodes / auth.graph_edges) into
-a NetworkX DiGraph, evaluates Cypher-like MATCH patterns, and runs graph
-algorithms. Returns normalised QueryResult objects.
+Loads the graph (from Apache AGE, or the legacy relational tables if AGE
+isn't installed — see graph_db.load_networkx_graph) into a NetworkX
+DiGraph, evaluates Cypher-like MATCH patterns, and runs graph algorithms.
+Returns normalised QueryResult objects.
 
 Supported query patterns:
   - MATCH (n) RETURN n [LIMIT x]
@@ -312,37 +313,17 @@ class GraphExecutor:
 
     @staticmethod
     def _load_graph(graph_name: str) -> nx.DiGraph:
-        """Load nodes and edges from PostgreSQL into a NetworkX DiGraph."""
+        """Load the graph into a NetworkX DiGraph via graph_db, which reads
+        from Apache AGE (falling back to the legacy relational tables only
+        if AGE isn't installed) — see graph_db.load_networkx_graph."""
         import sys, os
         backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if backend_root not in sys.path:
             sys.path.insert(0, backend_root)
 
-        from graph_db import _get_conn, init_graph_tables
-        import psycopg2.extras
+        from graph_db import load_networkx_graph
 
-        init_graph_tables()
-        conn = _get_conn()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT node_id, label FROM auth.graph_nodes WHERE workspace_id = %s;",
-                (graph_name,),
-            )
-            nodes = cur.fetchall()
-            cur.execute(
-                "SELECT source_id, target_id, label FROM auth.graph_edges WHERE workspace_id = %s;",
-                (graph_name,),
-            )
-            edges = cur.fetchall()
-        finally:
-            conn.close()
-
-        G = nx.DiGraph()
-        for n in nodes:
-            G.add_node(n["node_id"], label=n["label"])
-        for e in edges:
-            G.add_edge(e["source_id"], e["target_id"], label=e["label"])
+        G = load_networkx_graph(graph_name)
 
         logger.info(
             "[GraphExecutor] Loaded graph '%s': %d nodes, %d edges",

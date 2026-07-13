@@ -31,3 +31,10 @@ numpy<2.0.0,>=1.26.0
 # Testing and Load Testing
 pytest>=8.0.0
 locust>=2.20.0
+
+# Optional distributed-query-engine backends (query_engine/sql_backends.py).
+# Uncomment + set SPARK_MASTER_URL / DORIS_FE_HOST once a real cluster
+# exists to point at -- DuckDB (already required above) is the active
+# backend until then.
+# pyspark>=3.5.0
+# pymysql>=1.1.0

@@ -79,7 +79,7 @@ def init_auth_schema():
                 reg_ip          TEXT,                          -- Registration IP address
                 reg_country     TEXT,                          -- Registration Geography / Country
                 subscription_status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'expired' | 'canceled'
-                user_role       TEXT NOT NULL DEFAULT 'Business Analyst' -- 'Admin' | 'Data Engineer' | 'Data Architect' | 'Business Analyst'
+                user_role       TEXT NOT NULL DEFAULT 'Business Analyst' -- see roles.ALL_ROLES: Admin | Data Engineer | Data Architect | Business Analyst | Consultant | CIO | COO | Viewer
             );
         """)
 
@@ -90,6 +90,7 @@ def init_auth_schema():
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS reg_country TEXT;")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active';")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS user_role TEXT NOT NULL DEFAULT 'Business Analyst';")
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS sso_provider TEXT;")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS auth.rbac_policies (
@@ -127,7 +128,13 @@ def init_auth_schema():
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'bank_account', 'mask', 'BANK-***'),
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'tax_id', 'mask', 'XX-***'),
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'routing_number', 'mask', 'ROUT-***'),
-                ('Business Analyst', 'default', 'vendors_10k_50col', 'annual_spend', 'mask', '###.##')
+                ('Business Analyst', 'default', 'vendors_10k_50col', 'annual_spend', 'mask', '###.##'),
+                # Consultant is deny-by-default on every namespace (see
+                # rbac_utils.check_table_access) — an Admin grants access to
+                # a specific engagement's namespace with an explicit 'allow'
+                # policy row rather than this account having standing access
+                # to anything up front.
+                ('Consultant', '*', '*', '__TABLE__', 'deny', '***'),
             ]
             for p in default_policies:
                 cur.execute("""
@@ -227,6 +234,41 @@ def create_user(
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
         raise ValueError(f"Email {email} is already registered.")
+    finally:
+        conn.close()
+
+
+def get_or_create_sso_user(email: str, provider: str, user_role: str = "Business Analyst") -> Dict[str, Any]:
+    """
+    Looks up a user by email; if none exists, provisions one for SSO login.
+    An SSO-provisioned account gets a random unusable password (the IdP is
+    the actual authenticator — this account never logs in with a password
+    directly) and is marked verified immediately, since the identity
+    provider already verified the person before redirecting back here.
+    """
+    existing = get_user_by_email(email)
+    if existing:
+        return existing
+
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        unusable_password_hash = hash_password(secrets.token_urlsafe(32))
+        cur.execute(
+            """
+            INSERT INTO auth.users (email, password_hash, mfa_method, is_verified, tier, user_role, sso_provider)
+            VALUES (%s, %s, 'email', TRUE, 'trial', %s, %s)
+            RETURNING id, email, mfa_method, phone, is_verified, created_at, tier, expires_at, reg_ip, reg_country, subscription_status, user_role, sso_provider
+            """,
+            (email.lower().strip(), unusable_password_hash, user_role, provider),
+        )
+        user = dict(cur.fetchone())
+        conn.commit()
+        return user
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        # Lost a race with a concurrent SSO login for the same new email.
+        return get_user_by_email(email)
     finally:
         conn.close()
 

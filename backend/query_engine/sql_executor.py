@@ -2,13 +2,15 @@
 """
 query_engine/sql_executor.py — SQL execution engine.
 
-Loads Apache Iceberg tables via PyIceberg, registers them as DuckDB in-memory
-views, executes arbitrary SQL with predicate pushdown, and returns normalised
-QueryResult objects.
+Loads Apache Iceberg tables via PyIceberg, registers them with a pluggable
+SQLBackend (DuckDB by default — see sql_backends.py for how Spark/Doris
+plug into the same interface once a real cluster exists), executes
+arbitrary SQL with predicate pushdown, and returns normalised QueryResult
+objects.
 
 Supports:
   - Single-table queries
-  - Multi-table cross-namespace joins (each table registered as a DuckDB view)
+  - Multi-table cross-namespace joins (each table registered as a view)
   - Predicate pushdown via Iceberg row filter
   - EXPLAIN plan extraction
   - Row-level pagination / truncation detection
@@ -20,11 +22,11 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-import duckdb
 import pandas as pd
 import pyarrow as pa
 
 from query_engine.models import QueryJob, QueryResult
+from query_engine.sql_backends import get_sql_backend
 
 logger = logging.getLogger(__name__)
 
@@ -64,88 +66,86 @@ class SQLExecutor:
         t0 = time.perf_counter()
 
         catalog = self._get_catalog()
-        con = duckdb.connect(database=":memory:")
-        con.execute("SET enable_external_access=false;")
-
-        # ── 1. Register primary Iceberg table ─────────────────────────────────
-        # The catalog read uses the tenant-scoped namespace; job.namespace
-        # stays the client-facing name for RBAC matching and display below.
-        from tenancy import scope_namespace
-        scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
-        primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
-
-        # Enforce full RBAC (table access, row filtering, column masking/
-        # denial) at the data layer before DuckDB ever sees the data —
-        # aliasing in the SQL cannot expose the real values, and a role with
-        # no access to this table gets TableAccessDenied propagated as a
-        # failed job (caught by the executor's run loop) rather than data.
-        from rbac_utils import enforce_rbac
-        primary_df = enforce_rbac(
-            primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
-        )
-        con.register("iceberg_table", primary_df)
-
-        # Also register with fully-qualified alias so multi-table joins work
-        fq_name = f"{job.namespace}__{job.table_name}"
-        con.register(fq_name, primary_df)
-
-        # ── 2. Execution plan (EXPLAIN) ────────────────────────────────────────
-        explain_text: Optional[str] = None
+        backend = get_sql_backend()
         try:
-            explain_text = con.execute(f"EXPLAIN {job.sql}").fetchdf().to_string(index=False)
-        except Exception:
-            explain_text = f"Execution plan not available for this query."
+            # ── 1. Register primary Iceberg table ──────────────────────────────
+            # The catalog read uses the tenant-scoped namespace; job.namespace
+            # stays the client-facing name for RBAC matching and display below.
+            from tenancy import scope_namespace
+            scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+            primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
 
-        plan_note = (
-            f"[DQE/SQL] Engine: DuckDB {duckdb.__version__} | "
-            f"Table: {job.namespace}.{job.table_name} | "
-            f"Source rows scanned: {len(primary_arrow)}\n\n"
-            f"{explain_text}"
-        )
+            # Enforce full RBAC (table access, row filtering, column masking/
+            # denial) at the data layer before the backend ever sees the data —
+            # aliasing in the SQL cannot expose the real values, and a role
+            # with no access to this table gets TableAccessDenied propagated
+            # as a failed job (caught by the executor's run loop) rather than
+            # data.
+            from rbac_utils import enforce_rbac
+            primary_df = enforce_rbac(
+                primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
+            )
+            backend.register_table("iceberg_table", primary_df)
 
-        # ── 3. Execute query ───────────────────────────────────────────────────
-        result_df: pd.DataFrame = con.execute(job.sql).fetchdf()
+            # Also register with fully-qualified alias so multi-table joins work
+            fq_name = f"{job.namespace}__{job.table_name}"
+            backend.register_table(fq_name, primary_df)
 
-        duration_ms = int((time.perf_counter() - t0) * 1000)
+            # ── 2. Execution plan (EXPLAIN) ─────────────────────────────────────
+            explain_text = backend.explain(job.sql)
+            engine_label = f"{backend.name} {backend.version}" if hasattr(backend, "version") else backend.name
+            plan_note = (
+                f"[DQE/SQL] Engine: {engine_label} | "
+                f"Table: {job.namespace}.{job.table_name} | "
+                f"Source rows scanned: {len(primary_arrow)}\n\n"
+                f"{explain_text}"
+            )
 
-        # ── 4. Pagination & truncation ─────────────────────────────────────────
-        total_rows = len(result_df)
-        truncated = total_rows > job.limit
-        if truncated:
-            result_df = result_df.head(job.limit)
+            # ── 3. Execute query ────────────────────────────────────────────────
+            result_df: pd.DataFrame = backend.execute(job.sql)
 
-        rows = _sanitise_rows(result_df)
-        columns = list(result_df.columns)
+            duration_ms = int((time.perf_counter() - t0) * 1000)
 
-        logger.info(
-            "[SQLExecutor] job=%s rows=%d truncated=%s duration=%dms",
-            job.job_id, total_rows, truncated, duration_ms,
-        )
+            # ── 4. Pagination & truncation ──────────────────────────────────────
+            total_rows = len(result_df)
+            truncated = total_rows > job.limit
+            if truncated:
+                result_df = result_df.head(job.limit)
 
-        return QueryResult(
-            columns=columns,
-            rows=rows,
-            total_rows=total_rows,
-            truncated=truncated,
-            execution_plan=plan_note,
-            engine_used="duckdb",
-            duration_ms=duration_ms,
-        )
+            rows = _sanitise_rows(result_df)
+            columns = list(result_df.columns)
+
+            logger.info(
+                "[SQLExecutor] job=%s engine=%s rows=%d truncated=%s duration=%dms",
+                job.job_id, backend.name, total_rows, truncated, duration_ms,
+            )
+
+            return QueryResult(
+                columns=columns,
+                rows=rows,
+                total_rows=total_rows,
+                truncated=truncated,
+                execution_plan=plan_note,
+                engine_used=backend.name,
+                duration_ms=duration_ms,
+            )
+        finally:
+            backend.close()
 
     def explain(self, job: QueryJob) -> str:
-        """Return the DuckDB EXPLAIN plan without executing the full query."""
+        """Return the backend's EXPLAIN plan without executing the full query."""
+        backend = get_sql_backend()
         try:
             from tenancy import scope_namespace
             catalog = self._get_catalog()
-            con = duckdb.connect(database=":memory:")
-            con.execute("SET enable_external_access=false;")
             scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
             primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
-            con.register("iceberg_table", primary_arrow)
-            explain_df = con.execute(f"EXPLAIN {job.sql}").fetchdf()
-            return explain_df.to_string(index=False)
+            backend.register_table("iceberg_table", primary_arrow.to_pandas())
+            return backend.explain(job.sql)
         except Exception as exc:
             return f"[SQLExecutor/EXPLAIN] Could not compute plan: {exc}"
+        finally:
+            backend.close()
 
     # ─── Helpers ──────────────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ query_engine — Distributed Query Engine for Apache Iceberg
 
 Supports three extraction modes:
   - SQL    : DuckDB over PyIceberg tables (multi-table joins, predicate pushdown)
-  - GRAPH  : Cypher-like patterns over NetworkX + PostgreSQL graph store
+  - GRAPH  : real openCypher via Apache AGE; graph algorithms via NetworkX
   - PYTHON : AST-safe pandas/pyarrow transformation scripts
 
 Public API:

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import List, Optional
@@ -107,13 +108,17 @@ class QueryEngine:
 
     @staticmethod
     def supported_modes() -> List[dict]:
+        from query_engine.sql_backends import available_backends
+
         return [
             {
                 "mode": "sql",
-                "description": "Execute DuckDB SQL against Apache Iceberg tables",
+                "description": "Execute SQL against Apache Iceberg tables via a pluggable backend",
                 "required_fields": ["namespace", "table_name", "sql"],
                 "optional_fields": ["filters", "limit"],
                 "example_sql": "SELECT account_from, SUM(amount) FROM iceberg_table GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+                "backends": available_backends(),
+                "active_backend": os.environ.get("QUERY_ENGINE_BACKEND", "duckdb"),
             },
             {
                 "mode": "graph",

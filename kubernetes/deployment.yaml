@@ -29,6 +29,74 @@ spec:
           value: "eu-west-2"
         - name: AWS_S3_URI
           value: "s3://meldra-lakehouse-warehouse/warehouse/"
+        # These were missing entirely — agent.py raises on startup without
+        # ANTHROPIC_API_KEY, and graph_db.py needs GRAPH_DB_* to reach
+        # Postgres/AGE. secretKeyRef, not a literal value: these are
+        # credentials, not config.
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: anthropic-api-key
+        - name: GRAPH_DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: graph-db-host
+        - name: GRAPH_DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: graph-db-port
+        - name: GRAPH_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: graph-db-user
+        - name: GRAPH_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: graph-db-password
+        - name: GRAPH_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: meldra-secrets
+              key: graph-db-name
+        # Distributed-query-engine backend selection (query_engine/sql_backends.py).
+        # Defaults to the real, working DuckDB backend; switching to spark/doris
+        # is a config change once SPARK_MASTER_URL / DORIS_FE_HOST point at a
+        # real cluster — see that file's docstrings.
+        - name: QUERY_ENGINE_BACKEND
+          value: "duckdb"
+        # Horizontal scaling only helps if pods actually get evicted/rescheduled
+        # onto the request they declared — without requests/limits the
+        # scheduler is guessing, and the HPA below has nothing to compute
+        # utilization against.
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        # Don't route traffic to a pod until it can actually serve (readiness),
+        # and restart it if it wedges after that (liveness) — neither existed
+        # before, so a hung pod just sat in the Service's endpoint list.
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 20
+          failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
@@ -41,6 +109,41 @@ spec:
   - protocol: TCP
     port: 8000
     targetPort: 8000
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,6 +166,25 @@ spec:
         image: meldra/frontend:latest
         ports:
         - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -75,6 +197,35 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend-deployment
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class QueryMode(str, Enum):
     SQL    = "sql"     # DuckDB over Apache Iceberg tables
-    GRAPH  = "graph"   # Cypher-like patterns via NetworkX + PostgreSQL
+    GRAPH  = "graph"   # openCypher via Apache AGE, algorithms via NetworkX
     PYTHON = "python"  # Safe pandas/pyarrow extraction scripts
 
 

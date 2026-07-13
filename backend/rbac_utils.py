@@ -75,11 +75,40 @@ def check_table_access(namespace: str, table_name: str, role: str) -> None:
     deny policy for namespace.table_name. A policy with column_name =
     '__TABLE__' and table_name = the real table (or '*' for every table in
     the namespace) denies access outright, before any query runs.
+
+    A role can also be deny-by-default: a '__TABLE__' deny policy scoped to
+    namespace='*', table_name='*' blocks everything, *unless* an 'allow'
+    policy exists for this specific namespace/table — this is how the
+    Consultant persona works (see roles.py): no access to anything until an
+    Admin explicitly grants a namespace.
     """
     policies = get_role_policies(role)
+
+    deny_all = any(
+        p["column_name"] == TABLE_DENY_SENTINEL
+        and p["action"] == "deny"
+        and p["namespace"] == "*"
+        and p["table_name"] == "*"
+        for p in policies
+    )
+    if deny_all:
+        explicit_allow = any(
+            p["column_name"] == TABLE_DENY_SENTINEL
+            and p["action"] == "allow"
+            and p["namespace"] in (namespace, "*")
+            and p["table_name"] in (table_name, "*")
+            for p in policies
+        )
+        if not explicit_allow:
+            raise TableAccessDenied(
+                f"Access Denied: role '{role}' has no grant for {namespace}.{table_name}."
+            )
+
     for pol in policies:
         if pol["column_name"] != TABLE_DENY_SENTINEL or pol["action"] != "deny":
             continue
+        if pol["namespace"] == "*" and pol["table_name"] == "*":
+            continue  # already handled by the deny-all check above
         if pol["namespace"] not in (namespace, "*"):
             continue
         if pol["table_name"] not in (table_name, "*"):

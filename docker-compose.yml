@@ -2,7 +2,12 @@ version: '3.8'
 
 services:
   db:
-    image: apache/age:latest
+    # Pinned, not `:latest` — `latest` silently moved to a Postgres-18 base
+    # with an incompatible data directory layout (`/var/lib/postgresql`
+    # instead of `/var/lib/postgresql/data`), which crash-loops this
+    # container against the `pgdata` volume below. Pin to a known-good
+    # PG16 release so `docker compose up` stays reproducible.
+    image: apache/age:release_PG16_1.6.0
     container_name: iceberg_graph_db
     restart: always
     environment:

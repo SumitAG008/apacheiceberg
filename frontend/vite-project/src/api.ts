@@ -536,6 +536,11 @@ export const api = {
         throw new Error(err.error || err.detail || 'Failed to update user role');
       }
       return res.json();
+    },
+    async listRoles(): Promise<{ roles: { name: string; description: string }[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/roles`);
+      if (!res.ok) throw new Error('Failed to load role list');
+      return res.json();
     }
   }
 };

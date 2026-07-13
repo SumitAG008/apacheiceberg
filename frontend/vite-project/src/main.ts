@@ -117,6 +117,30 @@ function setLocale(label: string) {
 document.documentElement.lang = getLocale();
 
 // ─────────────────────────────────────────
+// Time-of-day greeting — uses the browser's own local clock (device
+// timezone), not a geo-IP lookup. That reads as "aware of where you are"
+// without a permission prompt or a third-party geo-IP dependency, and it's
+// correct by construction: whatever the OS clock says IS the user's local
+// time, regardless of what timezone that resolves to.
+// ─────────────────────────────────────────
+function getGreeting(name?: string): string {
+  const hour = new Date().getHours();
+  let part: string;
+  if (hour >= 5 && hour < 12) part = 'Good morning';
+  else if (hour >= 12 && hour < 17) part = 'Good afternoon';
+  else if (hour >= 17 && hour < 21) part = 'Good evening';
+  else part = 'Good night';
+  return name ? `${part}, ${name}` : part;
+}
+
+function renderHeaderGreeting(email?: string) {
+  const el = document.getElementById('header-greeting');
+  if (!el) return;
+  const name = email ? email.split('@')[0] : undefined;
+  el.textContent = getGreeting(name);
+}
+
+// ─────────────────────────────────────────
 // UTILS & TOASTS
 // ─────────────────────────────────────────
 function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
@@ -461,7 +485,7 @@ function initChat() {
       <li>🗂 <strong>Create Iceberg tables</strong> with custom schemas directly on your S3 bucket</li>
       <li>📥 <strong>Ingest CSV datasets</strong> into open Apache Iceberg format in seconds</li>
       <li>🔍 <strong>Query your data lake</strong> using plain English (powered by DuckDB + Claude AI)</li>
-      <li>🔗 <strong>Build knowledge graphs</strong> — sync Iceberg data to Neo4j AuraDB and query with Cypher</li>
+      <li>🔗 <strong>Build knowledge graphs</strong> — sync Iceberg data into Apache AGE and query it with real openCypher</li>
       <li>🔧 <strong>Schema evolution</strong> — add/rename/drop columns instantly without data rewrites</li>
     </ul>
     <p><strong>Try asking:</strong></p>
@@ -1959,6 +1983,7 @@ function initAuthController() {
       if (dropdownEmailEl) dropdownEmailEl.textContent = user.email;
       const settingsEmailEl = document.getElementById('settings-info-email');
       if (settingsEmailEl) settingsEmailEl.textContent = user.email;
+      renderHeaderGreeting(user.email);
     }
     bootstrapApp();
 
@@ -6306,14 +6331,16 @@ function applyExperience(expName: string) {
   
   // Show specific tab buttons based on active experience
   const expTabs: Record<string, string[]> = {
-    engineering: ['nav-studio', 'nav-workspace', 'nav-help'],
+    engineering: ['nav-studio', 'nav-workspace'],
     factory: ['nav-ingest', 'nav-studio'],
     warehouse: ['nav-chat', 'nav-studio'],
     graph: ['nav-graph'],
     admin: ['nav-audit', 'nav-traffic', 'nav-mcp', 'nav-studio']
   };
-  
-  const visibleTabIds = expTabs[expName] || [];
+
+  // Help Guide is a persistent utility link, not tied to any one workload
+  // experience -- it should stay visible no matter which one is active.
+  const visibleTabIds = [...(expTabs[expName] || []), 'nav-help'];
   visibleTabIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'inline-flex';
@@ -6341,10 +6368,61 @@ function applyExperience(expName: string) {
   }
 }
 
+// Mirrors backend/roles.py's capability sets — kept in one place here so a
+// new persona only needs one map updated, not a scattered set of `role ===`
+// checks. '*' means "every nav tab." CIO/COO/Viewer are intentionally
+// dashboard-only (Chat + Traffic/Observability + Audit where noted) because
+// the backend rejects their calls to /v1/query/submit and /v1/catalog/query
+// outright (see DASHBOARD_ONLY_ROLES in api/main.py) — hiding the tab here
+// just avoids sending them to a 403 they can't act on.
+const NAV_CAPS: Record<string, string[] | '*'> = {
+  'Admin': '*',
+  'Data Engineer': ['nav-chat', 'nav-mcp', 'nav-ingest', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
+  'Data Architect': ['nav-chat', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-audit', 'nav-query-lab'],
+  'Business Analyst': ['nav-chat', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
+  'Consultant': ['nav-chat', 'nav-studio', 'nav-query-lab'],
+  'CIO': ['nav-chat', 'nav-traffic', 'nav-audit'],
+  'COO': ['nav-chat', 'nav-traffic', 'nav-audit'],
+  'Viewer': ['nav-chat', 'nav-traffic'],
+};
+
+function applyRoleNavGating(role: string) {
+  const allowed = NAV_CAPS[role] ?? NAV_CAPS['Business Analyst'];
+  Object.keys(TAB_TO_ID_VALUES).forEach(navId => {
+    const btn = document.getElementById(navId);
+    if (!btn) return;
+    const visible = allowed === '*' || allowed.includes(navId);
+    btn.style.display = visible ? '' : 'none';
+  });
+
+  // If the tab that's currently active just got hidden out from under the
+  // user (a role change mid-session), fall back to Chat rather than leaving
+  // an empty content pane on screen.
+  const activeBtn = document.querySelector('.tab-btn.active') as HTMLElement | null;
+  if (activeBtn && activeBtn.style.display === 'none') {
+    (document.getElementById('nav-chat') as HTMLButtonElement | null)?.click();
+  }
+}
+
+// Every gateable nav id — id -> true, used purely as a Set here so
+// NAV_CAPS above only has to name ids it *allows*, not enumerate misses too.
+const TAB_TO_ID_VALUES: Record<string, true> = {
+  'nav-mcp': true,
+  'nav-ingest': true,
+  'nav-graph': true,
+  'nav-workspace': true,
+  'nav-studio': true,
+  'nav-traffic': true,
+  'nav-audit': true,
+  'nav-query-lab': true,
+};
+
 function applyUserRoleControls() {
   const user = tokenStore.getUser() as any;
   const role = user?.role || 'Business Analyst';
-  
+
+  applyRoleNavGating(role);
+
   // Set user role badge in header menu
   const badgeEl = document.querySelector('.user-profile-menu-container .badge');
   if (badgeEl) {
@@ -6641,6 +6719,10 @@ function renderRbacPolicies() {
           <option value="Data Engineer" ${pol.role === 'Data Engineer' ? 'selected' : ''}>Data Engineer</option>
           <option value="Data Architect" ${pol.role === 'Data Architect' ? 'selected' : ''}>Data Architect</option>
           <option value="Business Analyst" ${pol.role === 'Business Analyst' ? 'selected' : ''}>Business Analyst</option>
+          <option value="Consultant" ${pol.role === 'Consultant' ? 'selected' : ''}>Consultant</option>
+          <option value="CIO" ${pol.role === 'CIO' ? 'selected' : ''}>CIO</option>
+          <option value="COO" ${pol.role === 'COO' ? 'selected' : ''}>COO</option>
+          <option value="Viewer" ${pol.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
         </select>
       </td>
       <td><input type="text" class="input-field rbac-ns-input" value="${pol.namespace}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 100px;"></td>
@@ -6768,6 +6850,10 @@ function renderRowFilters() {
           <option value="Data Engineer" ${f.role === 'Data Engineer' ? 'selected' : ''}>Data Engineer</option>
           <option value="Data Architect" ${f.role === 'Data Architect' ? 'selected' : ''}>Data Architect</option>
           <option value="Business Analyst" ${f.role === 'Business Analyst' ? 'selected' : ''}>Business Analyst</option>
+          <option value="Consultant" ${f.role === 'Consultant' ? 'selected' : ''}>Consultant</option>
+          <option value="CIO" ${f.role === 'CIO' ? 'selected' : ''}>CIO</option>
+          <option value="COO" ${f.role === 'COO' ? 'selected' : ''}>COO</option>
+          <option value="Viewer" ${f.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
         </select>
       </td>
       <td><input type="text" class="input-field rf-ns-input" value="${f.namespace}" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; width: 100px;"></td>
