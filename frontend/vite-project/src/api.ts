@@ -207,6 +207,16 @@ export const api = {
       tokenStore.clear();
     },
 
+    async ssoStatus(): Promise<{ configured: boolean; provider_name: string | null }> {
+      const res = await fetch(`${BASE_URL}/auth/sso/status`);
+      if (!res.ok) return { configured: false, provider_name: null };
+      return res.json();
+    },
+
+    ssoLoginUrl(): string {
+      return `${BASE_URL}/auth/sso/login`;
+    },
+
     async forgotPassword(email: string): Promise<{ message: string; temp_token: string }> {
       const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
         method: 'POST',

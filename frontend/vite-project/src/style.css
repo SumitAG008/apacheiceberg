@@ -136,6 +136,59 @@ button, input, textarea, select { font-family: inherit; color: inherit; }
   flex-grow: 1;
 }
 
+/* ─── Grouped sidebar nav (replaces the old flat top tab-bar) ─── */
+.sidebar-nav-label {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-weight: 700;
+  padding: 0.9rem 0.6rem 0.35rem;
+}
+
+.sidebar-nav-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+}
+
+.sidebar-nav-item i {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-connection-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.6rem 0.65rem;
+  margin-top: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.sidebar-connection-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--text-main);
+}
+
+.header-right-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .section-title {
   font-family: var(--font-sans);
   font-size: 0.72rem;

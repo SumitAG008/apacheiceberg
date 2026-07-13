@@ -339,6 +339,8 @@ function parseMarkdown(text: string): string {
 // ─────────────────────────────────────────
 async function loadAWSConfig() {
   try {
+    const role = tokenStore.getUser()?.role || 'Business Analyst';
+    if (role !== 'Admin') return; // /v1/config/aws is Admin-only — nothing to load, not an error
     const config = await api.getAWSConfig();
     const wsS3 = document.getElementById('workspace-s3-display');
     const wsRegion = document.getElementById('workspace-region-display');
@@ -378,6 +380,11 @@ async function loadAWSConfig() {
         wsStatus.className = 'badge badge-green';
       }
       updateWorkspaceLockState(false);
+
+      const connDot = document.getElementById('connection-status-dot');
+      const connText = document.getElementById('connection-status-text');
+      if (connDot) connDot.className = 'status-dot online';
+      if (connText) connText.textContent = config.region;
     } else {
       if (customAwsToggle) customAwsToggle.checked = false;
       if (awsConfigForm) awsConfigForm.style.display = 'none';
@@ -390,6 +397,11 @@ async function loadAWSConfig() {
         wsStatus.textContent = 'DEMO MODE';
         wsStatus.className = 'badge badge-blue';
       }
+
+      const connDot = document.getElementById('connection-status-dot');
+      const connText = document.getElementById('connection-status-text');
+      if (connDot) connDot.className = 'status-dot pending';
+      if (connText) connText.textContent = 'Demo mode';
       updateWorkspaceLockState(true);
     }
   } catch (error) {
@@ -1874,6 +1886,9 @@ function initAuthController() {
   const loginErrorEl    = document.getElementById('login-error');
   const btnLogin        = document.getElementById('btn-login') as HTMLButtonElement;
   const gotoRegister    = document.getElementById('goto-register');
+  const ssoLoginBlock   = document.getElementById('sso-login-block');
+  const btnSsoLogin     = document.getElementById('btn-sso-login') as HTMLButtonElement;
+  const ssoLoginLabel   = document.getElementById('sso-login-label');
 
   // ─ Register elements
   const regEmailEl    = document.getElementById('register-email') as HTMLInputElement;
@@ -2415,6 +2430,21 @@ LIMIT 10;`;
   btnLogin?.addEventListener('click', doLogin);
   loginPasswordEl?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+  // ── SSO ──────────────────────────────────────────────────
+  // Only shown once the backend confirms it's actually configured
+  // (OIDC_ISSUER_URL/CLIENT_ID/CLIENT_SECRET/REDIRECT_URI all set) — no
+  // point offering a button that 501s.
+  api.auth.ssoStatus().then(status => {
+    if (status.configured && ssoLoginBlock) {
+      if (ssoLoginLabel) ssoLoginLabel.textContent = `Sign in with ${status.provider_name}`;
+      ssoLoginBlock.style.display = 'block';
+    }
+  }).catch(() => { /* SSO status is best-effort; login by password still works */ });
+
+  btnSsoLogin?.addEventListener('click', () => {
+    window.location.href = api.auth.ssoLoginUrl();
+  });
+
   // ── REGISTER ────────────────────────────────────────────
   async function doRegister() {
     clearError(regErrorEl);
@@ -2536,6 +2566,38 @@ LIMIT 10;`;
     showScreen(screenLogin);
     showToast('Signed out successfully.', 'info');
   });
+
+  // ── SSO: pick up tokens from an IdP redirect back to this page ──
+  // The backend's /auth/sso/callback redirects here with either
+  // sso_access_token/sso_refresh_token/sso_user (success) or sso_error
+  // (failure) as query params — see api/main.py's sso_callback().
+  (function handleSsoRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    const ssoError = params.get('sso_error');
+    const ssoAccessToken = params.get('sso_access_token');
+    const ssoRefreshToken = params.get('sso_refresh_token');
+    const ssoUserB64 = params.get('sso_user');
+
+    if (!ssoError && !(ssoAccessToken && ssoRefreshToken && ssoUserB64)) return;
+
+    // Strip the SSO params from the URL either way, so a page refresh
+    // doesn't replay them.
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (ssoError) {
+      showToast(`Single sign-on failed: ${ssoError.replace(/_/g, ' ')}`, 'error');
+      return;
+    }
+
+    try {
+      const base64 = ssoUserB64!.replace(/-/g, '+').replace(/_/g, '/');
+      const user = JSON.parse(atob(base64));
+      tokenStore.setTokens(ssoAccessToken!, ssoRefreshToken!, user);
+    } catch (e) {
+      console.error('Failed to parse SSO callback payload', e);
+      showToast('Single sign-on succeeded but the session could not be loaded. Please try again.', 'error');
+    }
+  })();
 
   // ── INIT: check if already logged in ────────────────────────
   if (tokenStore.isLoggedIn()) {
@@ -3186,6 +3248,19 @@ function initUserControls() {
   btnCloseSettings?.addEventListener('click', closeSettings);
   settingsModalOverlay?.addEventListener('click', (e) => {
     if (e.target === settingsModalOverlay) closeSettings();
+  });
+
+  // ── Data lake connection drawer ──
+  // Replaces the old permanently-open AWS config sidebar panel — same
+  // form/ids, opened on demand instead of always taking up sidebar space.
+  const connectionDrawerOverlay = document.getElementById('connection-drawer-overlay');
+  const btnOpenConnection = document.getElementById('btn-open-connection');
+  const btnCloseConnection = document.getElementById('btn-close-connection');
+  const closeConnectionDrawer = () => connectionDrawerOverlay?.classList.remove('active');
+  btnOpenConnection?.addEventListener('click', () => connectionDrawerOverlay?.classList.add('active'));
+  btnCloseConnection?.addEventListener('click', closeConnectionDrawer);
+  connectionDrawerOverlay?.addEventListener('click', (e) => {
+    if (e.target === connectionDrawerOverlay) closeConnectionDrawer();
   });
 
   // Password strength meter
@@ -6377,8 +6452,8 @@ function applyExperience(expName: string) {
 // just avoids sending them to a 403 they can't act on.
 const NAV_CAPS: Record<string, string[] | '*'> = {
   'Admin': '*',
-  'Data Engineer': ['nav-chat', 'nav-mcp', 'nav-ingest', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
-  'Data Architect': ['nav-chat', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-audit', 'nav-query-lab'],
+  'Data Engineer': ['nav-chat', 'nav-mcp', 'nav-api', 'nav-ingest', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
+  'Data Architect': ['nav-chat', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-audit', 'nav-api', 'nav-query-lab'],
   'Business Analyst': ['nav-chat', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
   'Consultant': ['nav-chat', 'nav-studio', 'nav-query-lab'],
   'CIO': ['nav-chat', 'nav-traffic', 'nav-audit'],
@@ -6408,6 +6483,7 @@ function applyRoleNavGating(role: string) {
 // NAV_CAPS above only has to name ids it *allows*, not enumerate misses too.
 const TAB_TO_ID_VALUES: Record<string, true> = {
   'nav-mcp': true,
+  'nav-api': true,
   'nav-ingest': true,
   'nav-graph': true,
   'nav-workspace': true,

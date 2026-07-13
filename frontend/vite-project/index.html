@@ -113,6 +113,17 @@
       .auth-btn:hover { background: linear-gradient(135deg, #22c55e, #16a34a); transform: translateY(-1px); }
       .auth-btn:active { transform: translateY(0); }
       .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+      .auth-btn-secondary {
+        background: #fff; border: 1.5px solid #e2e8f0; color: #0f172a;
+      }
+      .auth-btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+      .auth-divider {
+        display: flex; align-items: center; gap: 0.75rem;
+        margin: 1rem 0; color: #94a3b8; font-size: 0.78rem;
+      }
+      .auth-divider::before, .auth-divider::after {
+        content: ""; flex: 1; height: 1px; background: #e2e8f0;
+      }
       .auth-switch {
         text-align: center; margin-top: 1.25rem;
         font-size: 0.85rem; color: #64748b;
@@ -2001,6 +2012,12 @@
           <button id="btn-login" class="auth-btn">
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Continue
           </button>
+          <div id="sso-login-block" style="display:none;">
+            <div class="auth-divider"><span>or</span></div>
+            <button id="btn-sso-login" class="auth-btn auth-btn-secondary" type="button">
+              <i class="fa-solid fa-building-shield"></i> <span id="sso-login-label">Sign in with SSO</span>
+            </button>
+          </div>
           <div class="auth-switch" style="display:flex;justify-content:space-between;align-items:center;">
             <span>No account? <a id="goto-register">Create one</a></span>
             <a id="goto-forgot-password" style="color:#64748b;font-size:0.82rem;">Forgot password?</a>
@@ -2166,80 +2183,66 @@
           </button>
         </div>
 
-        <div class="sidebar-content">
-          <!-- AWS Config -->
-          <div class="sidebar-section">
-            <h3 class="section-title"><i class="fa-brands fa-aws"></i> Data Lake Config</h3>
-            <div class="toggle-container">
-              <span class="toggle-label">Connect your S3 lake</span>
-              <label class="switch">
-                <input type="checkbox" id="custom-aws-toggle">
-                <span class="slider"></span>
-              </label>
-            </div>
+        <div class="sidebar-content" style="padding: 0.9rem 0.75rem; gap: 0;">
+          <!-- Grouped nav — replaces the old flat top tab-bar. Same ids/data-tab
+               attributes as before, so switchTab(), applyRoleNavGating() and
+               the Experience Switcher's querySelectorAll('.tab-btn') all keep
+               working unchanged; only where these buttons live moved. -->
+          <button class="tab-btn sidebar-nav-item active" data-tab="chat-tab" id="nav-chat">
+            <i class="fa-solid fa-house"></i> Home
+          </button>
 
-            <div id="aws-config-form" style="display: none; flex-direction: column; gap: 0.75rem;">
-              <div class="form-group">
-                <label for="aws-region">AWS Region</label>
-                <input type="text" id="aws-region" class="input-field" placeholder="eu-west-2">
-              </div>
-              <div class="form-group">
-                <label for="aws-s3-uri">S3 Warehouse URI</label>
-                <input type="text" id="aws-s3-uri" class="input-field" placeholder="s3://bucket/warehouse">
-              </div>
-              <div class="form-group">
-                <label for="aws-access-key">Access Key ID</label>
-                <input type="password" id="aws-access-key" class="input-field" placeholder="••••••••••••••••">
-              </div>
-              <div class="form-group">
-                <label for="aws-secret-key">Secret Access Key</label>
-                <input type="password" id="aws-secret-key" class="input-field" placeholder="••••••••••••••••">
-              </div>
-              <button id="btn-connect-aws" class="btn btn-primary btn-block">
-                <i class="fa-solid fa-plug-circle-bolt"></i> Connect Lake
-              </button>
-            </div>
+          <div class="sidebar-nav-label">Data</div>
+          <button class="tab-btn sidebar-nav-item" data-tab="ingest-tab" id="nav-ingest">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Ingest
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="graph-tab" id="nav-graph">
+            <i class="fa-solid fa-circle-nodes"></i> Graph
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
+            <i class="fa-solid fa-layer-group"></i> Workspace
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="studio-tab" id="nav-studio">
+            <i class="fa-solid fa-code-branch"></i> Data Studio
+          </button>
 
-            <div id="aws-demo-info" style="font-size: 0.79rem; color: var(--text-muted); background: rgba(139,92,246,0.05); padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border-subtle); line-height: 1.5;">
-              <i class="fa-solid fa-circle-info" style="color: var(--color-primary);"></i>
-              Demo mode — toggle to connect your own S3 warehouse.
-            </div>
-          </div>
+          <button class="tab-btn sidebar-nav-item" data-tab="query-lab-tab" id="nav-query-lab" style="margin-top: 0.6rem;">
+            <i class="fa-solid fa-flask-vial"></i> Query Lab
+          </button>
 
-          <!-- Quick Prompts -->
-          <div class="sidebar-section">
-            <h3 class="section-title"><i class="fa-solid fa-bolt"></i> Quick Prompts</h3>
-            <div class="quick-prompts-list">
-              <button class="quick-prompt-btn" data-prompt="List all tables in my data lake">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> List all tables
-              </button>
-              <button class="quick-prompt-btn" data-prompt="Create a sales table in namespace default with columns: id (integer), amount (float), order_date (string)">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Create a sales table
-              </button>
-              <button class="quick-prompt-btn" data-prompt="Show me the first 10 rows of employees">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Show first 10 rows
-              </button>
-              <button class="quick-prompt-btn" data-prompt="Count all records in employees table">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Count records
-              </button>
-              <button class="quick-prompt-btn" data-prompt="Find all cyclic transaction rings in the banking_tx table using account_from and account_to columns">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Detect fraud rings
-              </button>
-              <button class="quick-prompt-btn" data-prompt="Show snapshot history for the employees table">
-                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> View snapshot history
-              </button>
-            </div>
-          </div>
+          <div class="sidebar-nav-label">Governance</div>
+          <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-audit">
+            <i class="fa-solid fa-shield-halved"></i> Audit
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="mcp-tab" id="nav-mcp">
+            <i class="fa-solid fa-network-wired"></i> MCP Gateway
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="api-tab" id="nav-api">
+            <i class="fa-solid fa-book"></i> API Docs
+          </button>
+
+          <button class="tab-btn sidebar-nav-item" data-tab="traffic-tab" id="nav-traffic" style="margin-top: 0.6rem;">
+            <i class="fa-solid fa-chart-line"></i> Observability
+          </button>
+
+          <a class="tab-btn sidebar-nav-item" href="https://help.meldra.ai" target="_blank" rel="noopener" id="nav-help" style="margin-top: 0.6rem;">
+            <i class="fa-solid fa-circle-question"></i> Help Guide
+          </a>
+
+          <!-- Data lake connection — was a permanently-open form taking up
+               the whole sidebar; now a status pill that opens a drawer on
+               demand (see #connection-drawer-overlay near the other modals). -->
+          <button id="btn-open-connection" class="sidebar-connection-pill" style="margin-top: auto;">
+            <span class="status-dot pending" id="connection-status-dot"></span>
+            <span id="connection-status-text">Demo mode</span>
+            <i class="fa-solid fa-chevron-right" style="margin-left: auto; font-size: 0.7rem; opacity: 0.6;"></i>
+          </button>
 
           <!-- Backend Status -->
-          <div class="sidebar-section" style="margin-top: auto;">
-            <h3 class="section-title"><i class="fa-solid fa-server"></i> Backend Status</h3>
-            <div id="backend-status" style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: var(--text-muted);">
-              <span class="status-dot pending" id="backend-status-dot"></span>
-              <span id="backend-status-text">Checking...</span>
-            </div>
+          <div id="backend-status" style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.78rem; color: var(--text-muted); padding: 0.6rem 0.5rem 0.2rem;">
+            <span class="status-dot pending" id="backend-status-dot"></span>
+            <span id="backend-status-text">Checking...</span>
           </div>
-
         </div>
       </aside>
 
@@ -2309,37 +2312,7 @@
             </div>
           </div>
 
-          <nav class="tab-headers">
-            <button class="tab-btn active" data-tab="chat-tab" id="nav-chat">
-              <i class="fa-solid fa-comments"></i> Chat
-            </button>
-            <a class="tab-btn" href="https://help.meldra.ai" target="_blank" rel="noopener" id="nav-help">
-              <i class="fa-solid fa-circle-question"></i> Help Guide
-            </a>
-            <button class="tab-btn" data-tab="mcp-tab" id="nav-mcp">
-              <i class="fa-solid fa-network-wired"></i> MCP Gateway
-            </button>
-            <button class="tab-btn" data-tab="ingest-tab" id="nav-ingest">
-              <i class="fa-solid fa-cloud-arrow-up"></i> Ingest
-            </button>
-            <button class="tab-btn" data-tab="graph-tab" id="nav-graph">
-              <i class="fa-solid fa-circle-nodes"></i> Graph
-            </button>
-            <button class="tab-btn" data-tab="workspace-tab" id="nav-workspace">
-              <i class="fa-solid fa-layer-group"></i> Workspace
-            </button>
-            <button class="tab-btn" data-tab="studio-tab" id="nav-studio">
-              <i class="fa-solid fa-code-branch"></i> Data Studio
-            </button>
-            <button class="tab-btn" data-tab="traffic-tab" id="nav-traffic">
-              <i class="fa-solid fa-chart-line"></i> Traffic
-            </button>
-            <button class="tab-btn" data-tab="audit-tab" id="nav-audit">
-              <i class="fa-solid fa-shield-halved"></i> Audit
-            </button>
-            <button class="tab-btn" data-tab="query-lab-tab" id="nav-query-lab">
-              <i class="fa-solid fa-flask-vial"></i> Query Lab
-            </button>
+          <div class="header-right-group">
             <!-- User pill + dropdown -->
             <div class="user-profile-menu-container">
               <button class="user-profile-pill" id="user-profile-pill">
@@ -2364,7 +2337,7 @@
                 </div>
               </div>
             </div>
-          </nav>
+          </div>
         </header>
 
         <section class="tab-view">
@@ -4104,6 +4077,89 @@ with DAG(
             </button>
           </div>
 
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DATA LAKE CONNECTION DRAWER ──
+         The AWS/S3 connection form used to sit permanently open in the left
+         sidebar on every screen. Same fields, same ids, same JS handlers
+         (loadAWSConfig / customAwsToggle listener in main.ts) — just moved
+         into an on-demand drawer instead of eating sidebar space forever. -->
+    <div id="connection-drawer-overlay" class="settings-modal-overlay">
+      <div class="settings-modal-box" style="max-width: 420px;">
+        <div class="settings-modal-header">
+          <h3 class="settings-modal-title"><i class="fa-brands fa-aws"></i> Data Lake Connection</h3>
+          <button class="settings-modal-close" id="btn-close-connection" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="settings-modal-body">
+          <div class="settings-section">
+            <div class="toggle-container">
+              <span class="toggle-label">Connect your S3 lake</span>
+              <label class="switch">
+                <input type="checkbox" id="custom-aws-toggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div id="aws-config-form" style="display: none; flex-direction: column; gap: 0.75rem; margin-top: 0.85rem;">
+              <div class="form-group">
+                <label for="aws-region">AWS Region</label>
+                <input type="text" id="aws-region" class="input-field" placeholder="eu-west-2">
+              </div>
+              <div class="form-group">
+                <label for="aws-s3-uri">S3 Warehouse URI</label>
+                <input type="text" id="aws-s3-uri" class="input-field" placeholder="s3://bucket/warehouse">
+              </div>
+              <div class="form-group">
+                <label for="aws-access-key">Access Key ID</label>
+                <input type="password" id="aws-access-key" class="input-field" placeholder="••••••••••••••••">
+              </div>
+              <div class="form-group">
+                <label for="aws-secret-key">Secret Access Key</label>
+                <input type="password" id="aws-secret-key" class="input-field" placeholder="••••••••••••••••">
+              </div>
+              <button id="btn-connect-aws" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-plug-circle-bolt"></i> Connect Lake
+              </button>
+            </div>
+
+            <div id="aws-demo-info" style="font-size: 0.79rem; color: var(--text-muted); background: rgba(139,92,246,0.05); padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border-subtle); line-height: 1.5; margin-top: 0.85rem;">
+              <i class="fa-solid fa-circle-info" style="color: var(--color-primary);"></i>
+              Demo mode — toggle to connect your own S3 warehouse.
+            </div>
+          </div>
+
+          <div class="settings-divider"></div>
+
+          <!-- Quick prompts — moved out of the permanent sidebar since
+               they're chat-specific, not something you need visible from
+               every tab. -->
+          <div class="settings-section">
+            <h4 class="settings-section-title">Quick Prompts</h4>
+            <div class="quick-prompts-list">
+              <button class="quick-prompt-btn" data-prompt="List all tables in my data lake">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> List all tables
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Create a sales table in namespace default with columns: id (integer), amount (float), order_date (string)">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Create a sales table
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Show me the first 10 rows of employees">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Show first 10 rows
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Count all records in employees table">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Count records
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Find all cyclic transaction rings in the banking_tx table using account_from and account_to columns">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> Detect fraud rings
+              </button>
+              <button class="quick-prompt-btn" data-prompt="Show snapshot history for the employees table">
+                <i class="fa-solid fa-play" style="font-size: 0.6rem;"></i> View snapshot history
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
