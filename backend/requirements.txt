@@ -21,6 +21,12 @@ httpx>=0.27.0
 mcp>=1.20.0
 # Authentication
 bcrypt>=4.0.0
+# pydantic's EmailStr (used by RegisterRequest, SetApproverRequest, etc.)
+# needs this at runtime -- it was never actually in this file despite
+# EmailStr already being used, so a clean install of this exact
+# requirements.txt would have failed on the first request touching one of
+# those models.
+email-validator>=2.0.0
 # Graph community detection (DQE)
 python-louvain>=0.16
 # Graph pagerank algorithm (DQE) -- pinned below 1.14 because scipy>=1.14

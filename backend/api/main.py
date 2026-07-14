@@ -60,6 +60,12 @@ from auth_db import (
     get_audit_logs_pg,
     verify_password,
     get_or_create_sso_user,
+    set_user_approver,
+    list_approvers,
+    create_promotion,
+    list_promotions,
+    get_promotion,
+    decide_promotion,
 )
 import oidc
 from mfa_service import send_email_otp
@@ -823,7 +829,8 @@ async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
         "is_verified": db_user["is_verified"],
         "created_at": db_user["created_at"].isoformat() if db_user["created_at"] else None,
         "last_login_at": db_user["last_login_at"].isoformat() if db_user.get("last_login_at") else None,
-        "role": db_user.get("user_role", "Business Analyst")
+        "role": db_user.get("user_role", "Business Analyst"),
+        "is_approver": bool(db_user.get("is_approver", False)),
     }
 
 
@@ -2580,6 +2587,145 @@ async def list_roles(user: Dict[str, Any] = Depends(get_current_user)):
             for r in ALL_ROLES
         ]
     }
+
+
+# ─────────────────────────────────────────
+# APPROVER DESIGNATION + PROMOTIONS
+# Real backend enforcement for "Promote to Production" — replaces a UI
+# that previously accepted any typed string as a signature and never
+# called the server at all. Approver is a designation an Admin grants to
+# specific users, independent of role/persona (see set_user_approver).
+# ─────────────────────────────────────────
+
+class SetApproverRequest(BaseModel):
+    email: EmailStr
+    is_approver: bool
+
+class CreatePromotionRequest(BaseModel):
+    pipeline_name: str
+    environment: str  # 'staging' | 'production'
+    version_ref: str
+    notes: Optional[str] = None
+
+    @field_validator("environment")
+    @classmethod
+    def _valid_env(cls, v: str) -> str:
+        if v not in ("staging", "production"):
+            raise ValueError("environment must be 'staging' or 'production'")
+        return v
+
+class DecidePromotionRequest(BaseModel):
+    approve: bool
+    decision_notes: Optional[str] = None
+
+
+@app.post("/v1/rbac/user-approver", tags=["RBAC"])
+async def update_user_approver(payload: SetApproverRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """Admin-only: grant or revoke the Approver designation for a user.
+    Independent of role — an Approver can be a Data Architect, a Business
+    Analyst, whoever the Admin trusts to gate production promotions."""
+    if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
+        raise HTTPException(status_code=403, detail="Only Admins can manage the Approver designation.")
+    set_user_approver(payload.email, payload.is_approver)
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="set_user_approver",
+        details=f"{'Granted' if payload.is_approver else 'Revoked'} Approver for {payload.email}",
+        status="success",
+    )
+    return {"status": "success", "message": f"{payload.email} {'is now' if payload.is_approver else 'is no longer'} an Approver."}
+
+
+@app.get("/v1/rbac/approvers", tags=["RBAC"])
+async def get_approvers(user: Dict[str, Any] = Depends(get_current_user)):
+    if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
+        raise HTTPException(status_code=403, detail="Only Admins can view the Approver list.")
+    return {"approvers": list_approvers()}
+
+
+@app.post("/v1/promotions", tags=["Promotions"])
+async def submit_promotion(payload: CreatePromotionRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Staging promotions deploy immediately (no gate). Production promotions
+    are recorded as 'pending' and sit there until a different user who is
+    a designated Approver calls /v1/promotions/{id}/decide — see
+    decide_promotion below for the actual enforcement.
+    """
+    from tenancy import get_current_tenant_id
+    tenant_id = get_current_tenant_id(user)
+    promo = create_promotion(
+        tenant_id=tenant_id,
+        pipeline_name=payload.pipeline_name,
+        environment=payload.environment,
+        version_ref=payload.version_ref,
+        requested_by=user["sub"],
+        notes=payload.notes,
+    )
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="request_promotion",
+        details=f"{payload.pipeline_name} -> {payload.environment} ({payload.version_ref}) — status={promo['status']}",
+        status="success",
+    )
+    return promo
+
+
+@app.get("/v1/promotions", tags=["Promotions"])
+async def get_promotions(user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Designated Approvers see pending promotions across every account —
+    there's no org/team concept in this platform (tenancy.py: one tenant =
+    one account), so an Approver reviewing someone else's request is
+    inherently cross-tenant. Everyone else sees only their own.
+    """
+    from tenancy import get_current_tenant_id
+    viewer = get_user_by_id(user["sub"])
+    if viewer and viewer.get("is_approver"):
+        return {"promotions": list_promotions(None)}
+    return {"promotions": list_promotions(get_current_tenant_id(user))}
+
+
+@app.post("/v1/promotions/{promotion_id}/decide", tags=["Promotions"])
+async def decide_promotion_endpoint(promotion_id: int, payload: DecidePromotionRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Real four-eyes enforcement:
+      1. The decider must currently be a designated Approver (checked fresh
+         against the database, not a JWT claim — a revoked Approver's
+         existing access token must not still work).
+      2. The decider cannot be the same person who requested the promotion.
+      3. The promotion must still be 'pending' (no deciding twice).
+
+    Deliberately NOT tenant-scoped: this platform has no org/team concept
+    (tenancy.py — one tenant = one account), so the requester and their
+    Approver are never in the same tenant by definition. Approver is a
+    cross-cutting designation an Admin grants to a trusted reviewer,
+    analogous to Admin's own cross-cutting authority elsewhere.
+    """
+    promo = get_promotion(promotion_id)
+    if promo is None:
+        raise HTTPException(status_code=404, detail="Promotion request not found.")
+
+    if promo["status"] != "pending":
+        raise HTTPException(status_code=409, detail=f"This promotion is already '{promo['status']}' — it can't be decided again.")
+
+    decider = get_user_by_id(user["sub"])
+    if not decider or not decider.get("is_approver"):
+        raise HTTPException(status_code=403, detail="Only a designated Approver can approve or reject a production promotion.")
+
+    if str(promo["requested_by"]) == str(user["sub"]):
+        raise HTTPException(status_code=403, detail="You cannot approve your own promotion request — a different Approver must review it.")
+
+    decided = decide_promotion(promotion_id, decided_by=user["sub"], approve=payload.approve, decision_notes=payload.decision_notes)
+    log_audit(
+        user_id=user.get("sub", "unknown"),
+        tier=user.get("tier", "trial"),
+        action="decide_promotion",
+        details=f"Promotion #{promotion_id} ({promo['pipeline_name']} -> {promo['environment']}) {'approved' if payload.approve else 'rejected'}",
+        status="success",
+    )
+    return decided
 
 @app.get("/v1/studio/search", tags=["Studio"])
 async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)):

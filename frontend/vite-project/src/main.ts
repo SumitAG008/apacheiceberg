@@ -3930,7 +3930,7 @@ async function initDataStudio() {
       if (target === 'studio-tab-travel') loadTableHistory();
       if (target === 'studio-tab-contracts') loadTableContracts();
       if (target === 'studio-tab-history') renderRunHistoryTable();
-      if (target === 'studio-tab-git') { renderGitCommits(); renderPromoStages(); }
+      if (target === 'studio-tab-git') { renderGitCommits(); renderPromoStages(); renderPromotionApprovalState(); renderRealPromotionsList(); }
       if (target === 'studio-tab-automation') renderActiveTriggers();
     };
   });
@@ -4079,6 +4079,7 @@ let activeRunId = '#1005';
 let devSha = '7b39223';
 let stagingSha = 'b0a488b';
 let prodSha = 'b0a488b';
+let currentProdPromotionId: number | null = null;
 
 let pipelineRuns: PipelineRun[] = [
   {
@@ -4327,6 +4328,78 @@ function renderPromoStages() {
   }
 }
 
+// Real, backend-enforced production approval gate — shows/hides itself
+// based on whether a pending production promotion actually exists (not
+// just whether you clicked "Promote" in this session), and only offers
+// Approve/Reject to someone who is both a real, current Approver AND not
+// the person who requested it. The server enforces both checks again
+// regardless of what this renders — see /v1/promotions/{id}/decide.
+async function renderPromotionApprovalState() {
+  const card = document.getElementById('approval-gate-card');
+  const statusText = document.getElementById('promo-approval-status-text');
+  const actions = document.getElementById('promo-approval-actions');
+  if (!card || !statusText || !actions) return;
+
+  try {
+    const [{ promotions }, me] = await Promise.all([
+      api.promotions.list(),
+      api.auth.me().catch(() => null),
+    ]);
+    const pending = promotions.find(p => p.status === 'pending' && p.environment === 'production');
+
+    if (!pending) {
+      card.style.display = 'none';
+      currentProdPromotionId = null;
+      return;
+    }
+
+    card.style.display = 'block';
+    currentProdPromotionId = pending.id;
+    const requestedLabel = pending.requested_by_email ? `by ${pending.requested_by_email}` : '';
+    const isRequester = me?.id === pending.requested_by;
+    const isApprover = me?.is_approver === true;
+
+    if (isApprover && !isRequester) {
+      statusText.textContent = `Pending your review — requested ${requestedLabel} for version ${pending.version_ref}.`;
+      actions.style.display = 'flex';
+    } else if (isRequester) {
+      statusText.textContent = `Awaiting a different Approver's review (you requested this — self-approval isn't allowed).`;
+      actions.style.display = 'none';
+    } else {
+      statusText.textContent = `Awaiting approval from a designated Approver, requested ${requestedLabel}.`;
+      actions.style.display = 'none';
+    }
+  } catch {
+    statusText.textContent = 'Could not load approval status.';
+    actions.style.display = 'none';
+  }
+}
+
+async function renderRealPromotionsList() {
+  const el = document.getElementById('real-promotions-list');
+  if (!el) return;
+  try {
+    const { promotions } = await api.promotions.list();
+    if (promotions.length === 0) {
+      el.textContent = 'No promotions submitted yet.';
+      return;
+    }
+    const statusColor: Record<string, string> = {
+      deployed: 'var(--color-success)',
+      rejected: 'var(--color-danger)',
+      pending: 'var(--color-warning)',
+    };
+    el.innerHTML = promotions.slice(0, 8).map(p => `
+      <div style="display:flex; justify-content:space-between; gap:0.5rem;">
+        <span style="font-family:var(--font-mono);">${escapeHtml(p.pipeline_name)} → ${escapeHtml(p.environment)} (${escapeHtml(p.version_ref)})</span>
+        <span style="color:${statusColor[p.status] || 'var(--text-muted)'};">${escapeHtml(p.status)}</span>
+      </div>
+    `).join('');
+  } catch {
+    el.textContent = 'Could not load promotions.';
+  }
+}
+
 function renderActiveTriggers() {
   const list = document.getElementById('active-triggers-list');
   if (!list) return;
@@ -4365,62 +4438,77 @@ function initPremiumStudioFeatures() {
     };
   }
 
-  // Git staging promotion button
+  // Git staging promotion button — real backend call, staging auto-deploys
+  // (no approval gate; see submit_promotion in api/main.py).
   const btnPromoteStaging = document.getElementById('btn-promo-staging');
   if (btnPromoteStaging) {
-    btnPromoteStaging.onclick = () => {
+    btnPromoteStaging.onclick = async () => {
       if (stagingSha === devSha) {
         showToast('Staging is already synchronized with local Development (SHA ' + devSha + ').', 'info');
         return;
       }
-      showToast('CI Pipeline check initiated for staging promotion...', 'info');
-      setTimeout(() => {
+      showToast('Submitting staging promotion...', 'info');
+      try {
+        await api.promotions.create('orders_to_gold', 'staging', devSha);
         stagingSha = devSha;
         renderPromoStages();
         renderGitCommits();
-        showToast('Dev version ' + devSha + ' successfully promoted to Staging namespace!', 'success');
-        addManualAuditLog('Promote Staging Namespace', 'Successfully promoted Staging to dev build (SHA ' + devSha + ') after passing 3 automated checks.', 'success');
-      }, 1000);
+        showToast('Dev version ' + devSha + ' promoted to Staging.', 'success');
+        renderRealPromotionsList();
+      } catch (e: any) {
+        showToast(e.message || 'Failed to submit staging promotion.', 'error');
+      }
     };
   }
 
-  // Git production promotion button
+  // Git production promotion button — creates a real, server-recorded
+  // 'pending' promotion. Nothing deploys until a different, designated
+  // Approver decides it (enforced server-side, not just hidden in the UI).
   const btnPromoteProd = document.getElementById('btn-promo-prod');
   const approvalGateCard = document.getElementById('approval-gate-card');
   if (btnPromoteProd) {
-    btnPromoteProd.onclick = () => {
+    btnPromoteProd.onclick = async () => {
       if (prodSha === devSha) {
         showToast('Production is already synchronized with local Development (SHA ' + devSha + ').', 'info');
         return;
       }
-      if (approvalGateCard) {
-        approvalGateCard.style.display = 'block';
-        showToast('Review gate triggered. Approval required to promote to Production.', 'info');
+      try {
+        const promo = await api.promotions.create('orders_to_gold', 'production', devSha);
+        currentProdPromotionId = promo.id;
+        if (approvalGateCard) approvalGateCard.style.display = 'block';
+        showToast('Promotion request submitted — awaiting a designated Approver.', 'info');
+        renderPromotionApprovalState();
+        renderRealPromotionsList();
+      } catch (e: any) {
+        showToast(e.message || 'Failed to submit promotion request.', 'error');
       }
     };
   }
 
-  const btnApprovePromo = document.getElementById('btn-approve-promo');
-  const inputApprover = document.getElementById('input-approval-approver') as HTMLInputElement;
-  if (btnApprovePromo) {
-    btnApprovePromo.onclick = () => {
-      const approver = inputApprover ? inputApprover.value.trim() : '';
-      if (!approver) {
-        showToast('Please specify the admin approver signature to proceed.', 'error');
-        return;
-      }
-      showToast('CI Verification checks running for Production environment...', 'info');
-      setTimeout(() => {
+  const btnDecideApprove = document.getElementById('btn-decide-approve');
+  const btnDecideReject = document.getElementById('btn-decide-reject');
+  const inputDecisionNotes = document.getElementById('input-decision-notes') as HTMLInputElement;
+  const decidePromotion = async (approve: boolean) => {
+    if (currentProdPromotionId == null) return;
+    const notes = inputDecisionNotes ? inputDecisionNotes.value.trim() : '';
+    try {
+      await api.promotions.decide(currentProdPromotionId, approve, notes || undefined);
+      if (approve) {
         prodSha = devSha;
-        if (approvalGateCard) approvalGateCard.style.display = 'none';
-        if (inputApprover) inputApprover.value = '';
         renderPromoStages();
         renderGitCommits();
-        showToast('Dev version ' + devSha + ' successfully promoted to Production (Approved by ' + approver + ')!', 'success');
-        addManualAuditLog('Promote Production Namespace', 'Successfully promoted Production build to ' + devSha + ' (Signature: ' + approver + ').', 'success');
-      }, 1200);
-    };
-  }
+      }
+      if (approvalGateCard) approvalGateCard.style.display = 'none';
+      if (inputDecisionNotes) inputDecisionNotes.value = '';
+      showToast(approve ? 'Promotion approved and deployed.' : 'Promotion rejected.', approve ? 'success' : 'info');
+      currentProdPromotionId = null;
+      renderRealPromotionsList();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to record decision.', 'error');
+    }
+  };
+  if (btnDecideApprove) btnDecideApprove.onclick = () => decidePromotion(true);
+  if (btnDecideReject) btnDecideReject.onclick = () => decidePromotion(false);
 
   // Rollback production button
   const btnGitRollback = document.getElementById('btn-git-rollback');
@@ -6614,7 +6702,11 @@ function applyUserRoleControls() {
       btnAddRbac.style.display = 'none';
     }
   }
-  
+
+  // Approver designation management is Admin-only, same as RBAC policies.
+  const approverPanel = document.getElementById('approver-admin-panel');
+  if (approverPanel) approverPanel.style.display = role === 'Admin' ? 'flex' : 'none';
+
   // If not Admin/Data Engineer, disable Python execution run script button
   const btnRunPython = document.getElementById('btn-run-python');
   if (btnRunPython) {
@@ -6975,6 +7067,52 @@ function initRbacPoliciesEditor() {
   }
 }
 
+// Admin-only panel to grant/revoke the Approver designation used by the
+// real production-promotion workflow (see /v1/rbac/user-approver in
+// api/main.py) — independent of role, since "who can approve" is a
+// separate question from "what can this role do day to day."
+function initApproverAdminPanel() {
+  const input = document.getElementById('input-approver-email') as HTMLInputElement;
+  const btnGrant = document.getElementById('btn-grant-approver');
+  const btnRevoke = document.getElementById('btn-revoke-approver');
+
+  const setApprover = async (isApprover: boolean) => {
+    const email = input?.value.trim();
+    if (!email) {
+      showToast('Enter an email address first.', 'error');
+      return;
+    }
+    try {
+      await api.rbac.setApprover(email, isApprover);
+      showToast(`${email} ${isApprover ? 'granted' : 'revoked'} Approver status.`, 'success');
+      if (input) input.value = '';
+      renderApproversList();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update Approver status.', 'error');
+    }
+  };
+
+  if (btnGrant) btnGrant.onclick = () => setApprover(true);
+  if (btnRevoke) btnRevoke.onclick = () => setApprover(false);
+
+  renderApproversList();
+}
+
+async function renderApproversList() {
+  const el = document.getElementById('approvers-list');
+  if (!el) return;
+  try {
+    const { approvers } = await api.rbac.listApprovers();
+    if (approvers.length === 0) {
+      el.textContent = 'No Approvers designated yet — production promotions have no one able to approve them.';
+      return;
+    }
+    el.innerHTML = approvers.map(a => `<div>${escapeHtml(a.email)} <span style="color: var(--text-dim);">(${escapeHtml(a.user_role)})</span></div>`).join('');
+  } catch {
+    el.textContent = 'Could not load the Approver list.';
+  }
+}
+
 let activeRowFilters: any[] = [];
 
 async function loadRowFilters() {
@@ -7103,6 +7241,7 @@ function initFabricSaaS() {
   initPythonWorkspace();
   initRbacPoliciesEditor();
   initRowFiltersEditor();
+  initApproverAdminPanel();
 
   // Set default experience to Engineering Studio
   applyExperience('engineering');

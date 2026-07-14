@@ -63,6 +63,24 @@ export interface AuthUser {
   created_at?: string;
   last_login_at?: string;
   role?: string;
+  is_approver?: boolean;
+}
+
+export interface Promotion {
+  id: number;
+  tenant_id: string;
+  pipeline_name: string;
+  environment: 'staging' | 'production';
+  version_ref: string;
+  notes: string | null;
+  status: 'pending' | 'deployed' | 'rejected';
+  requested_by: string;
+  requested_by_email?: string;
+  requested_at: string;
+  decided_by: string | null;
+  decided_by_email?: string;
+  decided_at: string | null;
+  decision_notes: string | null;
 }
 
 export interface AuthTokenResponse {
@@ -550,6 +568,56 @@ export const api = {
     async listRoles(): Promise<{ roles: { name: string; description: string }[] }> {
       const res = await authFetch(`${BASE_URL}/v1/rbac/roles`);
       if (!res.ok) throw new Error('Failed to load role list');
+      return res.json();
+    },
+    async setApprover(email: string, isApprover: boolean): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/user-approver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, is_approver: isApprover }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to update Approver status');
+      }
+      return res.json();
+    },
+    async listApprovers(): Promise<{ approvers: { id: string; email: string; user_role: string }[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/rbac/approvers`);
+      if (!res.ok) throw new Error('Failed to load approver list');
+      return res.json();
+    }
+  },
+
+  // ── Real pipeline promotion workflow (four-eyes enforced server-side) ──
+  promotions: {
+    async create(pipelineName: string, environment: 'staging' | 'production', versionRef: string, notes?: string): Promise<Promotion> {
+      const res = await authFetch(`${BASE_URL}/v1/promotions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipeline_name: pipelineName, environment, version_ref: versionRef, notes }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to submit promotion');
+      }
+      return res.json();
+    },
+    async list(): Promise<{ promotions: Promotion[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/promotions`);
+      if (!res.ok) throw new Error('Failed to load promotions');
+      return res.json();
+    },
+    async decide(id: number, approve: boolean, decisionNotes?: string): Promise<Promotion> {
+      const res = await authFetch(`${BASE_URL}/v1/promotions/${id}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approve, decision_notes: decisionNotes }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to record decision');
+      }
       return res.json();
     }
   }

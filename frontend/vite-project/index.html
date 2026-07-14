@@ -3316,6 +3316,26 @@ with DAG(
                     </div>
                   </div>
 
+                  <!-- APPROVER DESIGNATION — real, backend-enforced, and
+                       independent of role (see backend/roles.py's design
+                       note and /v1/rbac/user-approver). Admin-only. -->
+                  <div id="approver-admin-panel" style="display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-subtle); padding-top: 1.25rem; margin-top: 0.5rem;">
+                    <div>
+                      <h3 style="font-size: 1rem; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-user-check" style="color: #eab308;"></i> Production Approvers
+                      </h3>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0; line-height: 1.4;">
+                        Who can approve a production promotion — independent of role, and never the person who requested it (enforced server-side in <code>/v1/promotions/{id}/decide</code>).
+                      </p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                      <input type="email" id="input-approver-email" class="input-field" placeholder="user@company.com" style="flex: 1;">
+                      <button id="btn-grant-approver" class="btn btn-secondary btn-sm"><i class="fa-solid fa-user-plus"></i> Grant</button>
+                      <button id="btn-revoke-approver" class="btn btn-secondary btn-sm"><i class="fa-solid fa-user-minus"></i> Revoke</button>
+                    </div>
+                    <div id="approvers-list" style="font-size: 0.8rem; color: var(--text-muted);">Loading…</div>
+                  </div>
+
                   <!-- SUB-TAB: ENTERPRISE DATA CATALOG & GLOSSARY -->
                   <div id="studio-tab-catalog" class="studio-sub-tab-content" style="display: none; flex-direction: column; gap: 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
@@ -3724,15 +3744,31 @@ with DAG(
                           <button id="btn-promo-prod" class="btn btn-primary btn-sm" style="flex: 1;"><i class="fa-solid fa-shield-check"></i> Promote to Production</button>
                         </div>
 
-                        <!-- Approval Gate Card (Shows when production promotion starts) -->
+                        <!-- Approval Gate Card — real backend state, not a
+                             free-text "signature" anyone could type anything
+                             into. Content is filled in by
+                             renderPromotionApprovalState() in main.ts based
+                             on the actual pending promotion + whether the
+                             current user is a real, different, designated
+                             Approver (server-enforced either way). -->
                         <div class="approval-overlay-card" id="approval-gate-card" style="display: none;">
                           <div style="font-weight: 700; font-size: 0.8rem; color: #eab308; display: flex; align-items: center; gap: 0.4rem;">
                             <i class="fa-solid fa-circle-exclamation"></i> Production Promotion Requires Approval
                           </div>
-                          <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Production environment promotions require review from an authorized administrator. Please input the reviewer's approval signature token.</p>
-                          <div style="display: flex; gap: 0.4rem;">
-                            <input type="text" id="input-approval-approver" class="input-field" placeholder="Admin Approver (e.g. Lead Architect)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">
-                            <button id="btn-approve-promo" class="btn btn-primary btn-sm" style="background: #eab308; border-color: #eab308;"><i class="fa-solid fa-signature"></i> Sign &amp; Approve</button>
+                          <p id="promo-approval-status-text" style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">
+                            Checking approval status…
+                          </p>
+                          <div id="promo-approval-actions" style="display: none; gap: 0.4rem;">
+                            <input type="text" id="input-decision-notes" class="input-field" placeholder="Decision notes (optional)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">
+                            <button id="btn-decide-approve" class="btn btn-primary btn-sm" style="background: #16a34a; border-color: #16a34a;"><i class="fa-solid fa-check"></i> Approve</button>
+                            <button id="btn-decide-reject" class="btn btn-secondary btn-sm"><i class="fa-solid fa-xmark"></i> Reject</button>
+                          </div>
+                        </div>
+
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0.5rem 0 0 0;">Recent Promotions <span style="font-weight:400; color:var(--text-dim); font-size:0.68rem;">(real — from the backend)</span></h4>
+                        <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(0,0,0,0.1); padding: 0.35rem;">
+                          <div id="real-promotions-list" style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.72rem; color: var(--text-muted); padding: 0.3rem;">
+                            Loading…
                           </div>
                         </div>
 

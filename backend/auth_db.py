@@ -91,6 +91,29 @@ def init_auth_schema():
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active';")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS user_role TEXT NOT NULL DEFAULT 'Business Analyst';")
         cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS sso_provider TEXT;")
+        # Approver is a designation independent of role/persona (an Admin
+        # flags specific trusted users) -- see promotions.py. Deliberately
+        # not role-derived: "who can approve" is a separate question from
+        # "what can this role do day to day."
+        cur.execute("ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS is_approver BOOLEAN NOT NULL DEFAULT FALSE;")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS auth.promotions (
+                id              BIGSERIAL PRIMARY KEY,
+                tenant_id       TEXT NOT NULL,
+                pipeline_name   TEXT NOT NULL,
+                environment     TEXT NOT NULL,           -- 'staging' | 'production'
+                version_ref     TEXT NOT NULL,           -- git sha or version label being promoted
+                notes           TEXT,
+                status          TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'deployed'
+                requested_by    UUID NOT NULL REFERENCES auth.users(id),
+                requested_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                decided_by      UUID REFERENCES auth.users(id),
+                decided_at      TIMESTAMPTZ,
+                decision_notes  TEXT
+            );
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_promotions_tenant ON auth.promotions(tenant_id, requested_at DESC);")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS auth.rbac_policies (
@@ -539,6 +562,130 @@ def log_audit_pg(user_id: str, tier: str, action: str, details: str, status: str
         conn.close()
     except Exception as e:
         print(f"[auth_db] Audit log error: {e}")
+
+
+def set_user_approver(email: str, is_approver: bool):
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE auth.users SET is_approver = %s WHERE email = %s;", (is_approver, email.lower().strip()))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def list_approvers() -> List[Dict[str, Any]]:
+    """Every user currently flagged as an approver — for the Admin UI that
+    manages this designation."""
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, email, user_role FROM auth.users WHERE is_approver = TRUE ORDER BY email;")
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+# ─────────────────────────────────────────
+# PROMOTIONS (real pipeline promotion workflow)
+# ─────────────────────────────────────────
+def create_promotion(
+    tenant_id: str,
+    pipeline_name: str,
+    environment: str,
+    version_ref: str,
+    requested_by: str,
+    notes: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Staging promotions don't need a second approver -- they go straight to
+    'deployed'. Production promotions start 'pending' and require a
+    decide_promotion() call from someone other than requested_by (enforced
+    in api/main.py, not here -- this function just records the request).
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        status = "deployed" if environment == "staging" else "pending"
+        cur.execute(
+            """
+            INSERT INTO auth.promotions (tenant_id, pipeline_name, environment, version_ref, notes, status, requested_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, tenant_id, pipeline_name, environment, version_ref, notes, status,
+                      requested_by, requested_at, decided_by, decided_at, decision_notes;
+            """,
+            (tenant_id, pipeline_name, environment, version_ref, notes, status, requested_by),
+        )
+        row = dict(cur.fetchone())
+        conn.commit()
+        return row
+    finally:
+        conn.close()
+
+
+def list_promotions(tenant_id: Optional[str], limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    tenant_id=None returns promotions across every account — this platform
+    has no organization/team concept (see tenancy.py: one tenant = one
+    account), so a requester and their approver are never in the same
+    tenant. Approver is deliberately a cross-cutting designation (see
+    roles.py), so api/main.py passes tenant_id=None only when the caller
+    is a designated Approver; everyone else is scoped to their own tenant.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        base_query = """
+            SELECT p.id, p.tenant_id, p.pipeline_name, p.environment, p.version_ref, p.notes, p.status,
+                   p.requested_by, ru.email AS requested_by_email, p.requested_at,
+                   p.decided_by, du.email AS decided_by_email, p.decided_at, p.decision_notes
+            FROM auth.promotions p
+            JOIN auth.users ru ON ru.id = p.requested_by
+            LEFT JOIN auth.users du ON du.id = p.decided_by
+        """
+        if tenant_id is None:
+            cur.execute(base_query + " ORDER BY p.requested_at DESC LIMIT %s;", (limit,))
+        else:
+            cur.execute(base_query + " WHERE p.tenant_id = %s ORDER BY p.requested_at DESC LIMIT %s;", (tenant_id, limit))
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_promotion(promotion_id: int) -> Optional[Dict[str, Any]]:
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM auth.promotions WHERE id = %s;", (promotion_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def decide_promotion(promotion_id: int, decided_by: str, approve: bool, decision_notes: Optional[str] = None) -> Dict[str, Any]:
+    """Records the approve/reject decision. Caller (api/main.py) is
+    responsible for checking is_approver and the no-self-approval rule
+    *before* calling this -- this function trusts its inputs."""
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        new_status = "deployed" if approve else "rejected"
+        cur.execute(
+            """
+            UPDATE auth.promotions
+            SET status = %s, decided_by = %s, decided_at = NOW(), decision_notes = %s
+            WHERE id = %s
+            RETURNING id, tenant_id, pipeline_name, environment, version_ref, notes, status,
+                      requested_by, requested_at, decided_by, decided_at, decision_notes;
+            """,
+            (new_status, decided_by, decision_notes, promotion_id),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row) if row else None
+    finally:
+        conn.close()
 
 
 def get_audit_logs_pg(limit: int = 100, user_id: Optional[str] = None):
