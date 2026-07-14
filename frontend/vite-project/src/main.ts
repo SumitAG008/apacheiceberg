@@ -1843,12 +1843,14 @@ function buildMcpTab() {
 async function checkBackendStatus() {
   const dot  = document.getElementById('backend-status-dot')!;
   const text = document.getElementById('backend-status-text')!;
+  const homeBackendEl = document.getElementById('home-stat-backend');
   try {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       dot.className  = 'status-dot online';
       text.textContent = 'Backend online';
       text.style.color = 'var(--color-success)';
+      if (homeBackendEl) homeBackendEl.textContent = 'Online';
     } else {
       throw new Error('not ok');
     }
@@ -1856,6 +1858,7 @@ async function checkBackendStatus() {
     dot.className  = 'status-dot offline';
     text.textContent = 'Backend offline';
     text.style.color = 'var(--color-danger)';
+    if (homeBackendEl) homeBackendEl.textContent = 'Offline';
   }
 }
 
@@ -3157,6 +3160,8 @@ document.addEventListener('keydown', (e) => {
 function bootstrapApp() {
   try { loadAWSConfig(); } catch (e) { console.error("Error loading AWS config:", e); }
   try { initChat(); } catch (e) { console.error("Error initializing chat:", e); }
+  try { renderHomeDashboard(); } catch (e) { console.error("Error rendering home dashboard:", e); }
+  try { initHomeQuickTiles(); } catch (e) { console.error("Error wiring home quick tiles:", e); }
   try { buildLessonsDeck(); } catch (e) { console.error("Error building lessons deck:", e); }
   try { buildApiHelpTab(); } catch (e) { console.error("Error building API help tab:", e); }
   try { buildTestTab(); } catch (e) { console.error("Error building test tab:", e); }
@@ -3176,6 +3181,85 @@ function bootstrapApp() {
   try { initSqlResultsSwitcher(); } catch (e) { console.error("Error initializing SQL Results Switcher:", e); }
   try { initOrchestratorDagSimulation(); } catch (e) { console.error("Error initializing DAG simulation:", e); }
   try { initFabricSaaS(); } catch (e) { console.error("Error initializing Fabric SaaS:", e); }
+}
+
+function escapeHtml(s: string): string {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ─────────────────────────────────────────
+// HOME DASHBOARD — real data only: table/namespace counts from the
+// catalog API, connection state from the AWS config check, and recent
+// activity from the real /v1/audit trail. No fabricated "agent did this"
+// entries — if we don't have a real source for it, the panel says so.
+// ─────────────────────────────────────────
+async function renderHomeDashboard() {
+  const user = tokenStore.getUser();
+  const name = user?.email ? user.email.split('@')[0] : undefined;
+  const heroTitle = document.getElementById('home-hero-title');
+  if (heroTitle) heroTitle.textContent = getGreeting(name);
+
+  const heroSub = document.getElementById('home-hero-sub');
+  const tablesEl = document.getElementById('home-stat-tables');
+  const nsEl = document.getElementById('home-stat-namespaces');
+  const connEl = document.getElementById('home-stat-connection');
+  // home-stat-backend is owned by checkBackendStatus(), called separately in bootstrapApp().
+
+  if (connEl) connEl.textContent = customAwsToggle?.checked ? 'Live' : 'Demo';
+
+  try {
+    const { namespaces } = await api.catalog.listNamespaces();
+    let tableCount = 0;
+    for (const ns of namespaces) {
+      try {
+        const { tables } = await api.catalog.listTables(ns);
+        tableCount += tables.length;
+      } catch {
+        // This role can't see this namespace — skip it rather than fail the whole count.
+      }
+    }
+    if (nsEl) nsEl.textContent = String(namespaces.length);
+    if (tablesEl) tablesEl.textContent = String(tableCount);
+    if (heroSub) {
+      heroSub.textContent = `${tableCount} table${tableCount === 1 ? '' : 's'} across ${namespaces.length} namespace${namespaces.length === 1 ? '' : 's'}`;
+    }
+  } catch {
+    if (tablesEl) tablesEl.textContent = '–';
+    if (nsEl) nsEl.textContent = '–';
+    if (heroSub) heroSub.textContent = 'Could not load lakehouse status — check your connection.';
+  }
+
+  const activityEl = document.getElementById('home-recent-activity');
+  if (activityEl) {
+    try {
+      const logs = await api.getAuditLogs();
+      const recent = logs.slice(0, 6);
+      if (recent.length === 0) {
+        activityEl.innerHTML = '<div class="home-activity-empty">No activity recorded yet.</div>';
+      } else {
+        activityEl.innerHTML = recent.map(l => `
+          <div class="home-activity-row">
+            <span class="activity-actor">${escapeHtml(l.user_id || 'system')}</span>
+            <span class="activity-action">${escapeHtml(l.action)}${l.details ? ' — ' + escapeHtml(l.details) : ''}</span>
+            <span class="activity-time">${new Date(l.timestamp).toLocaleString()}</span>
+          </div>
+        `).join('');
+      }
+    } catch {
+      activityEl.innerHTML = '<div class="home-activity-empty">Could not load the audit trail.</div>';
+    }
+  }
+}
+
+function initHomeQuickTiles() {
+  document.querySelectorAll('.home-quick-tile[data-goto]').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const targetId = tile.getAttribute('data-goto');
+      if (targetId) (document.getElementById(targetId) as HTMLButtonElement | null)?.click();
+    });
+  });
 }
 
 function initUserControls() {
