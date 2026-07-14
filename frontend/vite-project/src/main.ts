@@ -6845,19 +6845,12 @@ function initCommandPalette() {
         headerSearchInput.blur();
         
         if (res.type === 'page') {
-          let matchedExp = 'engineering';
-          if (res.route === 'ingest-tab') matchedExp = 'factory';
-          else if (res.route === 'chat-tab') matchedExp = 'warehouse';       
-          else if (res.route === 'graph-tab') matchedExp = 'graph';
-          else if (['audit-tab', 'traffic-tab', 'mcp-tab'].includes(res.route)) matchedExp = 'admin';
-
-          const opt = document.querySelector(`.experience-option[data-exp="${matchedExp}"]`) as HTMLElement;
-          if (opt) opt.click();
-
-          setTimeout(() => {
-            const targetTabBtn = document.getElementById(res.route) || document.querySelector(`.tab-btn[data-tab="${res.route}"]`);
-            if (targetTabBtn) (targetTabBtn as HTMLButtonElement).click();   
-          }, 100);
+          // Navigate directly via the real sidebar nav item -- this used to
+          // go through the "Experience Switcher" first, a mechanism whose
+          // selector (.tab-headers .tab-btn) no longer matches anything
+          // since that element was removed when the flat tab-bar became the
+          // grouped sidebar, making it a silent no-op.
+          switchTab(res.route);
         } else if (res.type === 'table') {
           const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
           if (opt) opt.click();

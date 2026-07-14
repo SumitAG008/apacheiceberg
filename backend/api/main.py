@@ -2733,15 +2733,23 @@ async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)
     query = q.lower().strip()
     results = []
     
+    # Kept in sync with the real sidebar nav ids in index.html
+    # (frontend/vite-project/index.html's #nav-* buttons) — this used to
+    # list pages that don't exist (a "Learn Academy" with no page behind it
+    # at all) and stale routes (chat-tab used to be the chat console; it's
+    # the Home dashboard now, with chat split out to assistant-tab).
     pages = [
-        {"name": "Chat Console", "type": "page", "route": "chat-tab", "desc": "Chat with your data lake using AI"},
-        {"name": "Learn Academy", "type": "page", "route": "learn-tab", "desc": "Hands-on tutorials and academy videos"},
-        {"name": "Upload CSV", "type": "page", "route": "ingest-tab", "desc": "Ingest CSV files into S3 Iceberg"},
-        {"name": "Graph Database Console", "type": "page", "route": "graph-tab", "desc": "Run openCypher queries on Apache AGE"},
-        {"name": "Audit Trails & SOX Logs", "type": "page", "route": "audit-tab", "desc": "Cryptographically signed system log tracker"},
-        {"name": "AWS Warehouse Settings", "type": "page", "route": "workspace-tab", "desc": "Connect your own S3 data lake bucket"},
-        {"name": "Python Script Workspace", "type": "page", "route": "studio-tab", "desc": "Run Python scripts and SQL queries"},
-        {"name": "Role-Based Access Control Policies", "type": "page", "route": "studio-tab", "desc": "Manage column-level masking rules"}
+        {"name": "Home", "type": "page", "route": "chat-tab", "desc": "Lakehouse overview — tables, connection status, recent activity"},
+        {"name": "Assistant", "type": "page", "route": "assistant-tab", "desc": "Chat with your data lake using AI"},
+        {"name": "Ingest", "type": "page", "route": "ingest-tab", "desc": "Upload CSV, enterprise connectors, or sample datasets"},
+        {"name": "Graph", "type": "page", "route": "graph-tab", "desc": "Run openCypher queries on Apache AGE"},
+        {"name": "Workspace", "type": "page", "route": "workspace-tab", "desc": "Connect your own S3 data lake bucket"},
+        {"name": "Data Studio", "type": "page", "route": "studio-tab", "desc": "SQL console, Python workspace, schema evolution, RBAC policies, pipelines"},
+        {"name": "Query Lab", "type": "page", "route": "query-lab-tab", "desc": "Distributed query engine — SQL, graph, Python"},
+        {"name": "Audit", "type": "page", "route": "audit-tab", "desc": "Real audit trail of every auth and data operation"},
+        {"name": "MCP Gateway", "type": "page", "route": "mcp-tab", "desc": "Real MCP server tools for external clients"},
+        {"name": "API Docs", "type": "page", "route": "api-tab", "desc": "REST API reference"},
+        {"name": "Observability", "type": "page", "route": "traffic-tab", "desc": "Query traffic, cost and platform health"},
     ]
     for p in pages:
         if query in p["name"].lower() or query in p["desc"].lower():
