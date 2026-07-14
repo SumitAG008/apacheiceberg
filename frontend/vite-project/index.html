@@ -2217,6 +2217,9 @@
           <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-audit">
             <i class="fa-solid fa-shield-halved"></i> Audit
           </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="users-tab" id="nav-users">
+            <i class="fa-solid fa-users-gear"></i> Users &amp; Roles
+          </button>
           <button class="tab-btn sidebar-nav-item" data-tab="mcp-tab" id="nav-mcp">
             <i class="fa-solid fa-network-wired"></i> MCP Gateway
           </button>
@@ -3083,6 +3086,45 @@ with DAG(
                 </button>
               </div>
               <div class="audit-timeline" id="audit-timeline"></div>
+            </div>
+          </div>
+
+          <!-- TAB: USERS & ROLES — platform-wide role/Approver assignment.
+               Admin-only (both nav-gated in main.ts and enforced server-side
+               by GET/POST /v1/admin/users, /v1/rbac/user-role, /v1/rbac/user-approver).
+               New registrations default to Business Analyst; this is the
+               only place an Admin can change that. -->
+          <div id="users-tab" class="tab-content">
+            <div style="max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem;">
+              <div>
+                <h2 style="display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-users-gear" style="color: var(--color-primary);"></i> Users &amp; Roles</h2>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">
+                  Every registered user defaults to Business Analyst on signup — this is the only place to change that, or to grant/revoke the Approver designation used by production promotions. Admin-only.
+                </p>
+              </div>
+
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                  <span id="users-table-count" style="font-size: 0.8rem; color: var(--text-muted);">Loading…</span>
+                  <button id="btn-refresh-users" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                </div>
+                <div style="overflow-x: auto;">
+                  <table class="preview-table" style="width: 100%; margin: 0; font-size: 0.85rem;">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Approver</th>
+                        <th>Verified</th>
+                        <th>Last Login</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                      <tr><td colspan="5" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">Loading…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 

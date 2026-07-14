@@ -201,6 +201,8 @@ tabButtons.forEach(button => {
       initTrafficMonitor();
     } else if (targetTab === 'workspace-tab') {
       initDeveloperWorkspace();
+    } else if (targetTab === 'users-tab') {
+      loadUsersTable();
     }
   });
 });
@@ -6663,6 +6665,7 @@ const TAB_TO_ID_VALUES: Record<string, true> = {
   'nav-traffic': true,
   'nav-audit': true,
   'nav-query-lab': true,
+  'nav-users': true,
 };
 
 function applyUserRoleControls() {
@@ -6706,6 +6709,15 @@ function applyUserRoleControls() {
   // Approver designation management is Admin-only, same as RBAC policies.
   const approverPanel = document.getElementById('approver-admin-panel');
   if (approverPanel) approverPanel.style.display = role === 'Admin' ? 'flex' : 'none';
+
+  // Row-Level Filters' Add/Save buttons were never gated the way the RBAC
+  // Policies Add/Save buttons above are -- they were visible and clickable
+  // for every role, producing a confusing 403 toast instead of just not
+  // being there for a role that could never use them.
+  const btnAddRowFilter = document.getElementById('btn-add-row-filter');
+  const btnSaveRowFilters = document.getElementById('btn-save-row-filters');
+  if (btnAddRowFilter) btnAddRowFilter.style.display = role === 'Admin' ? 'inline-flex' : 'none';
+  if (btnSaveRowFilters) btnSaveRowFilters.style.display = role === 'Admin' ? 'inline-flex' : 'none';
 
   // If not Admin/Data Engineer, disable Python execution run script button
   const btnRunPython = document.getElementById('btn-run-python');
@@ -6934,9 +6946,19 @@ let activePolicies: any[] = [];
 async function loadRbacPolicies() {
   const tbody = document.getElementById('rbac-policies-tbody');
   if (!tbody) return;
-  
+
+  // /v1/rbac/policies is Admin-only server-side (see CAN_MANAGE_RBAC in
+  // api/main.py) -- for every other role this call would always 403, so
+  // show a clear permission message instead of a scary "Failed to load"
+  // error implying something is broken.
+  const role = tokenStore.getUser()?.role || 'Business Analyst';
+  if (role !== 'Admin') {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Only Admins can view or edit RBAC policies.</td></tr>';
+    return;
+  }
+
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading access control policies...</td></tr>';
-  
+
   try {
     activePolicies = await api.rbac.getPolicies();
     renderRbacPolicies();
@@ -7106,11 +7128,96 @@ async function renderApproversList() {
   }
 }
 
+// ─────────────────────────────────────────
+// USERS & ROLES — the real, missing piece: without this page, nobody
+// (except the very first account, auto-made Admin on registration) could
+// ever become anything other than Business Analyst, since
+// api.rbac.updateUserRole existed but nothing in the UI called it, and
+// there was no way to even see who was registered. Admin-only, enforced
+// server-side by GET /v1/admin/users regardless of what this renders.
+// ─────────────────────────────────────────
+let usersTableRolesCache: string[] | null = null;
+
+async function loadUsersTable() {
+  const tbody = document.getElementById('users-table-body');
+  const countEl = document.getElementById('users-table-count');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</td></tr>';
+
+  try {
+    if (!usersTableRolesCache) {
+      const { roles } = await api.rbac.listRoles();
+      usersTableRolesCache = roles.map(r => r.name);
+    }
+    const { users } = await api.rbac.listAllUsers();
+    if (countEl) countEl.textContent = `${users.length} registered user${users.length === 1 ? '' : 's'}`;
+
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">No users found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => `
+      <tr data-user-email="${escapeHtml(u.email)}">
+        <td style="font-family: var(--font-mono); font-size: 0.8rem;">${escapeHtml(u.email)}</td>
+        <td>
+          <select class="input-field user-role-select" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;">
+            ${usersTableRolesCache!.map(r => `<option value="${escapeHtml(r)}" ${r === u.role ? 'selected' : ''}>${escapeHtml(r)}</option>`).join('')}
+          </select>
+        </td>
+        <td style="text-align: center;"><input type="checkbox" class="user-approver-checkbox" ${u.is_approver ? 'checked' : ''}></td>
+        <td>${u.is_verified ? '<span class="badge badge-green">Verified</span>' : '<span class="badge">Unverified</span>'}</td>
+        <td style="font-size: 0.78rem; color: var(--text-muted);">${u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never'}</td>
+      </tr>
+    `).join('');
+
+    tbody.querySelectorAll('tr[data-user-email]').forEach(row => {
+      const email = row.getAttribute('data-user-email')!;
+      const roleSelect = row.querySelector('.user-role-select') as HTMLSelectElement;
+      const approverCheckbox = row.querySelector('.user-approver-checkbox') as HTMLInputElement;
+
+      roleSelect?.addEventListener('change', async () => {
+        try {
+          await api.rbac.updateUserRole(email, roleSelect.value);
+          showToast(`${email} is now ${roleSelect.value}.`, 'success');
+        } catch (e: any) {
+          showToast(e.message || 'Failed to update role.', 'error');
+          loadUsersTable();
+        }
+      });
+
+      approverCheckbox?.addEventListener('change', async () => {
+        try {
+          await api.rbac.setApprover(email, approverCheckbox.checked);
+          showToast(`${email} ${approverCheckbox.checked ? 'granted' : 'revoked'} Approver status.`, 'success');
+        } catch (e: any) {
+          showToast(e.message || 'Failed to update Approver status.', 'error');
+          loadUsersTable();
+        }
+      });
+    });
+  } catch (e: any) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 1.5rem; color: var(--color-danger);">${escapeHtml(e.message || 'Failed to load users — Admin access required.')}</td></tr>`;
+    if (countEl) countEl.textContent = '';
+  }
+}
+
+document.getElementById('btn-refresh-users')?.addEventListener('click', loadUsersTable);
+
 let activeRowFilters: any[] = [];
 
 async function loadRowFilters() {
   const tbody = document.getElementById('row-filters-tbody');
   if (!tbody) return;
+
+  // Same Admin-only gate as loadRbacPolicies -- /v1/rbac/row-filters
+  // always 403s for other roles.
+  const role = tokenStore.getUser()?.role || 'Business Analyst';
+  if (role !== 'Admin') {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Only Admins can view or edit row-level filters.</td></tr>';
+    return;
+  }
 
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading row-level filters...</td></tr>';
 

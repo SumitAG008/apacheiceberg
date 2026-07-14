@@ -66,6 +66,17 @@ export interface AuthUser {
   is_approver?: boolean;
 }
 
+export interface PlatformUser {
+  id: string;
+  email: string;
+  role: string;
+  is_approver: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string | null;
+  last_login_at: string | null;
+}
+
 export interface Promotion {
   id: number;
   tenant_id: string;
@@ -585,6 +596,14 @@ export const api = {
     async listApprovers(): Promise<{ approvers: { id: string; email: string; user_role: string }[] }> {
       const res = await authFetch(`${BASE_URL}/v1/rbac/approvers`);
       if (!res.ok) throw new Error('Failed to load approver list');
+      return res.json();
+    },
+    async listAllUsers(): Promise<{ users: PlatformUser[] }> {
+      const res = await authFetch(`${BASE_URL}/v1/admin/users`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to load user directory');
+      }
       return res.json();
     }
   },

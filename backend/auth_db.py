@@ -574,6 +574,30 @@ def set_user_approver(email: str, is_approver: bool):
         conn.close()
 
 
+def list_all_users(limit: int = 200) -> List[Dict[str, Any]]:
+    """
+    Every registered user with their current role/approver status — the
+    directory an Admin needs to actually assign roles to real people
+    instead of typing an email into a box and hoping it's right. Without
+    this, /v1/rbac/user-role has no discoverable way to know who exists.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, email, user_role, is_approver, is_verified, is_active, created_at, last_login_at
+            FROM auth.users
+            ORDER BY created_at DESC
+            LIMIT %s;
+            """,
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 def list_approvers() -> List[Dict[str, Any]]:
     """Every user currently flagged as an approver — for the Admin UI that
     manages this designation."""

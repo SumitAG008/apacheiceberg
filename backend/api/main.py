@@ -62,6 +62,7 @@ from auth_db import (
     get_or_create_sso_user,
     set_user_approver,
     list_approvers,
+    list_all_users,
     create_promotion,
     list_promotions,
     get_promotion,
@@ -2642,6 +2643,34 @@ async def get_approvers(user: Dict[str, Any] = Depends(get_current_user)):
     if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
         raise HTTPException(status_code=403, detail="Only Admins can view the Approver list.")
     return {"approvers": list_approvers()}
+
+
+@app.get("/v1/admin/users", tags=["RBAC"])
+async def get_all_users(user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Every registered user, for the Admin's User & Role Management page.
+    This is the piece that was actually missing before: role assignment
+    (update_user_role below) had no way to discover who exists to assign
+    a role to, short of already knowing someone's exact email address.
+    """
+    if user.get("role", "Business Analyst") not in CAN_MANAGE_RBAC:
+        raise HTTPException(status_code=403, detail="Only Admins can view the user directory.")
+    users = list_all_users()
+    return {
+        "users": [
+            {
+                "id": str(u["id"]),
+                "email": u["email"],
+                "role": u.get("user_role", "Business Analyst"),
+                "is_approver": bool(u.get("is_approver", False)),
+                "is_verified": bool(u.get("is_verified", False)),
+                "is_active": bool(u.get("is_active", True)),
+                "created_at": u["created_at"].isoformat() if u.get("created_at") else None,
+                "last_login_at": u["last_login_at"].isoformat() if u.get("last_login_at") else None,
+            }
+            for u in users
+        ]
+    }
 
 
 @app.post("/v1/promotions", tags=["Promotions"])
