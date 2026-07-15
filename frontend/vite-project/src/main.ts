@@ -6278,8 +6278,10 @@ const CONNECTORS: Record<string, ConnectorDef> = {
     }
   },
   successfactors: {
+    // No hardcoded entity list -- Test Connection discovers the real ones
+    // from this tenant's own OData $metadata (see dynamicEntities below).
     name: "SAP SuccessFactors", desc:"Employee central, comp", color:"#0a6ed1", initials:"SF",
-    entities: ["EmpJob — employment info", "EmpCompensation", "FODepartment", "PerPersonal — personal data"],
+    entities: [],
     methods: {
       oauth_saml: {
         label:"OAuth 2.0 SAML bearer", flag:{text:"recommended", cls:"rec"},
@@ -6463,10 +6465,19 @@ function updateConfigCardState() {
     // Populate the objects dropdown list based on connector catalog
     const entityList = dynamicEntities ?? CONNECTORS[activeConnectorKey]?.entities ?? [];
     const entitySelect = document.getElementById('conn-entity') as HTMLSelectElement;
+    const btnConnIngest = document.getElementById('btn-conn-ingest') as HTMLButtonElement;
     if (entitySelect) {
-      entitySelect.innerHTML = entityList.map(ent => {
-        return `<option value="${ent}">${ent}</option>`;
-      }).join('');
+      if (entityList.length === 0) {
+        entitySelect.innerHTML = `<option value="" disabled selected>No entities discovered yet -- run Test Connection</option>`;
+        entitySelect.disabled = true;
+        if (btnConnIngest) btnConnIngest.disabled = true;
+      } else {
+        entitySelect.disabled = false;
+        if (btnConnIngest) btnConnIngest.disabled = false;
+        entitySelect.innerHTML = entityList.map(ent => {
+          return `<option value="${ent}">${ent}</option>`;
+        }).join('');
+      }
     }
 
     // Auto recommendation table name
