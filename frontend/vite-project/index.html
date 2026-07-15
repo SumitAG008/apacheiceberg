@@ -4058,6 +4058,210 @@ with DAG(
             </div>
           </div>
 
+    <!-- ── DQE QUERY LAB TAB ── -->
+    <div id="query-lab-tab" class="tab-content">
+      <div style="display:flex; flex-direction:column; gap:1.25rem; height:100%; max-width:1300px; margin:0 auto; padding:0.5rem 0;">
+
+        <!-- Header row -->
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:0.75rem;">
+          <div>
+            <h3 style="font-size:1.15rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:0.5rem;">
+              <i class="fa-solid fa-flask-vial" style="color:var(--color-primary);"></i> Distributed Query Engine — Query Lab
+            </h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
+              Run SQL, Graph algorithms, or Python extractions across your Iceberg tables. All results are cached 1 hour.
+            </p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <span id="dqe-engine-badge" class="badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);font-size:0.65rem;">DuckDB + NetworkX</span>
+            <button id="btn-dqe-history-refresh" class="btn btn-secondary btn-sm" title="Refresh history">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main two-column layout -->
+        <div style="display:grid; grid-template-columns:380px minmax(0,1fr); gap:1.5rem; flex:1; min-height:0;">
+
+          <!-- LEFT: Query builder -->
+          <div style="display:flex; flex-direction:column; gap:1rem; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1.25rem; overflow-y:auto;">
+
+            <!-- Mode selector pills -->
+            <div>
+              <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); display:block; margin-bottom:0.5rem;">Query Mode</label>
+              <div id="dqe-mode-pills" style="display:flex; gap:0.5rem;">
+                <button class="dqe-mode-pill active" data-mode="sql" id="dqe-pill-sql">
+                  <i class="fa-solid fa-table-columns"></i> SQL
+                </button>
+                <button class="dqe-mode-pill" data-mode="graph" id="dqe-pill-graph">
+                  <i class="fa-solid fa-circle-nodes"></i> Graph
+                </button>
+                <button class="dqe-mode-pill" data-mode="python" id="dqe-pill-python">
+                  <i class="fa-brands fa-python"></i> Python
+                </button>
+              </div>
+            </div>
+
+            <!-- SQL fields -->
+            <div id="dqe-sql-fields" class="dqe-mode-fields">
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
+                <input type="text" id="dqe-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.82rem;">
+              </div>
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Table Name</label>
+                <input type="text" id="dqe-table-name" class="input-field" placeholder="e.g. transactions_10k" style="padding:0.4rem; font-size:0.82rem;">
+              </div>
+              <div class="form-group">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">SQL Query <span style="color:#64748b;">(use 'iceberg_table' as source)</span></label>
+                <textarea id="dqe-sql" class="input-field" rows="6" placeholder="SELECT account_from, SUM(amount) as total&#10;FROM iceberg_table&#10;GROUP BY 1&#10;ORDER BY total DESC&#10;LIMIT 20" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
+              </div>
+              <div style="display:flex; gap:0.5rem; margin-top:0.5rem; align-items:center;">
+                <label style="font-size:0.72rem; color:var(--text-muted);">Limit:</label>
+                <input type="number" id="dqe-limit-sql" class="input-field" value="500" min="1" max="50000" style="width:80px; padding:0.3rem 0.4rem; font-size:0.8rem;">
+              </div>
+            </div>
+
+            <!-- Graph fields -->
+            <div id="dqe-graph-fields" class="dqe-mode-fields" style="display:none;">
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Graph Name</label>
+                <input type="text" id="dqe-graph-name" class="input-field" placeholder="e.g. vendor_graph" style="padding:0.4rem; font-size:0.82rem;">
+              </div>
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Algorithm <span style="color:#64748b;">(or leave blank and write Cypher)</span></label>
+                <select id="dqe-algorithm" class="input-field" style="padding:0.4rem; font-size:0.82rem;">
+                  <option value="">— None (use Cypher) —</option>
+                  <option value="pagerank">PageRank</option>
+                  <option value="betweenness_centrality">Betweenness Centrality</option>
+                  <option value="degree_centrality">Degree Centrality</option>
+                  <option value="connected_components">Connected Components</option>
+                  <option value="find_cycles">Find Cycles (Fraud Rings)</option>
+                  <option value="shortest_path">Shortest Path</option>
+                  <option value="community_detection">Community Detection (Louvain)</option>
+                </select>
+              </div>
+              <div id="dqe-shortest-path-fields" style="display:none; flex-direction:column; gap:0.5rem; background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:8px; padding:0.75rem; margin-bottom:0.6rem;">
+                <div class="form-group">
+                  <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Source Node ID</label>
+                  <input type="text" id="dqe-sp-source" class="input-field" placeholder="ACC-001" style="padding:0.4rem; font-size:0.82rem;">
+                </div>
+                <div class="form-group">
+                  <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Target Node ID</label>
+                  <input type="text" id="dqe-sp-target" class="input-field" placeholder="ACC-099" style="padding:0.4rem; font-size:0.82rem;">
+                </div>
+              </div>
+              <div class="form-group">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Cypher Pattern (optional)</label>
+                <textarea id="dqe-cypher" class="input-field" rows="4" placeholder="MATCH (a)-[r]->(b) WHERE r.label = 'SENT_TO'&#10;RETURN a.node_id, b.node_id LIMIT 30" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
+              </div>
+            </div>
+
+            <!-- Python fields -->
+            <div id="dqe-python-fields" class="dqe-mode-fields" style="display:none;">
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
+                <input type="text" id="dqe-py-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.82rem;">
+              </div>
+              <div class="form-group" style="margin-bottom:0.6rem;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Table Name</label>
+                <input type="text" id="dqe-py-table" class="input-field" placeholder="e.g. employees" style="padding:0.4rem; font-size:0.82rem;">
+              </div>
+              <div class="form-group">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Python Script <span style="color:#64748b;">(must set result_df)</span></label>
+                <textarea id="dqe-python" class="input-field" rows="8" placeholder="# Available: df, pd, pa, duckdb, json, re, math&#10;result_df = df[df['amount'] > 5000] \&#10;    .groupby('account_from')['amount'] \&#10;    .sum().reset_index(name='total')" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
+              </div>
+              <div style="margin-top:0.5rem; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:6px; padding:0.6rem; font-size:0.73rem; color:#fbbf24;">
+                <i class="fa-solid fa-shield-halved" style="margin-right:0.4rem;"></i>
+                <strong>Security sandbox:</strong> No OS/file/network access. 30s timeout enforced.
+              </div>
+            </div>
+
+            <!-- EXPLAIN toggle -->
+            <div style="display:flex; align-items:center; gap:0.6rem; padding-top:0.5rem; border-top:1px solid var(--border-subtle);">
+              <label class="switch" style="transform:scale(0.8); margin-right:-0.2rem;">
+                <input type="checkbox" id="dqe-explain-toggle">
+                <span class="slider"></span>
+              </label>
+              <span style="font-size:0.78rem; color:var(--text-muted);">Dry run — EXPLAIN only (no data)</span>
+            </div>
+
+            <!-- Run button -->
+            <button id="btn-dqe-run" class="btn btn-primary btn-block" style="margin-top:0.25rem;">
+              <i class="fa-solid fa-play"></i> Run Query
+            </button>
+
+          </div>
+
+          <!-- RIGHT: Results + History -->
+          <div style="display:flex; flex-direction:column; gap:1rem; min-height:0;">
+
+            <!-- Result panel -->
+            <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1.25rem; flex:1; display:flex; flex-direction:column; gap:0.75rem; min-height:0; overflow:hidden;">
+
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h4 style="margin:0; font-size:0.9rem; font-weight:700; color:var(--text-main);">Results</h4>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <span id="dqe-result-badge" style="display:none;" class="badge badge-green"></span>
+                  <span id="dqe-engine-used" style="font-size:0.7rem; color:var(--text-muted);"></span>
+                </div>
+              </div>
+
+              <!-- Loader -->
+              <div id="dqe-loader" style="display:none; flex-direction:column; align-items:center; justify-content:center; gap:0.75rem; padding:2rem; color:var(--text-muted);">
+                <div class="ingest-spinner" style="width:32px; height:32px;"></div>
+                <span id="dqe-loader-text" style="font-size:0.82rem;">Executing query...</span>
+              </div>
+
+              <!-- EXPLAIN plan output -->
+              <pre id="dqe-explain-output" style="display:none; background:#0b0f19; border:1px solid var(--border-subtle); border-radius:8px; padding:0.75rem; font-family:var(--font-mono); font-size:0.72rem; color:#94a3b8; overflow:auto; max-height:200px; line-height:1.5; margin:0;"></pre>
+
+              <!-- Empty state -->
+              <div id="dqe-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.5rem; padding:2.5rem; color:var(--text-muted); text-align:center;">
+                <i class="fa-solid fa-table-cells-large" style="font-size:2rem; opacity:0.3;"></i>
+                <p style="margin:0; font-size:0.82rem;">Configure a query and press <strong>Run Query</strong> to see results here.</p>
+              </div>
+
+              <!-- Results table -->
+              <div id="dqe-table-wrapper" style="display:none; overflow:auto; flex:1; border:1px solid var(--border-subtle); border-radius:8px; background:rgba(0,0,0,0.15);">
+                <table id="dqe-results-table" style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+                  <thead id="dqe-results-thead" style="position:sticky; top:0; background:var(--bg-surface2); z-index:1;"></thead>
+                  <tbody id="dqe-results-tbody"></tbody>
+                </table>
+              </div>
+
+              <!-- Truncation notice -->
+              <div id="dqe-truncation-notice" style="display:none; font-size:0.72rem; color:#f59e0b; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:6px; padding:0.5rem 0.75rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Results truncated — showing first <span id="dqe-truncated-count">500</span> rows of <span id="dqe-total-count">...</span> total.
+              </div>
+            </div>
+
+            <!-- Job history mini-table -->
+            <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1rem; max-height:200px; overflow-y:auto;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
+                <h4 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-main);">Recent Jobs</h4>
+                <span style="font-size:0.68rem; color:var(--text-muted);">Last 10 · auto-expires 1 hour</span>
+              </div>
+              <table id="dqe-history-table" style="width:100%; border-collapse:collapse; font-size:0.74rem;">
+                <thead>
+                  <tr style="color:var(--text-muted); border-bottom:1px solid var(--border-subtle);">
+                    <th style="text-align:left; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Mode</th>
+                    <th style="text-align:left; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Status</th>
+                    <th style="text-align:right; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Rows</th>
+                    <th style="text-align:right; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Time</th>
+                  </tr>
+                </thead>
+                <tbody id="dqe-history-tbody">
+                  <tr><td colspan="4" style="padding:0.75rem 0.5rem; color:var(--text-muted); text-align:center;">No queries yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ── END DQE QUERY LAB TAB ── -->
+
 
 
         </section>
@@ -4387,209 +4591,6 @@ with DAG(
     </div>
 
 
-    <!-- ── DQE QUERY LAB TAB ── -->
-    <div id="query-lab-tab" class="tab-content">
-      <div style="display:flex; flex-direction:column; gap:1.25rem; height:100%; max-width:1300px; margin:0 auto; padding:0.5rem 0;">
-
-        <!-- Header row -->
-        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:0.75rem;">
-          <div>
-            <h3 style="font-size:1.15rem; color:var(--text-main); margin:0; display:flex; align-items:center; gap:0.5rem;">
-              <i class="fa-solid fa-flask-vial" style="color:var(--color-primary);"></i> Distributed Query Engine — Query Lab
-            </h3>
-            <p style="font-size:0.82rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
-              Run SQL, Graph algorithms, or Python extractions across your Iceberg tables. All results are cached 1 hour.
-            </p>
-          </div>
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span id="dqe-engine-badge" class="badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.25);font-size:0.65rem;">DuckDB + NetworkX</span>
-            <button id="btn-dqe-history-refresh" class="btn btn-secondary btn-sm" title="Refresh history">
-              <i class="fa-solid fa-rotate-right"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Main two-column layout -->
-        <div style="display:grid; grid-template-columns:380px minmax(0,1fr); gap:1.5rem; flex:1; min-height:0;">
-
-          <!-- LEFT: Query builder -->
-          <div style="display:flex; flex-direction:column; gap:1rem; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1.25rem; overflow-y:auto;">
-
-            <!-- Mode selector pills -->
-            <div>
-              <label style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); display:block; margin-bottom:0.5rem;">Query Mode</label>
-              <div id="dqe-mode-pills" style="display:flex; gap:0.5rem;">
-                <button class="dqe-mode-pill active" data-mode="sql" id="dqe-pill-sql">
-                  <i class="fa-solid fa-table-columns"></i> SQL
-                </button>
-                <button class="dqe-mode-pill" data-mode="graph" id="dqe-pill-graph">
-                  <i class="fa-solid fa-circle-nodes"></i> Graph
-                </button>
-                <button class="dqe-mode-pill" data-mode="python" id="dqe-pill-python">
-                  <i class="fa-brands fa-python"></i> Python
-                </button>
-              </div>
-            </div>
-
-            <!-- SQL fields -->
-            <div id="dqe-sql-fields" class="dqe-mode-fields">
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
-                <input type="text" id="dqe-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.82rem;">
-              </div>
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Table Name</label>
-                <input type="text" id="dqe-table-name" class="input-field" placeholder="e.g. transactions_10k" style="padding:0.4rem; font-size:0.82rem;">
-              </div>
-              <div class="form-group">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">SQL Query <span style="color:#64748b;">(use 'iceberg_table' as source)</span></label>
-                <textarea id="dqe-sql" class="input-field" rows="6" placeholder="SELECT account_from, SUM(amount) as total&#10;FROM iceberg_table&#10;GROUP BY 1&#10;ORDER BY total DESC&#10;LIMIT 20" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
-              </div>
-              <div style="display:flex; gap:0.5rem; margin-top:0.5rem; align-items:center;">
-                <label style="font-size:0.72rem; color:var(--text-muted);">Limit:</label>
-                <input type="number" id="dqe-limit-sql" class="input-field" value="500" min="1" max="50000" style="width:80px; padding:0.3rem 0.4rem; font-size:0.8rem;">
-              </div>
-            </div>
-
-            <!-- Graph fields -->
-            <div id="dqe-graph-fields" class="dqe-mode-fields" style="display:none;">
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Graph Name</label>
-                <input type="text" id="dqe-graph-name" class="input-field" placeholder="e.g. vendor_graph" style="padding:0.4rem; font-size:0.82rem;">
-              </div>
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Algorithm <span style="color:#64748b;">(or leave blank and write Cypher)</span></label>
-                <select id="dqe-algorithm" class="input-field" style="padding:0.4rem; font-size:0.82rem;">
-                  <option value="">— None (use Cypher) —</option>
-                  <option value="pagerank">PageRank</option>
-                  <option value="betweenness_centrality">Betweenness Centrality</option>
-                  <option value="degree_centrality">Degree Centrality</option>
-                  <option value="connected_components">Connected Components</option>
-                  <option value="find_cycles">Find Cycles (Fraud Rings)</option>
-                  <option value="shortest_path">Shortest Path</option>
-                  <option value="community_detection">Community Detection (Louvain)</option>
-                </select>
-              </div>
-              <div id="dqe-shortest-path-fields" style="display:none; flex-direction:column; gap:0.5rem; background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:8px; padding:0.75rem; margin-bottom:0.6rem;">
-                <div class="form-group">
-                  <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Source Node ID</label>
-                  <input type="text" id="dqe-sp-source" class="input-field" placeholder="ACC-001" style="padding:0.4rem; font-size:0.82rem;">
-                </div>
-                <div class="form-group">
-                  <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Target Node ID</label>
-                  <input type="text" id="dqe-sp-target" class="input-field" placeholder="ACC-099" style="padding:0.4rem; font-size:0.82rem;">
-                </div>
-              </div>
-              <div class="form-group">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Cypher Pattern (optional)</label>
-                <textarea id="dqe-cypher" class="input-field" rows="4" placeholder="MATCH (a)-[r]->(b) WHERE r.label = 'SENT_TO'&#10;RETURN a.node_id, b.node_id LIMIT 30" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
-              </div>
-            </div>
-
-            <!-- Python fields -->
-            <div id="dqe-python-fields" class="dqe-mode-fields" style="display:none;">
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Namespace</label>
-                <input type="text" id="dqe-py-namespace" class="input-field" value="default" style="padding:0.4rem; font-size:0.82rem;">
-              </div>
-              <div class="form-group" style="margin-bottom:0.6rem;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Table Name</label>
-                <input type="text" id="dqe-py-table" class="input-field" placeholder="e.g. employees" style="padding:0.4rem; font-size:0.82rem;">
-              </div>
-              <div class="form-group">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Python Script <span style="color:#64748b;">(must set result_df)</span></label>
-                <textarea id="dqe-python" class="input-field" rows="8" placeholder="# Available: df, pd, pa, duckdb, json, re, math&#10;result_df = df[df['amount'] > 5000] \&#10;    .groupby('account_from')['amount'] \&#10;    .sum().reset_index(name='total')" style="font-family:var(--font-mono); font-size:0.79rem; padding:0.6rem; resize:vertical; background:#0f172a; color:#34d399; border-color:var(--border-subtle); line-height:1.5;"></textarea>
-              </div>
-              <div style="margin-top:0.5rem; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2); border-radius:6px; padding:0.6rem; font-size:0.73rem; color:#fbbf24;">
-                <i class="fa-solid fa-shield-halved" style="margin-right:0.4rem;"></i>
-                <strong>Security sandbox:</strong> No OS/file/network access. 30s timeout enforced.
-              </div>
-            </div>
-
-            <!-- EXPLAIN toggle -->
-            <div style="display:flex; align-items:center; gap:0.6rem; padding-top:0.5rem; border-top:1px solid var(--border-subtle);">
-              <label class="switch" style="transform:scale(0.8); margin-right:-0.2rem;">
-                <input type="checkbox" id="dqe-explain-toggle">
-                <span class="slider"></span>
-              </label>
-              <span style="font-size:0.78rem; color:var(--text-muted);">Dry run — EXPLAIN only (no data)</span>
-            </div>
-
-            <!-- Run button -->
-            <button id="btn-dqe-run" class="btn btn-primary btn-block" style="margin-top:0.25rem;">
-              <i class="fa-solid fa-play"></i> Run Query
-            </button>
-
-          </div>
-
-          <!-- RIGHT: Results + History -->
-          <div style="display:flex; flex-direction:column; gap:1rem; min-height:0;">
-
-            <!-- Result panel -->
-            <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1.25rem; flex:1; display:flex; flex-direction:column; gap:0.75rem; min-height:0; overflow:hidden;">
-
-              <div style="display:flex; align-items:center; justify-content:space-between;">
-                <h4 style="margin:0; font-size:0.9rem; font-weight:700; color:var(--text-main);">Results</h4>
-                <div style="display:flex; align-items:center; gap:0.5rem;">
-                  <span id="dqe-result-badge" style="display:none;" class="badge badge-green"></span>
-                  <span id="dqe-engine-used" style="font-size:0.7rem; color:var(--text-muted);"></span>
-                </div>
-              </div>
-
-              <!-- Loader -->
-              <div id="dqe-loader" style="display:none; flex-direction:column; align-items:center; justify-content:center; gap:0.75rem; padding:2rem; color:var(--text-muted);">
-                <div class="ingest-spinner" style="width:32px; height:32px;"></div>
-                <span id="dqe-loader-text" style="font-size:0.82rem;">Executing query...</span>
-              </div>
-
-              <!-- EXPLAIN plan output -->
-              <pre id="dqe-explain-output" style="display:none; background:#0b0f19; border:1px solid var(--border-subtle); border-radius:8px; padding:0.75rem; font-family:var(--font-mono); font-size:0.72rem; color:#94a3b8; overflow:auto; max-height:200px; line-height:1.5; margin:0;"></pre>
-
-              <!-- Empty state -->
-              <div id="dqe-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.5rem; padding:2.5rem; color:var(--text-muted); text-align:center;">
-                <i class="fa-solid fa-table-cells-large" style="font-size:2rem; opacity:0.3;"></i>
-                <p style="margin:0; font-size:0.82rem;">Configure a query and press <strong>Run Query</strong> to see results here.</p>
-              </div>
-
-              <!-- Results table -->
-              <div id="dqe-table-wrapper" style="display:none; overflow:auto; flex:1; border:1px solid var(--border-subtle); border-radius:8px; background:rgba(0,0,0,0.15);">
-                <table id="dqe-results-table" style="width:100%; border-collapse:collapse; font-size:0.78rem;">
-                  <thead id="dqe-results-thead" style="position:sticky; top:0; background:var(--bg-surface2); z-index:1;"></thead>
-                  <tbody id="dqe-results-tbody"></tbody>
-                </table>
-              </div>
-
-              <!-- Truncation notice -->
-              <div id="dqe-truncation-notice" style="display:none; font-size:0.72rem; color:#f59e0b; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:6px; padding:0.5rem 0.75rem;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Results truncated — showing first <span id="dqe-truncated-count">500</span> rows of <span id="dqe-total-count">...</span> total.
-              </div>
-            </div>
-
-            <!-- Job history mini-table -->
-            <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:12px; padding:1rem; max-height:200px; overflow-y:auto;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
-                <h4 style="margin:0; font-size:0.82rem; font-weight:700; color:var(--text-main);">Recent Jobs</h4>
-                <span style="font-size:0.68rem; color:var(--text-muted);">Last 10 · auto-expires 1 hour</span>
-              </div>
-              <table id="dqe-history-table" style="width:100%; border-collapse:collapse; font-size:0.74rem;">
-                <thead>
-                  <tr style="color:var(--text-muted); border-bottom:1px solid var(--border-subtle);">
-                    <th style="text-align:left; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Mode</th>
-                    <th style="text-align:left; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Status</th>
-                    <th style="text-align:right; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Rows</th>
-                    <th style="text-align:right; padding:0.3rem 0.5rem; font-weight:600; text-transform:uppercase; font-size:0.65rem;">Time</th>
-                  </tr>
-                </thead>
-                <tbody id="dqe-history-tbody">
-                  <tr><td colspan="4" style="padding:0.75rem 0.5rem; color:var(--text-muted); text-align:center;">No queries yet</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- ── END DQE QUERY LAB TAB ── -->
 
     <div id="toast-container" class="toast-container"></div>
 

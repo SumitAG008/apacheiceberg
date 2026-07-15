@@ -7,12 +7,19 @@ Handles sending OTP codes via email (Resend.com).
 from __future__ import annotations
 
 import os
+import sys
 import json
 from typing import Optional
 import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Windows consoles default to a legacy code page (cp1252) that can't encode
+# the emoji in the log lines below, crashing every login/register call when
+# the backend runs natively on Windows (outside Docker/Linux). Force UTF-8.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 APP_DOMAIN = os.environ.get("APP_DOMAIN", "https://meldra-lakeshouse.ai")

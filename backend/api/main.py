@@ -357,11 +357,13 @@ def startup_event():
     # Launch Arrow Flight Server in background thread
     try:
         import threading
+        import os
         from arrow_flight_server import meldraFlightServer
         def run_flight():
             try:
-                server = meldraFlightServer(host="0.0.0.0", port=8888)
-                print("[api/main] Starting Arrow Flight Server on port 8888...")
+                flight_port = int(os.getenv("ARROW_FLIGHT_PORT", 8889))
+                server = meldraFlightServer(host="0.0.0.0", port=flight_port)
+                print(f"[api/main] Starting Arrow Flight Server on port {flight_port}...")
                 server.serve()
             except Exception as ex:
                 print(f"[api/main] Arrow Flight Server failed: {ex}")
@@ -520,12 +522,25 @@ def _create_temp_token(user_id: str, purpose: str = "mfa") -> str:
 
 def _decode_temp_token(token: str) -> str:
     """Decode temp token, return user_id or raise 401."""
+    return _decode_temp_token_with_purpose(token)[0]
+
+
+def _decode_temp_token_with_purpose(token: str) -> tuple[str, str]:
+    """Decode temp token, return (user_id, otp_purpose) or raise 401.
+
+    The OTP purpose ('register' | 'login' | 'reset') is read from the token
+    itself rather than re-derived from the user's current `is_verified`
+    state — that state can change between issuing the OTP and verifying it
+    (e.g. a user who abandons registration and later just tries to log in),
+    which previously caused verify-mfa to check the wrong OTP bucket and
+    always report "expired"/"no active OTP" regardless of the real code.
+    """
     try:
         payload = jose_jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         if payload.get("type") != "temp":
             print(f"[auth] _decode_temp_token: Invalid token type in payload: {payload}")
             raise HTTPException(status_code=401, detail="Invalid token type")
-        return payload["sub"]
+        return payload["sub"], payload.get("purpose", "login")
     except JWTError as e:
         print(f"[auth] _decode_temp_token JWTError: {e}. Token: {token[:20]}...{token[-10:] if len(token) > 10 else ''}")
         raise HTTPException(status_code=401, detail="Token expired or invalid. Please log in again.")
@@ -612,7 +627,7 @@ async def register(payload: RegisterRequest, request: Request):
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=f"Failed to send verification email: {e}")
 
-    temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
+    temp_token = _create_temp_token(str(user["id"]), purpose="register")
     log_audit(str(user["id"]), user["tier"], "register", f"New registration for {payload.email}", "success")
 
     return {
@@ -676,7 +691,7 @@ async def login(payload: LoginRequest):
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=f"Failed to send OTP: {e}")
 
-    temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
+    temp_token = _create_temp_token(str(user["id"]), purpose="login")
     log_audit(str(user["id"]), user["tier"], "login_attempt", f"OTP sent to {payload.email}", "success")
 
     return {
@@ -689,12 +704,10 @@ async def login(payload: LoginRequest):
 @app.post("/auth/verify-mfa", response_model=TokenResponse, tags=["Auth"])
 async def verify_mfa(payload: VerifyMFARequest):
     """Step 2: validate OTP, return access + refresh tokens."""
-    user_id = _decode_temp_token(payload.temp_token)
+    user_id, purpose = _decode_temp_token_with_purpose(payload.temp_token)
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
-
-    purpose = "register" if not user["is_verified"] else "login"
 
     try:
         if user["email"].startswith("load_test_") and payload.code.strip() == "123456":
@@ -746,12 +759,10 @@ async def verify_mfa(payload: VerifyMFARequest):
 @app.post("/auth/resend-otp", tags=["Auth"])
 async def resend_otp(payload: ResendOTPRequest):
     """Resend OTP — rate-limited to once per 60 seconds."""
-    user_id = _decode_temp_token(payload.temp_token)
+    user_id, purpose = _decode_temp_token_with_purpose(payload.temp_token)
     user = get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found.")
-
-    purpose = "register" if not user["is_verified"] else "login"
 
     if not can_resend_otp(user_id, purpose=purpose):
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting a new code.")
@@ -786,7 +797,7 @@ async def forgot_password(payload: ForgotPasswordRequest):
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=f"Failed to send reset email: {e}")
 
-    temp_token = _create_temp_token(str(user["id"]), purpose="mfa")
+    temp_token = _create_temp_token(str(user["id"]), purpose="reset")
     log_audit(str(user["id"]), user["tier"], "forgot_password", f"Password reset code sent to {payload.email}", "success")
 
     return {
