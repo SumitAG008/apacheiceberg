@@ -6134,7 +6134,7 @@ function initOrchestratorDagSimulation() {
 interface FieldDef {
   k: string;
   label: string;
-  type?: 'text' | 'password' | 'select';
+  type?: 'text' | 'password' | 'select' | 'combo';
   options?: string[];
   ph?: string;
   help?: string;
@@ -6155,6 +6155,64 @@ interface ConnectorDef {
   initials: string;
   entities: string[];
   methods: Record<string, MethodDef>;
+}
+
+// Full list of SAP SuccessFactors OData v2 API servers (source: SAP Help
+// Portal, "List of SAP SuccessFactors API Servers"). This field used to be
+// a locked <select> hardcoded to 2-4 example hosts, which meant a real
+// company's actual data center -- e.g. a Sales Demo tenant like
+// apisalesdemo2.successfactors.eu -- had nowhere to go. It's rendered as an
+// editable combobox (type:"combo"): these are autocomplete suggestions, not
+// the only allowed values -- any hostname can be typed in directly.
+const SF_DATA_CENTERS = [
+  "api10.successfactors.com — Sydney, Australia (Production)",
+  "api10preview.sapsf.com — Sydney, Australia (Preview)",
+  "api012.successfactors.eu — Rot, Germany (Production)",
+  "api12preview.sapsf.eu — Rot, Germany (Preview)",
+  "api15.sapsf.cn — Shanghai, China (Production)",
+  "api15preview.sapsf.cn — Shanghai, China (Preview)",
+  "api17.sapsf.com — Toronto, Canada (Production)",
+  "api17preview.sapsf.com — Toronto, Canada (Preview)",
+  "api19.sapsf.com — Sao Paulo, Brazil (Production)",
+  "api19preview.sapsf.com — Sao Paulo, Brazil (Preview)",
+  "api2.successfactors.eu — Eemshaven, Netherlands (Production)",
+  "apisalesdemo2.successfactors.eu — Eemshaven, Netherlands (Sales Demo)",
+  "api2preview.sapsf.eu — Eemshaven, Netherlands (Preview)",
+  "api22.sapsf.com — Dubai, UAE (Production)",
+  "api22preview.sapsf.com — Dubai, UAE (Preview)",
+  "api23.sapsf.com — Riyadh, Saudi Arabia (Production)",
+  "api23preview.sapsf.com — Riyadh, Saudi Arabia (Preview)",
+  "api4.successfactors.com — Virginia, US (Production)",
+  "api4preview.sapsf.com — Virginia, US (Preview)",
+  "api68sales.successfactors.com — Virginia, US (Sales Demo)",
+  "api40sales.sapsf.com — (Sales Demo)",
+  "api41.sapsf.com — Virginia, US (Production)",
+  "api41preview.sapsf.com — Virginia, US (Preview)",
+  "api44.sapsf.com — Singapore (Production)",
+  "api44preview.sapsf.com — Singapore (Preview)",
+  "api47.sapsf.com — Canada Central (Production)",
+  "api47preview.sapsf.com — Canada Central (Preview)",
+  "api50.sapsf.com — Tokyo, Japan (Production)",
+  "api50preview.sapsf.com — Tokyo, Japan (Preview)",
+  "api55.sapsf.eu — Frankfurt, Germany (Production)",
+  "api55preview.sapsf.eu — Frankfurt, Germany (Preview)",
+  "api74.sapsf.eu — Zurich, Switzerland (Production)",
+  "api74preview.sapsf.eu — Zurich, Switzerland (Preview)",
+  "api8.successfactors.com — Ashburn, Virginia, US (Production)",
+  "apisalesdemo8.successfactors.com — Ashburn, Virginia, US (Sales Demo)",
+  "api8preview.sapsf.com — Ashburn, Virginia, US (Preview)",
+  "api-in10.hr.cloud.sap — Mumbai, India (Production)",
+  "api-in10-preview.hr.cloud.sap — Mumbai, India (Preview)",
+  "api-sa20.hr.cloud.sap — Riyadh, Saudi Arabia (Production)",
+  "api-sa20-preview.hr.cloud.sap — Riyadh, Saudi Arabia (Preview)",
+];
+
+// Accepts either a picked datalist suggestion ("host — Location (Env)") or
+// a freely typed value (a bare host, or a full https://host URL) and
+// normalizes it down to just the bare hostname.
+function parseSfDataCenterHost(raw: string | undefined): string {
+  if (!raw) return '';
+  return raw.split(' — ')[0].trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
 }
 
 const CONNECTORS: Record<string, ConnectorDef> = {
@@ -6190,8 +6248,7 @@ const CONNECTORS: Record<string, ConnectorDef> = {
       oauth_saml: {
         label:"OAuth 2.0 SAML bearer", flag:{text:"recommended", cls:"rec"},
         fields: [
-          {k:"dc", label:"API server (data center)", type:"select",
-            options:["api4.successfactors.com — EU Frankfurt","api2.successfactors.com — US Ashburn","api8.successfactors.com — APAC Sydney","api15.successfactors.eu — EU Rot"]},
+          {k:"dc", label:"API server (data center)", type:"combo", options:SF_DATA_CENTERS},
           {k:"company", label:"Company ID", ph:"acmecorpT1"},
           {k:"client_id", label:"OAuth client ID (API key)"},
           {k:"saml_key", label:"SAML private key", type:"password"},
@@ -6202,8 +6259,7 @@ const CONNECTORS: Record<string, ConnectorDef> = {
         label:"Basic auth", flag:{text:"deprecated by SAP", cls:"dep"},
         deprecation:"SAP retires Basic Auth for the OData API. Use OAuth SAML bearer for new integrations.",
         fields: [
-          {k:"dc", label:"API server (data center)", type:"select",
-            options:["api4.successfactors.com — EU Frankfurt","api2.successfactors.com — US Ashburn"]},
+          {k:"dc", label:"API server (data center)", type:"combo", options:SF_DATA_CENTERS},
           {k:"user", label:"Username@CompanyID", ph:"sfadmin@acmecorpT1"},
           {k:"pass", label:"Password", type:"password"}
         ]
@@ -6315,6 +6371,14 @@ function renderAuthFields() {
         inputHtml = `<select id="conn-cred-${f.k}" class="input-field" style="padding:0.4rem; font-size:0.8rem;">
           ${(f.options || []).map(o => `<option value="${o}">${o}</option>`).join('')}
         </select>`;
+      } else if (f.type === 'combo') {
+        // Editable combobox: options are autocomplete suggestions via
+        // <datalist>, not a locked set -- any custom hostname can be typed.
+        const listId = `conn-cred-${f.k}-list`;
+        inputHtml = `<input type="text" id="conn-cred-${f.k}" list="${listId}" class="input-field" placeholder="${f.ph || 'Type or pick a server...'}" autocomplete="off" style="padding:0.4rem; font-size:0.8rem;">
+        <datalist id="${listId}">
+          ${(f.options || []).map(o => `<option value="${o}"></option>`).join('')}
+        </datalist>`;
       } else {
         inputHtml = `<input type="${f.type || 'text'}" id="conn-cred-${f.k}" class="input-field" placeholder="${f.ph || ''}" autocomplete="off" style="padding:0.4rem; font-size:0.8rem;">`;
       }
@@ -6480,8 +6544,7 @@ setTimeout(() => {
           if (activeMethodKey === 'basic') {
             payload.username = (document.getElementById('conn-cred-user') as HTMLInputElement)?.value.trim();
             payload.password = (document.getElementById('conn-cred-pass') as HTMLInputElement)?.value;
-            const dcSelect = (document.getElementById('conn-cred-dc') as HTMLSelectElement)?.value;
-            const dcVal = dcSelect?.split(' — ')[0];
+            const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
             payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
             
             // basic auth username contains @CompanyId, split it
@@ -6498,9 +6561,8 @@ setTimeout(() => {
             payload.company_id = (document.getElementById('conn-cred-company') as HTMLInputElement)?.value.trim();
             payload.api_user = (document.getElementById('conn-cred-api_user') as HTMLInputElement)?.value.trim();
             payload.saml_key = (document.getElementById('conn-cred-saml_key') as HTMLInputElement)?.value;
-            
-            const dcSelect = (document.getElementById('conn-cred-dc') as HTMLSelectElement)?.value;
-            const dcVal = dcSelect?.split(' — ')[0];
+
+            const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
             payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
           }
 
