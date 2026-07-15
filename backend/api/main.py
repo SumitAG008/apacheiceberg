@@ -63,6 +63,7 @@ from auth_db import (
     set_user_approver,
     list_approvers,
     list_all_users,
+    ensure_bootstrap_admin,
     create_promotion,
     list_promotions,
     get_promotion,
@@ -725,12 +726,17 @@ async def verify_mfa(payload: VerifyMFARequest):
     else:
         update_last_login(user_id)
 
+    # Platform-wide bootstrap: if nobody is Admin yet, this user becomes the
+    # first one (see ensure_bootstrap_admin's docstring for why this exists).
+    bootstrapped_role = ensure_bootstrap_admin(user_id)
+    effective_role = bootstrapped_role or user.get("user_role", "Business Analyst")
+
     # Issue tokens using user's database tier and role
     access_token = _create_access_token({
         "sub": user_id,
         "email": user["email"],
         "tier": user["tier"],
-        "role": user.get("user_role", "Business Analyst")
+        "role": effective_role
     })
     refresh_token = create_session(user_id)
 
@@ -748,7 +754,7 @@ async def verify_mfa(payload: VerifyMFARequest):
             "is_verified": True,
             "tier": user["tier"],
             "expires_at": expires_str,
-            "role": user.get("user_role", "Business Analyst"),
+            "role": effective_role,
             "reg_ip": user.get("reg_ip"),
             "reg_country": user.get("reg_country"),
             "subscription_status": user["subscription_status"],

@@ -610,6 +610,32 @@ def list_approvers() -> List[Dict[str, Any]]:
         conn.close()
 
 
+def ensure_bootstrap_admin(user_id: str) -> Optional[str]:
+    """If the whole platform has zero Admins, promote this logging-in user.
+
+    Every new registration defaults to 'Business Analyst' (see auth.users'
+    column default) and the Users & Roles page that assigns roles itself
+    requires Admin — with no Admin ever created, nobody could ever reach
+    it. Called on every successful login/MFA-verify; a no-op once any
+    Admin exists. Returns the new role if a promotion happened, else None.
+    """
+    conn = _get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM auth.users WHERE user_role = 'Admin' LIMIT 1;")
+        if cur.fetchone():
+            return None
+        cur.execute(
+            "UPDATE auth.users SET user_role = 'Admin' WHERE id = %s RETURNING user_role;",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return row["user_role"] if row else None
+    finally:
+        conn.close()
+
+
 # ─────────────────────────────────────────
 # PROMOTIONS (real pipeline promotion workflow)
 # ─────────────────────────────────────────

@@ -6562,61 +6562,6 @@ setTimeout(() => {
 // ─────────────────────────────────────────
 // meldra WORKSPACE EXPERIENCE SWITCHER & CONTROLLER
 // ─────────────────────────────────────────
-function applyExperience(expName: string) {
-  const currentExpTitle = document.getElementById('current-experience-title');
-  const expTitleMap: Record<string, string> = {
-    engineering: 'Engineering Studio',
-    factory: 'Ingest Studio',
-    warehouse: 'Query Lab',
-    graph: 'Link & Graph',
-    admin: 'Security & Admin'
-  };
-  
-  if (currentExpTitle) currentExpTitle.innerText = expTitleMap[expName] || expName;
-  
-  // Hide all tab buttons by default
-  const allTabs = document.querySelectorAll('.tab-headers .tab-btn') as NodeListOf<HTMLElement>;
-  allTabs.forEach(t => t.style.display = 'none');
-  
-  // Show specific tab buttons based on active experience
-  const expTabs: Record<string, string[]> = {
-    engineering: ['nav-studio', 'nav-workspace'],
-    factory: ['nav-ingest', 'nav-studio'],
-    warehouse: ['nav-chat', 'nav-studio'],
-    graph: ['nav-graph'],
-    admin: ['nav-audit', 'nav-traffic', 'nav-mcp', 'nav-studio']
-  };
-
-  // Help Guide is a persistent utility link, not tied to any one workload
-  // experience -- it should stay visible no matter which one is active.
-  const visibleTabIds = [...(expTabs[expName] || []), 'nav-help'];
-  visibleTabIds.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'inline-flex';
-  });
-
-  // Activate sub-tabs inside Data Studio based on experience
-  if (expName === 'warehouse') {
-    const sqlSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-sql"]') as HTMLButtonElement;
-    if (sqlSubBtn) sqlSubBtn.click();
-  } else if (expName === 'engineering') {
-    const pySubBtn = document.querySelector('#btn-studio-python-tab') as HTMLButtonElement;
-    if (pySubBtn) pySubBtn.click();
-  } else if (expName === 'admin') {
-    const rbacSubBtn = document.querySelector('#btn-studio-rbac-tab') as HTMLButtonElement;
-    if (rbacSubBtn) rbacSubBtn.click();
-  } else if (expName === 'factory') {
-    const maintSubBtn = document.querySelector('.studio-sub-tab-btn[data-subtab="studio-tab-maintenance"]') as HTMLButtonElement;
-    if (maintSubBtn) maintSubBtn.click();
-  }
-  
-  // Click the first visible tab button to show content
-  const firstVisible = Array.from(allTabs).find(t => t.style.display !== 'none');
-  if (firstVisible) {
-    firstVisible.click();
-  }
-}
-
 // Mirrors backend/roles.py's capability sets — kept in one place here so a
 // new persona only needs one map updated, not a scattered set of `role ===`
 // checks. '*' means "every nav tab." CIO/COO/Viewer are intentionally
@@ -6680,19 +6625,6 @@ function applyUserRoleControls() {
     badgeEl.textContent = `${role} Role`;
   }
   
-  // Lock Admin Experience from non-admin users
-  const adminOption = document.querySelector('.experience-option[data-exp="admin"]') as HTMLElement;
-  if (adminOption) {
-    if (role === 'Admin') {
-      adminOption.style.opacity = '1';
-      adminOption.style.pointerEvents = 'auto';
-    } else {
-      adminOption.style.opacity = '0.5';
-      adminOption.style.pointerEvents = 'none';
-      adminOption.title = 'Admin role required';
-    }
-  }
-  
   // Hide policy adjustment buttons if not Admin
   const btnSaveRbac = document.getElementById('btn-save-rbac-policies');
   const btnAddRbac = document.getElementById('btn-add-rbac-row');
@@ -6730,33 +6662,6 @@ function applyUserRoleControls() {
       (btnRunPython as HTMLButtonElement).disabled = true;
       btnRunPython.title = 'Admin or Data Engineer role required';
     }
-  }
-}
-
-function initExperienceSwitcher() {
-  const switcherBtn = document.getElementById('experience-switcher-btn');
-  const dropdownPanel = document.getElementById('experience-dropdown-panel');
-  
-  if (switcherBtn && dropdownPanel) {
-    switcherBtn.onclick = (e) => {
-      e.stopPropagation();
-      const show = dropdownPanel.style.display === 'none';
-      dropdownPanel.style.display = show ? 'flex' : 'none';
-    };
-    
-    document.addEventListener('click', () => {
-      dropdownPanel.style.display = 'none';
-    });
-    
-    const options = dropdownPanel.querySelectorAll('.experience-option') as NodeListOf<HTMLElement>;
-    options.forEach(opt => {
-      opt.onclick = () => {
-        options.forEach(o => o.classList.remove('active'));
-        opt.classList.add('active');
-        const exp = opt.getAttribute('data-exp')!;
-        applyExperience(exp);
-      };
-    });
   }
 }
 
@@ -6864,9 +6769,6 @@ function initCommandPalette() {
           // grouped sidebar, making it a silent no-op.
           switchTab(res.route);
         } else if (res.type === 'table') {
-          const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
-          if (opt) opt.click();
-
           setTimeout(() => {
             const workspaceBtn = document.getElementById('nav-workspace');   
             if (workspaceBtn) workspaceBtn.click();
@@ -6884,8 +6786,6 @@ function initCommandPalette() {
           }, 150);
         } else if (res.type === 'action') {
           if (res.action_id === 'rbac') {
-            const opt = document.querySelector('.experience-option[data-exp="admin"]') as HTMLElement;
-            if (opt) opt.click();
             setTimeout(() => {
               const studioBtn = document.getElementById('nav-studio');       
               if (studioBtn) studioBtn.click();
@@ -6894,10 +6794,6 @@ function initCommandPalette() {
             }, 150);
           }
         } else if (res.type === 'transaction') {
-          // Switch to engineering experience
-          const opt = document.querySelector('.experience-option[data-exp="engineering"]') as HTMLElement;
-          if (opt) opt.click();
-
           setTimeout(() => {
             const studioBtn = document.getElementById('nav-studio');
             if (studioBtn) studioBtn.click();
@@ -7336,15 +7232,12 @@ function initRowFiltersEditor() {
 }
 
 function initFabricSaaS() {
-  initExperienceSwitcher();
   initCommandPalette();
   initPythonWorkspace();
   initRbacPoliciesEditor();
   initRowFiltersEditor();
   initApproverAdminPanel();
 
-  // Set default experience to Engineering Studio
-  applyExperience('engineering');
   applyUserRoleControls();
 
   // Load policies + row filters on Access Policies sub-tab click
