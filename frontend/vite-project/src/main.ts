@@ -6176,6 +6176,7 @@ const SF_DATA_CENTERS = [
   "api19.sapsf.com — Sao Paulo, Brazil (Production)",
   "api19preview.sapsf.com — Sao Paulo, Brazil (Preview)",
   "api2.successfactors.eu — Eemshaven, Netherlands (Production)",
+  "api.successfactors.eu — Eemshaven, Netherlands (Production alias)",
   "apisalesdemo2.successfactors.eu — Eemshaven, Netherlands (Sales Demo)",
   "api2preview.sapsf.eu — Eemshaven, Netherlands (Preview)",
   "api22.sapsf.com — Dubai, UAE (Production)",
