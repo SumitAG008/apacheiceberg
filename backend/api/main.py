@@ -411,6 +411,10 @@ class SuccessFactorsRequest(BaseModel):
     # Entity & target
     entity_name: str          # e.g. PerPersonal, EmpJob, EmpCompensation
     top: Optional[int] = 1000 # OData $top (max records per page)
+    select_fields: Optional[List[str]] = None  # OData $select -- specific
+                               # properties to pull instead of every field
+                               # the entity defines (some entities, e.g.
+                               # User, have 100+ properties)
     namespace: str = "default"
     table_name: str
     write_mode: Optional[str] = "overwrite"
@@ -1347,6 +1351,11 @@ async def test_successfactors_connection(
     every EntityType it defines, so the "Target Object / Entity" dropdown
     reflects what this specific SuccessFactors instance actually supports
     instead of a hardcoded 4-item example list.
+
+    Also returns each entity's real Property names (entity_fields), so the
+    UI can offer a field-level checklist -- e.g. the User entity alone can
+    define 100+ properties, and most integrations only need a handful --
+    without a second round-trip, since $metadata already contains them all.
     """
     import time
     import requests
@@ -1396,11 +1405,20 @@ async def test_successfactors_connection(
 
     # Namespace-agnostic: SF's EDMX namespace URI has changed across OData
     # versions, so match on local tag name rather than a hardcoded namespace.
-    entities = sorted({
-        el.attrib["Name"]
-        for el in root.iter()
-        if el.tag.rsplit("}", 1)[-1] == "EntityType" and "Name" in el.attrib
-    })
+    # Property elements are direct children of their EntityType in the EDM,
+    # so a plain child scan (not another full-tree .iter()) keeps each field
+    # correctly attributed to the entity that actually defines it.
+    entity_fields: Dict[str, List[str]] = {}
+    for el in root.iter():
+        if el.tag.rsplit("}", 1)[-1] == "EntityType" and "Name" in el.attrib:
+            fields = sorted(
+                child.attrib["Name"]
+                for child in el
+                if child.tag.rsplit("}", 1)[-1] == "Property" and "Name" in child.attrib
+            )
+            entity_fields[el.attrib["Name"]] = fields
+
+    entities = sorted(entity_fields.keys())
 
     if not entities:
         raise HTTPException(status_code=502, detail="Connected, but $metadata listed zero EntityType definitions.")
@@ -1410,6 +1428,7 @@ async def test_successfactors_connection(
         "latency_ms": latency_ms,
         "entity_count": len(entities),
         "entities": entities,
+        "entity_fields": entity_fields,
     }
 
 
@@ -1478,6 +1497,9 @@ async def ingest_successfactors(
     # ── 2. Paginated OData Fetch ─────────────────────────────────────────────
     records: list = []
     odata_url = f"{base_url}/odata/v2/{entity}?$format=json&$top={payload.top}&companyId={company_id}"
+    if payload.select_fields:
+        from urllib.parse import quote
+        odata_url += f"&$select={quote(','.join(payload.select_fields), safe=',')}"
 
     try:
         while odata_url:

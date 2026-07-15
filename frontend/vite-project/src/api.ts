@@ -346,7 +346,7 @@ export const api = {
 
   // Real connection test: fetches the tenant's own OData $metadata and
   // returns every entity it actually defines (not a hardcoded example list).
-  async testSFConnection(payload: Record<string, any>): Promise<{ connected: boolean; latency_ms: number; entity_count: number; entities: string[] }> {
+  async testSFConnection(payload: Record<string, any>): Promise<{ connected: boolean; latency_ms: number; entity_count: number; entities: string[]; entity_fields: Record<string, string[]> }> {
     const res = await authFetch(`${BASE_URL}/v1/connectors/successfactors/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

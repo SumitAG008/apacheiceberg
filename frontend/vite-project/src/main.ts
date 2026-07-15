@@ -6360,6 +6360,13 @@ let connectionTested = false;
 // -- a hardcoded example list -- with what that specific instance actually
 // supports. Reset whenever the connector/auth method changes.
 let dynamicEntities: string[] | null = null;
+// Real per-entity property names from the same $metadata call, e.g.
+// { "User": ["userId","firstName","lastName", ...994 more...], ... }.
+// Backs the field-selection checklist -- some entities (User included)
+// define 100+ properties and most integrations only need a handful.
+let dynamicEntityFields: Record<string, string[]> | null = null;
+// Currently checked field names for whichever entity is selected right now.
+let selectedFields: Set<string> = new Set();
 
 function renderConnectorDropdown() {
   const selectEl = document.getElementById('conn-select-dropdown') as HTMLSelectElement;
@@ -6442,6 +6449,48 @@ function renderAuthFields() {
   }
 }
 
+function updateFieldsSummary(total: number) {
+  const summary = document.getElementById('conn-fields-summary');
+  if (summary) summary.textContent = `${selectedFields.size} of ${total} fields selected`;
+}
+
+// Renders the real per-entity field checklist discovered by Test
+// Connection. Defaults every field checked (same data pulled as before
+// this feature existed); unchecking narrows the OData $select sent to the
+// real ingest call. No hardcoded field names ever appear here -- if
+// dynamicEntityFields has nothing for this entity, the section just hides.
+function renderFieldsChecklist(entityName: string | undefined) {
+  const section = document.getElementById('conn-fields-section');
+  const checklist = document.getElementById('conn-fields-checklist');
+  if (!section || !checklist) return;
+
+  const fields = entityName ? dynamicEntityFields?.[entityName] : undefined;
+  if (!fields || fields.length === 0) {
+    section.style.display = 'none';
+    selectedFields = new Set();
+    return;
+  }
+
+  section.style.display = 'block';
+  selectedFields = new Set(fields);
+  checklist.innerHTML = fields.map(f => `
+    <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.76rem; color:var(--text-main); cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${f}">
+      <input type="checkbox" class="conn-field-checkbox" value="${f}" checked>
+      ${f}
+    </label>
+  `).join('');
+
+  checklist.querySelectorAll<HTMLInputElement>('.conn-field-checkbox').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedFields.add(cb.value);
+      else selectedFields.delete(cb.value);
+      updateFieldsSummary(fields.length);
+    });
+  });
+
+  updateFieldsSummary(fields.length);
+}
+
 function updateConfigCardState() {
   const card = document.getElementById('conn-config-card');
   const note = document.getElementById('conn-config-note');
@@ -6471,12 +6520,15 @@ function updateConfigCardState() {
         entitySelect.innerHTML = `<option value="" disabled selected>No entities discovered yet -- run Test Connection</option>`;
         entitySelect.disabled = true;
         if (btnConnIngest) btnConnIngest.disabled = true;
+        renderFieldsChecklist(undefined);
       } else {
         entitySelect.disabled = false;
         if (btnConnIngest) btnConnIngest.disabled = false;
         entitySelect.innerHTML = entityList.map(ent => {
           return `<option value="${ent}">${ent}</option>`;
         }).join('');
+        entitySelect.onchange = () => renderFieldsChecklist(entitySelect.value);
+        renderFieldsChecklist(entitySelect.value);
       }
     }
 
@@ -6505,6 +6557,7 @@ function updateConfigCardState() {
   activeMethodKey = Object.keys(CONNECTORS[key].methods)[0];
   connectionTested = false;
   dynamicEntities = null;
+  dynamicEntityFields = null;
 
   const selectEl = document.getElementById('conn-select-dropdown') as HTMLSelectElement;
   if (selectEl) {
@@ -6519,6 +6572,7 @@ function updateConfigCardState() {
   activeMethodKey = key;
   connectionTested = false;
   dynamicEntities = null;
+  dynamicEntityFields = null;
 
   renderAuthFields();
   updateConfigCardState();
@@ -6561,6 +6615,7 @@ setTimeout(() => {
         try {
           const data = await api.testSFConnection(buildSfConnectionPayload());
           dynamicEntities = data.entities;
+          dynamicEntityFields = data.entity_fields;
           connectionTested = true;
           if (testResultEl) {
             testResultEl.innerHTML = `<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Connected · ${data.latency_ms} ms · ${data.entity_count} entities found</span>`;
@@ -6569,6 +6624,7 @@ setTimeout(() => {
         } catch (err: any) {
           connectionTested = false;
           dynamicEntities = null;
+          dynamicEntityFields = null;
           if (testResultEl) {
             testResultEl.innerHTML = `<span style="color:#ef4444;"><i class="fa-solid fa-circle-xmark"></i> ${err.message}</span>`;
           }
@@ -6594,6 +6650,19 @@ setTimeout(() => {
     });
   }
 
+  // Field-selection checklist: Select All / Select None
+  document.getElementById('btn-conn-fields-all')?.addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll<HTMLInputElement>('.conn-field-checkbox');
+    checkboxes.forEach(cb => { cb.checked = true; selectedFields.add(cb.value); });
+    updateFieldsSummary(checkboxes.length);
+  });
+  document.getElementById('btn-conn-fields-none')?.addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll<HTMLInputElement>('.conn-field-checkbox');
+    checkboxes.forEach(cb => { cb.checked = false; });
+    selectedFields.clear();
+    updateFieldsSummary(checkboxes.length);
+  });
+
   // Connectors Fetch & Ingest Ingest button listener
   const btnConnIngest = document.getElementById('btn-conn-ingest') as HTMLButtonElement;
   if (btnConnIngest) {
@@ -6611,15 +6680,30 @@ setTimeout(() => {
 
       try {
         if (activeConnectorKey === 'successfactors') {
+          const entityName = entity?.split(' — ')[0];
+          const allFieldsForEntity = entityName ? dynamicEntityFields?.[entityName] : undefined;
+
           // Fire real SuccessFactors OData payload!
           const payload: Record<string, any> = {
             ...buildSfConnectionPayload(),
-            entity_name: entity?.split(' — ')[0],
+            entity_name: entityName,
             top: topLimit,
             namespace: namespace,
             table_name: tableName,
             write_mode: writeMode
           };
+
+          // Only send $select when the user actually narrowed the field
+          // list -- if everything is checked (or nothing was discoverable),
+          // omit it and pull the full record, same as before this existed.
+          if (allFieldsForEntity && selectedFields.size > 0 && selectedFields.size < allFieldsForEntity.length) {
+            payload.select_fields = Array.from(selectedFields);
+          } else if (allFieldsForEntity && selectedFields.size === 0) {
+            showToast('Select at least one field to ingest.', 'error');
+            btnConnIngest.disabled = false;
+            btnConnIngest.innerHTML = '<i class="fa-solid fa-bolt"></i> Fetch and Ingest into Lakehouse';
+            return;
+          }
 
           const data = await api.triggerSFIngest(payload);
           showToast(`Ingested ${data.rows_ingested?.toLocaleString()} rows successfully into ${tableName}!`, 'success');

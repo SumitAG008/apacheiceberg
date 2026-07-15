@@ -2703,6 +2703,22 @@
                   </div>
                 </div>
 
+                <!-- Field-level selection: populated from the real entity's own
+                     $metadata Property list (fetched once by Test Connection) --
+                     no hardcoded field names, and no requirement to pull every
+                     field an entity happens to define. -->
+                <div id="conn-fields-section" style="display:none; margin-top:0.5rem;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem;">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Fields to ingest</label>
+                    <div style="display:flex; gap:0.5rem;">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-conn-fields-all">Select All</button>
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-conn-fields-none">Select None</button>
+                    </div>
+                  </div>
+                  <div id="conn-fields-checklist" style="max-height:220px; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(170px,1fr)); gap:0.3rem 0.75rem; border:1px solid var(--border-subtle); border-radius:8px; padding:0.6rem; background:var(--bg-surface2);"></div>
+                  <p style="font-size:0.68rem; color:var(--text-muted); margin:0.3rem 0 0 0;" id="conn-fields-summary"></p>
+                </div>
+
                 <div id="conn-config-actions-row" style="display: none; justify-content: flex-end; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem; gap: 1rem;">
                   <button class="btn btn-primary" id="btn-conn-ingest">
                     <i class="fa-solid fa-bolt"></i> Fetch and Ingest into Lakehouse
