@@ -6216,6 +6216,41 @@ function parseSfDataCenterHost(raw: string | undefined): string {
   return raw.split(' — ')[0].trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
 }
 
+// Shared by Test Connection and the real ingest call so both send identical
+// credentials -- a passing test should mean the ingest call will also work.
+function buildSfConnectionPayload(): Record<string, any> {
+  const payload: Record<string, any> = {
+    auth_type: activeMethodKey === 'basic' ? 'basic' : 'oauth2',
+  };
+
+  if (activeMethodKey === 'basic') {
+    payload.username = (document.getElementById('conn-cred-user') as HTMLInputElement)?.value.trim();
+    payload.password = (document.getElementById('conn-cred-pass') as HTMLInputElement)?.value;
+    const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
+    payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
+
+    // basic auth username contains @CompanyId, split it
+    if (payload.username && payload.username.includes('@')) {
+      const parts = payload.username.split('@');
+      payload.username = parts[0];
+      payload.company_id = parts[1];
+    } else {
+      payload.company_id = 'acmecorpT1';
+    }
+  } else {
+    // oauth SAML flow
+    payload.client_id = (document.getElementById('conn-cred-client_id') as HTMLInputElement)?.value.trim();
+    payload.company_id = (document.getElementById('conn-cred-company') as HTMLInputElement)?.value.trim();
+    payload.api_user = (document.getElementById('conn-cred-api_user') as HTMLInputElement)?.value.trim();
+    payload.saml_key = (document.getElementById('conn-cred-saml_key') as HTMLInputElement)?.value;
+
+    const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
+    payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
+  }
+
+  return payload;
+}
+
 const CONNECTORS: Record<string, ConnectorDef> = {
   workday: {
     name: "Workday HR", desc: "Workers, compensation, orgs", color:"#0875e1", initials:"WD",
@@ -6318,6 +6353,11 @@ const CONNECTORS: Record<string, ConnectorDef> = {
 let activeConnectorKey = 'workday';
 let activeMethodKey = 'ws_security';
 let connectionTested = false;
+// Populated by a real Test Connection call (currently SuccessFactors only)
+// from the tenant's own OData $metadata. Overrides CONNECTORS[...].entities
+// -- a hardcoded example list -- with what that specific instance actually
+// supports. Reset whenever the connector/auth method changes.
+let dynamicEntities: string[] | null = null;
 
 function renderConnectorDropdown() {
   const selectEl = document.getElementById('conn-select-dropdown') as HTMLSelectElement;
@@ -6421,10 +6461,10 @@ function updateConfigCardState() {
     if (stepS3) stepS3.className = 'step-ingest-item current';
 
     // Populate the objects dropdown list based on connector catalog
+    const entityList = dynamicEntities ?? CONNECTORS[activeConnectorKey]?.entities ?? [];
     const entitySelect = document.getElementById('conn-entity') as HTMLSelectElement;
     if (entitySelect) {
-      const c = CONNECTORS[activeConnectorKey];
-      entitySelect.innerHTML = (c?.entities || []).map(ent => {
+      entitySelect.innerHTML = entityList.map(ent => {
         return `<option value="${ent}">${ent}</option>`;
       }).join('');
     }
@@ -6432,9 +6472,9 @@ function updateConfigCardState() {
     // Auto recommendation table name
     const tableNameInput = document.getElementById('conn-table-name') as HTMLInputElement;
     if (tableNameInput && !tableNameInput.value) {
-      const c = CONNECTORS[activeConnectorKey];
-      if (c && c.entities[0]) {
-        const entName = c.entities[0].split(' — ')[0].split(' ')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+      const firstEntity = entityList[0];
+      if (firstEntity) {
+        const entName = firstEntity.split(' — ')[0].split(' ')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
         tableNameInput.value = `${activeConnectorKey}_${entName}`;
       }
     }
@@ -6453,12 +6493,13 @@ function updateConfigCardState() {
   activeConnectorKey = key;
   activeMethodKey = Object.keys(CONNECTORS[key].methods)[0];
   connectionTested = false;
-  
+  dynamicEntities = null;
+
   const selectEl = document.getElementById('conn-select-dropdown') as HTMLSelectElement;
   if (selectEl) {
     selectEl.value = key;
   }
-  
+
   renderAuthFields();
   updateConfigCardState();
 };
@@ -6466,7 +6507,8 @@ function updateConfigCardState() {
 (window as any).selectIngestAuthMethod = (key: string) => {
   activeMethodKey = key;
   connectionTested = false;
-  
+  dynamicEntities = null;
+
   renderAuthFields();
   updateConfigCardState();
 };
@@ -6490,14 +6532,41 @@ setTimeout(() => {
   // Test Connection button listener
   const btnConnTest = document.getElementById('btn-conn-test') as HTMLButtonElement;
   if (btnConnTest) {
-    btnConnTest.addEventListener('click', () => {
+    btnConnTest.addEventListener('click', async () => {
       const testResultEl = document.getElementById('conn-test-result');
-      
+
       btnConnTest.disabled = true;
       btnConnTest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing Connection...';
       if (testResultEl) {
         testResultEl.textContent = '';
         testResultEl.style.color = '';
+      }
+
+      // Only SuccessFactors has a real backend test today -- it fetches the
+      // tenant's own OData $metadata. Other connectors here don't have a
+      // live backend endpoint yet, so they fall back to a clearly-labeled
+      // simulated check rather than silently pretending to be real.
+      if (activeConnectorKey === 'successfactors') {
+        try {
+          const data = await api.testSFConnection(buildSfConnectionPayload());
+          dynamicEntities = data.entities;
+          connectionTested = true;
+          if (testResultEl) {
+            testResultEl.innerHTML = `<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Connected · ${data.latency_ms} ms · ${data.entity_count} entities found</span>`;
+          }
+          showToast(`Connected — found ${data.entity_count} OData entities on this tenant.`, 'success');
+        } catch (err: any) {
+          connectionTested = false;
+          dynamicEntities = null;
+          if (testResultEl) {
+            testResultEl.innerHTML = `<span style="color:#ef4444;"><i class="fa-solid fa-circle-xmark"></i> ${err.message}</span>`;
+          }
+          showToast(`Connection failed: ${err.message}`, 'error');
+        }
+        btnConnTest.disabled = false;
+        btnConnTest.innerHTML = 'Test Connection';
+        updateConfigCardState();
+        return;
       }
 
       setTimeout(() => {
@@ -6506,7 +6575,7 @@ setTimeout(() => {
 
         connectionTested = true;
         if (testResultEl) {
-          testResultEl.innerHTML = `<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Connected · 240 ms · ${CONNECTORS[activeConnectorKey].name}</span>`;
+          testResultEl.innerHTML = `<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Connected · 240 ms · ${CONNECTORS[activeConnectorKey].name} (simulated)</span>`;
         }
         showToast(`Connected to ${CONNECTORS[activeConnectorKey].name} endpoint successfully!`, 'success');
         updateConfigCardState();
@@ -6533,39 +6602,13 @@ setTimeout(() => {
         if (activeConnectorKey === 'successfactors') {
           // Fire real SuccessFactors OData payload!
           const payload: Record<string, any> = {
-            auth_type: activeMethodKey === 'basic' ? 'basic' : 'oauth',
+            ...buildSfConnectionPayload(),
             entity_name: entity?.split(' — ')[0],
             top: topLimit,
             namespace: namespace,
             table_name: tableName,
             write_mode: writeMode
           };
-
-          // Map credentials to real backend payload
-          if (activeMethodKey === 'basic') {
-            payload.username = (document.getElementById('conn-cred-user') as HTMLInputElement)?.value.trim();
-            payload.password = (document.getElementById('conn-cred-pass') as HTMLInputElement)?.value;
-            const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
-            payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
-            
-            // basic auth username contains @CompanyId, split it
-            if (payload.username && payload.username.includes('@')) {
-              const parts = payload.username.split('@');
-              payload.username = parts[0];
-              payload.company_id = parts[1];
-            } else {
-              payload.company_id = 'acmecorpT1';
-            }
-          } else {
-            // oauth SAML flow
-            payload.client_id = (document.getElementById('conn-cred-client_id') as HTMLInputElement)?.value.trim();
-            payload.company_id = (document.getElementById('conn-cred-company') as HTMLInputElement)?.value.trim();
-            payload.api_user = (document.getElementById('conn-cred-api_user') as HTMLInputElement)?.value.trim();
-            payload.saml_key = (document.getElementById('conn-cred-saml_key') as HTMLInputElement)?.value;
-
-            const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
-            payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
-          }
 
           const data = await api.triggerSFIngest(payload);
           showToast(`Ingested ${data.rows_ingested?.toLocaleString()} rows successfully into ${tableName}!`, 'success');

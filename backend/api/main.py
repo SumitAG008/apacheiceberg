@@ -415,6 +415,16 @@ class SuccessFactorsRequest(BaseModel):
     table_name: str
     write_mode: Optional[str] = "overwrite"
 
+class SuccessFactorsTestRequest(BaseModel):
+    sf_endpoint: str
+    company_id: str
+    auth_type: str
+    username: Optional[str] = None
+    password: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    token_url: Optional[str] = None
+
 class CypherRequest(BaseModel):
     graph_name: str
     query: str
@@ -1321,6 +1331,86 @@ async def update_aws_config(
         status="success"
     )
     return {"status": "success", "message": "AWS config updated successfully."}
+
+
+@app.post("/v1/connectors/successfactors/test", tags=["Ingestion"])
+async def test_successfactors_connection(
+    payload: SuccessFactorsTestRequest,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Real connection test for the Enterprise Connector wizard's SuccessFactors
+    "Test Connection" button -- it used to just be a 1-second setTimeout that
+    always reported success regardless of whether the credentials worked.
+
+    Fetches the tenant's own OData v2 $metadata (EDMX/CSDL XML) and returns
+    every EntityType it defines, so the "Target Object / Entity" dropdown
+    reflects what this specific SuccessFactors instance actually supports
+    instead of a hardcoded 4-item example list.
+    """
+    import time
+    import requests
+    import xml.etree.ElementTree as ET
+
+    base_url = payload.sf_endpoint.rstrip("/")
+
+    session = requests.Session()
+    if payload.auth_type == "basic":
+        if not payload.username or not payload.password:
+            raise HTTPException(status_code=400, detail="username and password are required for Basic auth")
+        session.auth = (f"{payload.username}@{payload.company_id}", payload.password)
+    elif payload.auth_type == "oauth2":
+        if not payload.client_id or not payload.client_secret:
+            raise HTTPException(status_code=400, detail="client_id and client_secret are required for OAuth2")
+        token_url = payload.token_url or f"{base_url}/oauth/token"
+        try:
+            token_resp = requests.post(token_url, data={
+                "grant_type": "client_credentials",
+                "client_id": payload.client_id,
+                "client_secret": payload.client_secret,
+                "company_id": payload.company_id,
+            }, timeout=30)
+            token_resp.raise_for_status()
+            access_token = token_resp.json().get("access_token")
+            if not access_token:
+                raise HTTPException(status_code=401, detail=f"OAuth2 token response missing access_token: {token_resp.text}")
+            session.headers["Authorization"] = f"Bearer {access_token}"
+        except requests.RequestException as e:
+            raise HTTPException(status_code=502, detail=f"OAuth2 token fetch failed: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="auth_type must be 'basic' or 'oauth2'")
+
+    metadata_url = f"{base_url}/odata/v2/$metadata"
+    start = time.monotonic()
+    try:
+        resp = session.get(metadata_url, timeout=30)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach {metadata_url}: {e}")
+    latency_ms = round((time.monotonic() - start) * 1000)
+
+    try:
+        root = ET.fromstring(resp.content)
+    except ET.ParseError as e:
+        raise HTTPException(status_code=502, detail=f"$metadata response wasn't valid XML: {e}")
+
+    # Namespace-agnostic: SF's EDMX namespace URI has changed across OData
+    # versions, so match on local tag name rather than a hardcoded namespace.
+    entities = sorted({
+        el.attrib["Name"]
+        for el in root.iter()
+        if el.tag.rsplit("}", 1)[-1] == "EntityType" and "Name" in el.attrib
+    })
+
+    if not entities:
+        raise HTTPException(status_code=502, detail="Connected, but $metadata listed zero EntityType definitions.")
+
+    return {
+        "connected": True,
+        "latency_ms": latency_ms,
+        "entity_count": len(entities),
+        "entities": entities,
+    }
 
 
 @app.post("/v1/ingest/successfactors", tags=["Ingestion"])

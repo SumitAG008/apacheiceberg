@@ -344,6 +344,21 @@ export const api = {
     return res.json();
   },
 
+  // Real connection test: fetches the tenant's own OData $metadata and
+  // returns every entity it actually defines (not a hardcoded example list).
+  async testSFConnection(payload: Record<string, any>): Promise<{ connected: boolean; latency_ms: number; entity_count: number; entities: string[] }> {
+    const res = await authFetch(`${BASE_URL}/v1/connectors/successfactors/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || err.error || 'Connection test failed');
+    }
+    return res.json();
+  },
+
   // ── Ingestion: 2. Create + Ingest ─────────────────────────────────────
   async triggerIngest(payload: IngestPayload): Promise<{ status: string; message: string }> {
     const res = await authFetch(`${BASE_URL}/v1/ingest`, {
