@@ -10,7 +10,7 @@
  */
 import './style.css';
 import { api, tokenStore } from './api';
-import type { ChatMessage, CSVUploadResponse } from './api';
+import type { ChatMessage, CSVUploadResponse, AuditLog } from './api';
 
 
 // ─────────────────────────────────────────
@@ -3211,9 +3211,9 @@ async function renderHomeDashboard() {
 
   if (connEl) connEl.textContent = customAwsToggle?.checked ? 'Live' : 'Demo';
 
+  let tableCount = 0;
   try {
     const { namespaces } = await api.catalog.listNamespaces();
-    let tableCount = 0;
     for (const ns of namespaces) {
       try {
         const { tables } = await api.catalog.listTables(ns);
@@ -3233,26 +3233,250 @@ async function renderHomeDashboard() {
     if (heroSub) heroSub.textContent = 'Could not load lakehouse status — check your connection.';
   }
 
+  // Fetched once, fed to both the recent-activity list and the activity
+  // chart below -- no reason to hit /v1/audit twice for one page.
+  let auditLogs: AuditLog[] = [];
+  let auditLoadFailed = false;
+  try {
+    auditLogs = await api.getAuditLogs();
+  } catch {
+    auditLoadFailed = true;
+  }
+
   const activityEl = document.getElementById('home-recent-activity');
   if (activityEl) {
-    try {
-      const logs = await api.getAuditLogs();
-      const recent = logs.slice(0, 6);
-      if (recent.length === 0) {
-        activityEl.innerHTML = '<div class="home-activity-empty">No activity recorded yet.</div>';
-      } else {
-        activityEl.innerHTML = recent.map(l => `
-          <div class="home-activity-row">
-            <span class="activity-actor">${escapeHtml(l.user_id || 'system')}</span>
-            <span class="activity-action">${escapeHtml(l.action)}${l.details ? ' — ' + escapeHtml(l.details) : ''}</span>
-            <span class="activity-time">${new Date(l.timestamp).toLocaleString()}</span>
-          </div>
-        `).join('');
-      }
-    } catch {
+    if (auditLoadFailed) {
       activityEl.innerHTML = '<div class="home-activity-empty">Could not load the audit trail.</div>';
+    } else if (auditLogs.length === 0) {
+      activityEl.innerHTML = '<div class="home-activity-empty">No activity recorded yet.</div>';
+    } else {
+      activityEl.innerHTML = auditLogs.slice(0, 6).map(l => `
+        <div class="home-activity-row">
+          <span class="activity-actor">${escapeHtml(l.user_id || 'system')}</span>
+          <span class="activity-action">${escapeHtml(l.action)}${l.details ? ' — ' + escapeHtml(l.details) : ''}</span>
+          <span class="activity-time">${new Date(l.timestamp).toLocaleString()}</span>
+        </div>
+      `).join('');
     }
   }
+
+  renderHomeActivityChart(auditLoadFailed ? null : auditLogs);
+  renderSetupChecklist(tableCount, connEl?.textContent === 'Live');
+}
+
+// ── Activity chart: real audit events bucketed into the last 14 days ──────
+// A single series over time -> one hue (brand primary), thin line, light
+// area fill, hover crosshair + tooltip. `logs === null` means the audit
+// fetch itself failed (distinct from a real empty account).
+function renderHomeActivityChart(logs: AuditLog[] | null) {
+  const wrap = document.getElementById('home-activity-chart-wrap');
+  if (!wrap) return;
+
+  if (logs === null) {
+    wrap.innerHTML = '<div class="home-activity-empty">Could not load activity data.</div>';
+    return;
+  }
+
+  const DAYS = 14;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets: { date: Date; label: string; count: number }[] = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    buckets.push({ date: d, label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), count: 0 });
+  }
+  const bucketByKey = new Map(buckets.map(b => [b.date.toDateString(), b]));
+  for (const log of logs) {
+    const d = new Date(log.timestamp);
+    d.setHours(0, 0, 0, 0);
+    const bucket = bucketByKey.get(d.toDateString());
+    if (bucket) bucket.count++;
+  }
+
+  const total = buckets.reduce((s, b) => s + b.count, 0);
+  if (total === 0) {
+    wrap.innerHTML = '<div class="home-activity-empty">No activity in the last 14 days yet -- once you ingest, query, or edit something, it shows up here.</div>';
+    return;
+  }
+
+  const W = 560, H = 180, padL = 28, padR = 8, padT = 12, padB = 20;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const maxCount = Math.max(...buckets.map(b => b.count), 1);
+  const stepX = innerW / (buckets.length - 1);
+  const yFor = (c: number) => padT + innerH - (c / maxCount) * innerH;
+  const xFor = (i: number) => padL + i * stepX;
+
+  const linePoints = buckets.map((b, i) => `${xFor(i)},${yFor(b.count)}`).join(' ');
+  const areaPoints = `${padL},${padT + innerH} ${linePoints} ${padL + innerW},${padT + innerH}`;
+
+  // Gridlines at 0 / mid / max, and every ~3rd day label to avoid crowding.
+  const gridLines = [0, 0.5, 1].map(f => {
+    const y = padT + innerH - f * innerH;
+    return `<line class="chart-gridline" x1="${padL}" y1="${y}" x2="${padL + innerW}" y2="${y}" />`;
+  }).join('');
+  const yLabels = [0, Math.round(maxCount / 2), maxCount].map(v => {
+    const y = padT + innerH - (v / maxCount) * innerH;
+    return `<text class="chart-axis-label" x="2" y="${y + 3}">${v}</text>`;
+  }).join('');
+  const xLabels = buckets.map((b, i) => {
+    if (i % 3 !== 0 && i !== buckets.length - 1) return '';
+    return `<text class="chart-axis-label" x="${xFor(i)}" y="${H - 4}" text-anchor="middle">${b.label}</text>`;
+  }).join('');
+  const dots = buckets.map((b, i) => `<circle class="chart-dot" data-i="${i}" cx="${xFor(i)}" cy="${yFor(b.count)}" r="3.5" />`).join('');
+
+  wrap.innerHTML = `
+    <svg class="home-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="homeActivityGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      ${yLabels}
+      ${xLabels}
+      <polygon class="chart-area" points="${areaPoints}" />
+      <polyline class="chart-line" points="${linePoints}" />
+      ${dots}
+      <line class="chart-crosshair" id="home-chart-crosshair" x1="0" y1="${padT}" x2="0" y2="${padT + innerH}" />
+      <rect class="chart-hover-target" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" />
+    </svg>
+    <div class="home-chart-tooltip" id="home-chart-tooltip"></div>
+  `;
+
+  const svg = wrap.querySelector('.home-chart-svg') as SVGSVGElement;
+  const hoverTarget = wrap.querySelector('.chart-hover-target') as SVGRectElement;
+  const crosshair = wrap.querySelector('#home-chart-crosshair') as SVGLineElement;
+  const tooltip = wrap.querySelector('#home-chart-tooltip') as HTMLDivElement;
+  const allDots = Array.from(wrap.querySelectorAll('.chart-dot')) as SVGCircleElement[];
+
+  hoverTarget?.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const localX = (e.clientX - rect.left) * scaleX;
+    const i = Math.max(0, Math.min(buckets.length - 1, Math.round((localX - padL) / stepX)));
+    const b = buckets[i];
+    const px = xFor(i);
+
+    crosshair.setAttribute('x1', String(px));
+    crosshair.setAttribute('x2', String(px));
+    crosshair.style.opacity = '1';
+    allDots.forEach(d => d.style.opacity = d.getAttribute('data-i') === String(i) ? '1' : '0');
+
+    tooltip.innerHTML = `<span class="tt-date">${b.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span><span class="tt-value">${b.count} event${b.count === 1 ? '' : 's'}</span>`;
+    tooltip.style.opacity = '1';
+    tooltip.style.left = `${(px / W) * 100}%`;
+    tooltip.style.top = `${(yFor(b.count) / H) * 100}%`;
+  });
+  hoverTarget?.addEventListener('mouseleave', () => {
+    crosshair.style.opacity = '0';
+    tooltip.style.opacity = '0';
+    allDots.forEach(d => d.style.opacity = '0');
+  });
+}
+
+interface ChecklistItem {
+  done: boolean;
+  title: string;
+  description: string;
+  navTarget?: string;
+}
+
+// ── Setup checklist: every item is a real, computed signal -- never a
+// fabricated progress bar. Admin-only signals (RBAC policies, approvers,
+// team members) are only fetched for Admins, matching this app's existing
+// RBAC-gating convention elsewhere, rather than firing a call that 403s.
+async function renderSetupChecklist(tableCount: number, isLiveConnection: boolean) {
+  const body = document.getElementById('home-checklist-body');
+  const sub = document.getElementById('home-checklist-sub');
+  if (!body) return;
+
+  const user = tokenStore.getUser() as any;
+  const role = user?.role || 'Business Analyst';
+  const isAdmin = role === 'Admin';
+
+  const items: ChecklistItem[] = [
+    {
+      done: tableCount > 0,
+      title: 'Ingest your first table',
+      description: 'Upload a CSV, connect an enterprise source, or load sample data.',
+      navTarget: 'nav-ingest',
+    },
+    {
+      done: isLiveConnection,
+      title: 'Connect a real data lake',
+      description: 'Point the platform at your own S3/GCS bucket instead of the demo lake.',
+      navTarget: 'nav-workspace',
+    },
+  ];
+
+  let queryRan = false;
+  try {
+    const history = await dqe.history(1);
+    queryRan = history.length > 0;
+  } catch {
+    // Non-fatal -- just leave this item showing as not-yet-done.
+  }
+  items.push({
+    done: queryRan,
+    title: 'Run your first query',
+    description: 'SQL, Graph, or Python -- any query in Query Lab counts.',
+    navTarget: 'nav-query-lab',
+  });
+
+  if (isAdmin) {
+    try {
+      const policies = await api.rbac.getPolicies();
+      items.push({
+        done: Array.isArray(policies) && policies.length > 0,
+        title: 'Add an access policy',
+        description: 'Mask sensitive columns (salary, tax ID, etc.) for non-Admin roles.',
+        navTarget: 'nav-studio',
+      });
+    } catch { /* Admin call failed transiently -- skip rather than show wrong state */ }
+
+    try {
+      const { approvers } = await api.rbac.listApprovers();
+      items.push({
+        done: approvers.length > 0,
+        title: 'Designate a Production Approver',
+        description: 'Without one, no pipeline can ever be promoted to production.',
+        navTarget: 'nav-studio',
+      });
+    } catch { /* same */ }
+
+    try {
+      const { users } = await api.rbac.listAllUsers();
+      items.push({
+        done: users.length > 1,
+        title: 'Invite your team',
+        description: 'Assign real roles (Data Engineer, CFO, Viewer...) to the people who need access.',
+        navTarget: 'nav-users',
+      });
+    } catch { /* same */ }
+  }
+
+  const doneCount = items.filter(i => i.done).length;
+  if (sub) sub.textContent = `${doneCount} of ${items.length} complete`;
+
+  body.innerHTML = items.map(item => `
+    <div class="home-checklist-item ${item.done ? 'done' : 'pending'}">
+      <span class="home-checklist-icon"><i class="fa-solid ${item.done ? 'fa-check' : 'fa-circle'}"></i></span>
+      <div class="home-checklist-text">
+        <h5>${escapeHtml(item.title)}</h5>
+        <p>${escapeHtml(item.description)}${item.navTarget && !item.done ? ` <a href="#" data-goto="${item.navTarget}">Go there →</a>` : ''}</p>
+      </div>
+    </div>
+  `).join('');
+
+  body.querySelectorAll('a[data-goto]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = (a as HTMLElement).getAttribute('data-goto');
+      if (targetId) (document.getElementById(targetId) as HTMLButtonElement | null)?.click();
+    });
+  });
 }
 
 function initHomeQuickTiles() {

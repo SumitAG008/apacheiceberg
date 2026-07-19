@@ -674,9 +674,91 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   padding: 0.5rem 0;
 }
 
+/* ── Activity chart + setup checklist row ─────────────────────────── */
+.home-insights-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.home-chart-panel, .home-checklist-panel { display: flex; flex-direction: column; }
+
+#home-activity-chart-wrap { position: relative; }
+
+.home-chart-svg { width: 100%; height: 200px; display: block; overflow: visible; }
+.home-chart-svg .chart-gridline { stroke: var(--border-subtle); stroke-width: 1; }
+.home-chart-svg .chart-axis-label { fill: var(--text-dim); font-size: 9px; font-family: var(--font-sans); }
+.home-chart-svg .chart-area { fill: url(#homeActivityGradient); }
+.home-chart-svg .chart-line { fill: none; stroke: var(--color-primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.home-chart-svg .chart-dot { fill: var(--color-primary); opacity: 0; transition: opacity 0.1s; }
+.home-chart-svg .chart-hover-target { fill: transparent; cursor: crosshair; }
+.home-chart-svg .chart-crosshair { stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; }
+
+.home-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg-surface2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-main);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  opacity: 0;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+  z-index: 5;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.home-chart-tooltip .tt-date { color: var(--text-muted); font-size: 0.66rem; display: block; margin-bottom: 0.1rem; }
+.home-chart-tooltip .tt-value { font-weight: 700; color: var(--color-primary); }
+
+/* ── Setup checklist ───────────────────────────────────────────────── */
+.home-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.8rem;
+}
+
+.home-checklist-item:last-child { border-bottom: none; }
+
+.home-checklist-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  margin-top: 0.1rem;
+}
+
+.home-checklist-item.done .home-checklist-icon { background: rgba(16,185,129,0.15); color: var(--color-success); }
+.home-checklist-item.pending .home-checklist-icon { background: rgba(234,179,8,0.15); color: var(--color-warning); }
+
+.home-checklist-text h5 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 0.1rem;
+}
+
+.home-checklist-item.done .home-checklist-text h5 { color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border-subtle); }
+
+.home-checklist-text p { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; }
+.home-checklist-text a { color: var(--color-primary); text-decoration: none; }
+.home-checklist-text a:hover { text-decoration: underline; }
+
 @media (max-width: 900px) {
   .home-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .home-quick-grid { grid-template-columns: repeat(2, 1fr); }
+  .home-insights-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {
