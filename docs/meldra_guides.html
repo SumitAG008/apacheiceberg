@@ -1,0 +1,689 @@
+<title>meldra — Help &amp; Business Case Guide</title>
+<style>
+  :root {
+    --ground: #F6F8F9;
+    --surface: #FFFFFF;
+    --ink: #16232E;
+    --ink-soft: #47586A;
+    --line: #D9E1E6;
+    --accent: #146B7A;
+    --accent-soft: #E4F0F1;
+    --bronze: #9A6033;
+    --silver: #6E7C8A;
+    --gold: #93711F;
+    --live: #2E7D53;
+    --live-bg: #E4F3EA;
+    --roadmap: #93711F;
+    --roadmap-bg: #F5EEDC;
+    --demo: #5B6B78;
+    --demo-bg: #EAEEF0;
+    --code-bg: #EEF3F4;
+    --shadow: 0 1px 2px rgba(20,40,45,0.06), 0 8px 24px -12px rgba(20,40,45,0.18);
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0B1420;
+    --surface: #101C29;
+    --ink: #E7EDF1;
+    --ink-soft: #9FB0BC;
+    --line: #223140;
+    --accent: #5BC4D3;
+    --accent-soft: #10333A;
+    --bronze: #C98A57;
+    --silver: #9AABB8;
+    --gold: #D2AC5C;
+    --live: #6FCB9A;
+    --live-bg: #123023;
+    --roadmap: #D2AC5C;
+    --roadmap-bg: #2E2712;
+    --demo: #9AABB8;
+    --demo-bg: #1A2531;
+    --code-bg: #0C1922;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.6);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0B1420;
+      --surface: #101C29;
+      --ink: #E7EDF1;
+      --ink-soft: #9FB0BC;
+      --line: #223140;
+      --accent: #5BC4D3;
+      --accent-soft: #10333A;
+      --bronze: #C98A57;
+      --silver: #9AABB8;
+      --gold: #D2AC5C;
+      --live: #6FCB9A;
+      --live-bg: #123023;
+      --roadmap: #D2AC5C;
+      --roadmap-bg: #2E2712;
+      --demo: #9AABB8;
+      --demo-bg: #1A2531;
+      --code-bg: #0C1922;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.6);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    max-width: 1180px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  .rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2.25rem 1.5rem 2rem 2rem;
+    border-right: 1px solid var(--line);
+    font-family: "Segoe UI", "Noto Sans", -apple-system, Helvetica, Arial, sans-serif;
+  }
+
+  .brand {
+    font-family: Charter, Georgia, serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0 0 0.15rem;
+  }
+  .brand-tag {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 1.75rem;
+  }
+
+  .rail-group { margin-bottom: 1.6rem; }
+  .rail-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .rail nav a {
+    display: block;
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 0.3rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.65rem;
+    margin-left: -0.65rem;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .rail nav a:hover,
+  .rail nav a:focus-visible {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    outline: none;
+  }
+
+  .status-key {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1.5rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+  }
+  .status-key-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--ink-soft); }
+
+  /* ── Main column ─────────────────────────────────────── */
+  main { padding: 3rem 3.5rem 6rem; min-width: 0; }
+
+  .doc-header { margin-bottom: 3rem; }
+  .doc-kicker {
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 0.75rem;
+  }
+  h1 {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-weight: 700;
+    font-size: 2.35rem;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .doc-dek {
+    font-size: 1.08rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  section { margin-bottom: 3.25rem; max-width: 68ch; }
+  section.wide { max-width: none; }
+
+  h2 {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0 0 1rem;
+    padding-top: 0.25rem;
+    scroll-margin-top: 1.5rem;
+  }
+  h3 {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 1.6rem 0 0.5rem;
+  }
+  p { margin: 0 0 1rem; color: var(--ink); }
+  p.lead { font-size: 1.12rem; color: var(--ink-soft); }
+  strong { color: var(--ink); }
+
+  code {
+    font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  pre {
+    font-family: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: var(--ink-soft);
+  }
+
+  /* ── Glossary ────────────────────────────────────────── */
+  .glossary { display: flex; flex-direction: column; gap: 1.1rem; max-width: 72ch; }
+  .gterm {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    gap: 1.25rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .gterm:last-child { border-bottom: none; }
+  .gterm dt {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--accent);
+  }
+  .gterm dd { margin: 0; color: var(--ink-soft); font-size: 0.96rem; }
+
+  /* ── Persona / use-case cards ────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+    max-width: none;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.25rem 1.35rem;
+    box-shadow: var(--shadow);
+  }
+  .card h4 {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 0.98rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    color: var(--ink);
+  }
+  .card p { font-size: 0.92rem; color: var(--ink-soft); margin: 0; }
+
+  .usecase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1.1rem;
+    box-shadow: var(--shadow);
+    max-width: 74ch;
+  }
+  .usecase h4 {
+    font-family: "Segoe UI Semibold", "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 1.02rem;
+    margin: 0 0 0.65rem;
+    color: var(--ink);
+  }
+  .usecase .uc-row { margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .usecase .uc-row:last-child { margin-bottom: 0; }
+  .usecase .uc-label {
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin-right: 0.5rem;
+  }
+
+  /* ── Flow diagram ────────────────────────────────────── */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    max-width: none;
+  }
+  .flow-step {
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 0.86rem;
+    font-weight: 600;
+    padding: 0.55rem 0.9rem;
+    border-radius: 7px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .flow-step.bronze { background: color-mix(in srgb, var(--bronze) 16%, transparent); color: var(--bronze); }
+  .flow-step.silver { background: color-mix(in srgb, var(--silver) 16%, transparent); color: var(--silver); }
+  .flow-step.gold   { background: color-mix(in srgb, var(--gold) 18%, transparent);   color: var(--gold); }
+  .flow-arrow { color: var(--ink-soft); font-size: 0.9rem; }
+
+  /* ── Status table ────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.94rem;
+    max-width: 78ch;
+  }
+  th {
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    text-align: left;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    font-weight: 700;
+    padding: 0 0.75rem 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+    color: var(--ink);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: "Segoe UI", "Noto Sans", sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.28rem 0.6rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .badge.live { background: var(--live-bg); color: var(--live); }
+  .badge.roadmap { background: var(--roadmap-bg); color: var(--roadmap); }
+  .badge.demo { background: var(--demo-bg); color: var(--demo); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── Pros / cons ─────────────────────────────────────── */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: none;
+  }
+  .split-col {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow);
+  }
+  .split-col h3 { margin-top: 0; }
+  .split-col.pros h3 { color: var(--live); }
+  .split-col.cons h3 { color: var(--roadmap); }
+  .split-col ul { margin: 0; padding-left: 1.15rem; }
+  .split-col li { margin-bottom: 0.65rem; font-size: 0.94rem; color: var(--ink-soft); }
+  .split-col li strong { color: var(--ink); }
+
+  /* ── Checklist ───────────────────────────────────────── */
+  .checklist {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.5rem 1.7rem;
+    max-width: 72ch;
+  }
+  .checklist h3 { margin-top: 0; }
+  .checklist label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    padding: 0.4rem 0;
+    cursor: pointer;
+  }
+  .checklist input[type="checkbox"] {
+    margin-top: 0.28rem;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  hr.divider {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 3.5rem 0;
+    max-width: none;
+  }
+
+  ol, ul { padding-left: 1.3rem; }
+  ol li, ul li { margin-bottom: 0.4rem; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--line); padding: 1.5rem; }
+    main { padding: 2rem 1.4rem 4rem; }
+    .split { grid-template-columns: 1fr; }
+    .gterm { grid-template-columns: 1fr; gap: 0.3rem; }
+  }
+
+  a:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="shell">
+  <aside class="rail">
+    <p class="brand">meldra</p>
+    <p class="brand-tag">Guide &amp; Business Case</p>
+
+    <div class="rail-group">
+      <span class="rail-label">Help Guide</span>
+      <nav>
+        <a href="#hg-what">What meldra Is</a>
+        <a href="#hg-jargon">Jargon, Translated</a>
+        <a href="#hg-flow">How Data Flows</a>
+        <a href="#hg-personas">Who Uses What</a>
+        <a href="#hg-status">Live vs. Roadmap</a>
+        <a href="#hg-start">Getting Started</a>
+      </nav>
+    </div>
+
+    <div class="rail-group">
+      <span class="rail-label">Business Case Guide</span>
+      <nav>
+        <a href="#bc-pitch">The Pitch</a>
+        <a href="#bc-fit">Good Fit For</a>
+        <a href="#bc-notfit">Not (Yet) a Fit</a>
+        <a href="#bc-cases">Real Use Cases</a>
+        <a href="#bc-proscons">Pros &amp; Cons</a>
+        <a href="#bc-checklist">Decision Checklist</a>
+      </nav>
+    </div>
+
+    <div class="status-key">
+      <span class="status-key-row"><span class="badge live">Live</span> works today</span>
+      <span class="status-key-row"><span class="badge roadmap">Roadmap</span> planned, not yet built</span>
+      <span class="status-key-row"><span class="badge demo">Demo</span> illustrative only</span>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ══════════════════════════ HELP GUIDE ══════════════════════════ -->
+    <div class="doc-header" id="hg-what">
+      <p class="doc-kicker">Part I — Help Guide</p>
+      <h1>Understanding meldra</h1>
+      <p class="doc-dek">What it is, what everything is called, and how the pieces fit together — written for someone using the product, not building it.</p>
+    </div>
+
+    <section>
+      <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, SuccessFactors, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
+    </section>
+
+    <section id="hg-jargon">
+      <h2>Jargon, Translated</h2>
+      <dl class="glossary">
+        <div class="gterm"><dt>Apache Iceberg</dt><dd>The filing format your tables are saved in. A smarter version of a spreadsheet folder that remembers every past version of itself and never silently loses data.</dd></div>
+        <div class="gterm"><dt>Catalog</dt><dd>The index that knows which tables exist and where their files live — like a card catalog in a library.</dd></div>
+        <div class="gterm"><dt>Warehouse</dt><dd>The actual storage location (an S3 bucket, or a local folder in testing) where your table files physically sit.</dd></div>
+        <div class="gterm"><dt>Namespace</dt><dd>A folder for grouping related tables — e.g. <code>default</code>, <code>finance</code>, <code>hr</code>.</dd></div>
+        <div class="gterm"><dt>Bronze / Silver / Gold</dt><dd>How "clean" data is. Bronze = raw, as loaded. Silver = cleaned and deduplicated. Gold = ready for business reporting.</dd></div>
+        <div class="gterm"><dt>Snapshot / Time Travel</dt><dd>Every change is saved as a snapshot. Time Travel lets you view — or restore — the table exactly as it was earlier, useful for "what did this look like before the bad import."</dd></div>
+        <div class="gterm"><dt>Schema Evolution</dt><dd>Adding, removing, or renaming a column without rebuilding the whole table.</dd></div>
+        <div class="gterm"><dt>Data Contract</dt><dd>A rule on a table — e.g. "this column can never be empty." Contracts can block bad data from loading at all.</dd></div>
+        <div class="gterm"><dt>Ingestion</dt><dd>Loading data in, from a CSV file or a connected system like SuccessFactors.</dd></div>
+        <div class="gterm"><dt>Append / Overwrite / Upsert</dt><dd>Append adds new rows. Overwrite replaces everything. Upsert updates existing rows and adds new ones, matched on a key column.</dd></div>
+        <div class="gterm"><dt>RBAC</dt><dd>Rules about who can see what. A Business Analyst might see a vendor table with the bank account column blanked out; an Admin sees everything.</dd></div>
+        <div class="gterm"><dt>Column Masking</dt><dd>Redacting a specific column's real values for certain roles, instead of hiding the whole table.</dd></div>
+        <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore graph connections directly against your tables.</dd></div>
+        <div class="gterm"><dt>DuckDB</dt><dd>The engine that runs your SQL queries fast, without a separate database server.</dd></div>
+        <div class="gterm"><dt>Chat</dt><dd>Ask a question in plain English — "top 10 vendors by spend in EMEA" — and the AI figures out which table and query to use.</dd></div>
+        <div class="gterm"><dt>Graph tab</dt><dd>Your data as connections rather than rows — e.g. which vendors share a bank account, useful for spotting fraud rings.</dd></div>
+        <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — for compliance and troubleshooting.</dd></div>
+      </dl>
+    </section>
+
+    <section id="hg-flow" class="wide">
+      <h2>How Data Actually Flows</h2>
+      <div class="flow">
+        <span class="flow-step">Source (CSV, SuccessFactors)</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Ingest + Data Contracts</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step bronze">Bronze</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step silver">Silver</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step gold">Gold</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Query Lab / Chat / Graph</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">Audit Log</span>
+      </div>
+    </section>
+
+    <section id="hg-personas" class="wide">
+      <h2>Who Uses Which Tab</h2>
+      <div class="card-grid">
+        <div class="card"><h4>Data Engineer</h4><p>Connects sources, builds Bronze → Silver → Gold pipelines, sets Data Contracts, monitors ingestion runs.</p></div>
+        <div class="card"><h4>Data Architect</h4><p>Approves schema changes, sets naming standards, manages retention and PII masking rules.</p></div>
+        <div class="card"><h4>Business Analyst</h4><p>Searches the catalog in plain terms, asks questions in Chat, views dashboards. Never touches raw credentials or DDL.</p></div>
+        <div class="card"><h4>Admin</h4><p>Everything above, plus user roles, RBAC policy configuration, and destructive actions like dropping tables.</p></div>
+      </div>
+    </section>
+
+    <section id="hg-status" class="wide">
+      <h2>What's Live Today vs. Roadmap</h2>
+      <p>Treat this table as the current source of truth, not the marketing copy.</p>
+      <table>
+        <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Iceberg ingestion (CSV, SuccessFactors OData)</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Data Quality Contracts (blocking bad loads)</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Time Travel / snapshots</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Query Lab — SQL mode</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Query Lab — Python extraction scripts</td><td><span class="badge live">Live</span> — sandboxed, Admin/Data Engineer only</td></tr>
+          <tr><td>Column-level RBAC masking</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Chat / AI Agent</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Audit log</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Graph tab — storing/viewing connections</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Graph tab — full Cypher query language</td><td><span class="badge roadmap">Roadmap</span></td></tr>
+          <tr><td>MCP Gateway (SAP BAPI, Snowflake, Fraud/IAM)</td><td><span class="badge demo">Demo</span></td></tr>
+          <tr><td>Single Sign-On (SSO)</td><td><span class="badge roadmap">Roadmap</span></td></tr>
+          <tr><td>Multi-tenant SaaS isolation</td><td><span class="badge roadmap">Roadmap</span> — in progress</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="hg-start">
+      <h2>Getting Started — First 10 Minutes</h2>
+      <ol>
+        <li>Register an account (first account on a fresh instance becomes Admin automatically).</li>
+        <li>Verify your email with the code sent to you.</li>
+        <li>Go to <strong>Ingest</strong>, upload a sample CSV, review the auto-detected schema, and load it.</li>
+        <li>Go to <strong>Query Lab</strong>, run <code>SELECT * FROM iceberg_table LIMIT 10</code> against the table you just created.</li>
+        <li>Go to <strong>Chat</strong> and ask a plain-English question about the same table.</li>
+        <li>Go to <strong>Audit</strong> and see that both actions above were logged.</li>
+      </ol>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════ BUSINESS CASE GUIDE ══════════════════════════ -->
+    <div class="doc-header" id="bc-pitch">
+      <p class="doc-kicker">Part II — Business Case Guide</p>
+      <h1>Is meldra Right for You?</h1>
+      <p class="doc-dek">Who this is for, who it isn't for, real use cases, and an honest pros/cons list — written to help you decide, not to oversell it.</p>
+    </div>
+
+    <section>
+      <p class="lead">Your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
+    </section>
+
+    <section id="bc-fit">
+      <h2>Who This Is a Good Fit For</h2>
+      <p>meldra fits best if most of the following are true for you:</p>
+      <ul>
+        <li>You have data scattered across SAP, SuccessFactors, Salesforce, or plain CSV/Excel exports, with no single place it all lands.</li>
+        <li>You don't have — or don't want to hire — a dedicated data engineering team just to stand up a governed data lake.</li>
+        <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3), not locked inside a vendor's proprietary storage.</li>
+        <li>You need <strong>some</strong> governance — audit trails, column-level masking, contracts that block bad data — but not a full enterprise compliance program on day one.</li>
+        <li>Your team mixes technical people (SQL/Python in Query Lab) and non-technical people who'd rather just ask a question in Chat.</li>
+        <li>You're cost-sensitive and want to avoid the per-query, per-seat pricing that platforms like Snowflake or Databricks charge at scale.</li>
+      </ul>
+    </section>
+
+    <section id="bc-notfit">
+      <h2>Who This Is NOT a Good Fit For — Yet</h2>
+      <p>Being upfront about this protects the relationship long-term.</p>
+      <ul>
+        <li>Companies needing <strong>petabyte-scale distributed compute</strong> across thousands of concurrent users.</li>
+        <li>Companies requiring <strong>live, certified integrations</strong> with SAP RFC/BAPI, Snowflake, or automated IAM/fraud systems today — those are currently illustrative demo flows, not working connections.</li>
+        <li>Companies that need <strong>SSO, SOC2/HIPAA-certified compliance, or full multi-tenant isolation</strong> as a signed contractual requirement right now.</li>
+        <li>A buyer looking for a fully non-technical, zero-setup product — someone on the team still needs to be comfortable configuring ingestion and RBAC policies.</li>
+      </ul>
+    </section>
+
+    <section id="bc-cases" class="wide">
+      <h2>Real Use Cases</h2>
+
+      <div class="usecase">
+        <h4>A. Vendor Master Consolidation <span style="color:var(--ink-soft); font-weight:400;">— Procurement</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Vendor records duplicated across SAP, legacy ERPs, and portals cause duplicate payments and compliance risk.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Load vendor extracts into Bronze, apply a contract requiring <code>vendor_id</code> and a valid tax ID, deduplicate in Silver keeping the latest record, build a Gold "spend by region" table analysts query directly.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>you have vendor data in 2+ systems and no single deduplicated source of truth today.</div>
+      </div>
+
+      <div class="usecase">
+        <h4>B. SAP Reporting Offload <span style="color:var(--ink-soft); font-weight:400;">— Finance</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Heavy reporting queries against live SAP tables slow down the system everyone else uses for transactions.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Pull reporting-relevant tables into Iceberg via CSV/OData export, run reports against DuckDB/Query Lab instead of hitting SAP directly, use Time Travel to permanently pin month-end snapshots.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>ad-hoc finance reporting is currently competing with production SAP transactions for compute.</div>
+      </div>
+
+      <div class="usecase">
+        <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— SuccessFactors</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Attrition/compensation reporting is compiled manually, with raw PII exported into spreadsheets emailed around.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real SuccessFactors OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>you already have SuccessFactors and do this reporting via spreadsheet exports today.</div>
+      </div>
+
+      <div class="usecase">
+        <h4>D. Vendor/Transaction Relationship Analysis</h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Fraud or collusion patterns — shared bank accounts, unusual new-vendor payment velocity — aren't visible in flat tables.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>The Graph tab visualizes vendor-to-bank-account-to-address relationships from your existing tables.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>you want an exploratory first look now, understanding the query language itself is still basic. <span class="badge roadmap" style="margin-left:0.35rem;">Roadmap</span></div>
+      </div>
+    </section>
+
+    <section id="bc-proscons" class="wide">
+      <h2>Pros and Cons, Stated Plainly</h2>
+      <div class="split">
+        <div class="split-col pros">
+          <h3>Pros</h3>
+          <ul>
+            <li><strong>No storage lock-in</strong> — your data lives in Apache Iceberg on your own S3, readable by any Iceberg-compatible tool.</li>
+            <li><strong>Governance built in, not bolted on</strong> — audit logging, data contracts, and RBAC masking from day one.</li>
+            <li><strong>One interface, two audiences</strong> — SQL/Python for engineers, plain-English Chat for analysts.</li>
+            <li><strong>Time Travel by default</strong> — every write is a recoverable snapshot, not a silent overwrite.</li>
+            <li><strong>Meaningfully cheaper</strong> for teams who don't need Databricks/Snowflake-scale compute.</li>
+          </ul>
+        </div>
+        <div class="split-col cons">
+          <h3>Cons — say these out loud first</h3>
+          <ul>
+            <li><strong>Young product.</strong> Expect rough edges; this is not a decade-mature platform.</li>
+            <li><strong>Single environment today.</strong> Multi-tenant isolation is in progress, best suited to one deployment per customer for now.</li>
+            <li><strong>Some integrations are illustrative</strong> — SAP/Snowflake/Fraud automation demonstrate the intended workflow, not live system connections yet.</li>
+            <li><strong>Graph query language is a simplified subset</strong>, not full Cypher, today.</li>
+            <li><strong>No SSO yet</strong> — access is email/password plus email OTP MFA.</li>
+            <li><strong>Needs one SQL-comfortable person</strong> on the team for full value.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="bc-checklist">
+      <h2>Decision Checklist</h2>
+      <div class="checklist">
+        <h3 style="color: var(--live);">Move forward if —</h3>
+        <label><input type="checkbox" /> You have data scattered across 2+ source systems with no unified, governed landing zone.</label>
+        <label><input type="checkbox" /> You want to own your data in an open format rather than a vendor's proprietary store.</label>
+        <label><input type="checkbox" /> You can tolerate early-stage rough edges in exchange for cost and simplicity.</label>
+        <label><input type="checkbox" /> You have at least one person comfortable configuring ingestion/RBAC.</label>
+      </div>
+      <div class="checklist" style="margin-top: 1rem;">
+        <h3 style="color: var(--roadmap);">Wait, or look elsewhere for now, if —</h3>
+        <label><input type="checkbox" /> You have a hard contractual requirement for SSO, certified compliance, or live SAP/Snowflake integration on day one.</label>
+        <label><input type="checkbox" /> You need multiple customer organizations securely isolated on one shared instance today.</label>
+        <label><input type="checkbox" /> You need proven scale at petabyte / thousands-of-concurrent-users level.</label>
+      </div>
+    </section>
+
+  </main>
+</div>

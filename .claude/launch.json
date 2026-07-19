@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "meldra-frontend-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "4173"],
+      "cwd": "frontend/vite-project",
+      "port": 4173
+    },
+    {
+      "name": "meldra-frontend-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5173"],
+      "cwd": "frontend/vite-project",
+      "port": 5173
+    }
+  ]
+}

@@ -49,6 +49,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# ── Claude Code local-only settings (machine-specific permission
+# allowlist; launch.json stays tracked since it's shared dev config) ──
+.claude/settings.local.json
+
 # ── Logs ─────────────────────────────────────────────
 *.log
 logs/
