@@ -959,35 +959,35 @@ MTR-1010,8.45,1.20,227.4,2026-09-06T12:00:00Z,SURGE`;
 });
 
 btnSampleOrders?.addEventListener('click', () => {
-  const content = `order_id,product,quantity,price,order_date
-1001,Laptop,1,999.99,2024-01-10
-1002,Mouse,2,29.99,2024-01-11
-1003,Keyboard,1,79.99,2024-01-11
-1004,Monitor,1,399.99,2024-01-12
-1005,Headset,3,149.99,2024-01-13
-1006,Webcam,2,89.99,2024-01-14
-1007,Desk,1,299.99,2024-01-14
-1008,Chair,1,499.99,2024-01-15
-1009,Lamp,4,39.99,2024-01-16
-1010,Notebook,10,4.99,2024-01-16`;
-  downloadCSVFile('orders_sample.csv', content);
-  showToast('Generated orders_sample.csv', 'info');
+  const content = `feeder_id,substation_name,active_power_mw,power_factor,transformer_temp_c,timestamp
+FDR-UK-N01,North_Substation_01,14.82,0.95,48.2,2026-09-06T12:00:00Z
+FDR-UK-N02,North_Substation_01,18.40,0.92,52.1,2026-09-06T12:00:00Z
+FDR-UK-S01,South_Substation_04,22.10,0.98,41.9,2026-09-06T12:00:00Z
+FDR-UK-S02,South_Substation_04,9.35,0.91,39.4,2026-09-06T12:00:00Z
+FDR-UK-E01,East_Substation_02,31.05,0.96,58.7,2026-09-06T12:00:00Z
+FDR-UK-E02,East_Substation_02,27.90,0.94,54.3,2026-09-06T12:00:00Z
+FDR-UK-W01,West_Substation_03,11.20,0.89,44.0,2026-09-06T12:00:00Z
+FDR-UK-W02,West_Substation_03,16.75,0.93,47.8,2026-09-06T12:00:00Z
+FDR-UK-C01,Central_Primary_01,42.60,0.99,61.2,2026-09-06T12:00:00Z
+FDR-UK-C02,Central_Primary_01,38.15,0.97,59.0,2026-09-06T12:00:00Z`;
+  downloadCSVFile('grid_feeder_telemetry_sample.csv', content);
+  showToast('Generated grid_feeder_telemetry_sample.csv', 'info');
 });
 
 btnSampleTraffic?.addEventListener('click', () => {
-  const content = `page,visits,bounces,date
-/home,4521,1230,2024-01-15
-/about,1203,432,2024-01-15
-/products,3897,987,2024-01-15
-/contact,876,321,2024-01-15
-/blog,2341,765,2024-01-15
-/pricing,1654,543,2024-01-15
-/login,2987,234,2024-01-15
-/signup,1432,567,2024-01-15
-/docs,987,123,2024-01-15
-/support,654,210,2024-01-15`;
-  downloadCSVFile('traffic_sample.csv', content);
-  showToast('Generated traffic_sample.csv', 'info');
+  const content = `route_id,meter_mac,sequence_nonce,hmac_signature,route_drift_ms,phantom_diverted
+RTE-8821,00:1B:44:11:3A:B7,10482,8f9a2c...b1,14,FALSE
+RTE-8822,00:1B:44:11:3A:B8,10483,4e7c1d...f2,8,FALSE
+RTE-8823,00:1B:44:11:3A:B9,10484,9d2e4f...a3,12,FALSE
+RTE-8824,00:1B:44:99:99:99,99999,000000...00,450,TRUE
+RTE-8825,00:1B:44:11:3A:C1,10485,1c3f5a...d4,9,FALSE
+RTE-8826,00:1B:44:11:3A:C2,10486,7b8e9f...e5,11,FALSE
+RTE-8827,00:1B:44:11:3A:C3,10487,2a4c6e...f6,15,FALSE
+RTE-8828,00:1B:44:88:88:88,88888,ffff00...00,820,TRUE
+RTE-8829,00:1B:44:11:3A:C5,10488,3d5e7f...a7,7,FALSE
+RTE-8830,00:1B:44:11:3A:C6,10489,6a8c0e...b8,10,FALSE`;
+  downloadCSVFile('etp_mutation_audit_sample.csv', content);
+  showToast('Generated etp_mutation_audit_sample.csv', 'info');
 });
 
 
@@ -6427,6 +6427,35 @@ function buildHesConnectionPayload(): Record<string, any> {
 }
 
 const CONNECTORS: Record<string, ConnectorDef> = {
+  siemens_spectrum: {
+    name: "Siemens Spectrum Power ADMS", desc: "Grid Control, SCADA Telemetry & IEC 61970 Substation Data", color: "#009999", initials: "SIE",
+    entities: ["FeederPowerProfiles", "TransformerStateEvents", "SubstationBusbarTelemetries", "GridTopologyGraph"],
+    methods: {
+      siemens_opcua: {
+        label: "ICCP / OPC-UA Security Token", flag: { text: "recommended", cls: "rec" },
+        fields: [
+          { k: "endpoint", label: "Siemens Spectrum Control Host", ph: "https://spectrum.grid.siemens.com/adms/v7", full: true },
+          { k: "tenant", label: "Grid Control Zone ID", ph: "ZONE_UK_NORTH" },
+          { k: "user", label: "Spectrum Operator ID", ph: "siemens_op_01" },
+          { k: "pass", label: "Security Token / Key", type: "password" }
+        ]
+      }
+    }
+  },
+  schneider_ecostruxure: {
+    name: "Schneider Electric EcoStruxure ADMS", desc: "Smart Grid Telemetry, DER Management & Voltage Optimization", color: "#3dcd58", initials: "SE",
+    entities: ["DERMIntervalReadings", "SubstationVoltageProfiles", "FeederBreakerEvents", "GridReactivePowerLogs"],
+    methods: {
+      schneider_api: {
+        label: "EcoStruxure OAuth 2.0 API Key", flag: { text: "recommended", cls: "rec" },
+        fields: [
+          { k: "endpoint", label: "EcoStruxure API Endpoint", ph: "https://ecostruxure.grid.schneider-electric.com/api/v2", full: true },
+          { k: "client_id", label: "EcoStruxure Client ID" },
+          { k: "client_secret", label: "API Secret Key", type: "password" }
+        ]
+      }
+    }
+  },
   itron_hes: {
     name: "Itron AMI Head-End (HES)", desc: "Interval readings, usage points & MTD", color: "#0a6ed1", initials: "HES",
     entities: ["IntervalReadings", "UsagePoints", "GridMeterEvents", "AssetLocations"],
@@ -6434,7 +6463,7 @@ const CONNECTORS: Record<string, ConnectorDef> = {
       oauth_saml: {
         label: "OAuth 2.0 SAML bearer", flag: { text: "recommended", cls: "rec" },
         fields: [
-          { k: "dc", label: "HES Endpoint (Data Center)", type: "combo", options: SF_DATA_CENTERS },
+          { k: "dc", label: "HES Endpoint (Data Center)", type: "combo", options: HES_DATA_CENTERS },
           { k: "company", label: "Utility Tenant ID", ph: "utility_tenant_1" },
           { k: "client_id", label: "OAuth Client ID (API key)" },
           { k: "saml_key", label: "SAML Private Key", type: "password" },
@@ -6444,7 +6473,7 @@ const CONNECTORS: Record<string, ConnectorDef> = {
       basic: {
         label: "Basic Authentication", flag: { text: "legacy", cls: "dep" },
         fields: [
-          { k: "dc", label: "HES Endpoint", type: "combo", options: SF_DATA_CENTERS },
+          { k: "dc", label: "HES Endpoint", type: "combo", options: HES_DATA_CENTERS },
           { k: "user", label: "Username@TenantID", ph: "hes_admin@utility_tenant_1" },
           { k: "pass", label: "Password", type: "password" }
         ]
@@ -6496,8 +6525,8 @@ const CONNECTORS: Record<string, ConnectorDef> = {
   }
 };
 
-let activeConnectorKey = 'itron_hes';
-let activeMethodKey = 'oauth_saml';
+let activeConnectorKey = 'siemens_spectrum';
+let activeMethodKey = 'siemens_opcua';
 let connectionTested = false;
 // Populated by a real Test Connection call (currently Itron AMI HES)
 // from the tenant's own OData $metadata. Overrides CONNECTORS[...].entities
@@ -7271,8 +7300,8 @@ function initRbacPoliciesEditor() {
       activePolicies.push({
         role: 'Business Analyst',
         namespace: 'default',
-        table_name: 'sap_hr_data',
-        column_name: 'salary',
+        table_name: 'smartmeter_readings',
+        column_name: 'customer_account_id',
         action: 'mask',
         masking_pattern: '***'
       });

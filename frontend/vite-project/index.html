@@ -1152,7 +1152,7 @@
     <div id="landing-page">
       <!-- Banner -->
       <div class="landing-banner">
-        <span>🚀 Ingest SAP BSEG and BKPF tables to S3 Iceberg instantly. Learn More ➔</span>
+        <span>🚀 Ingest Smart Meter HES and SCADA DMS tables to S3 Iceberg instantly. Learn More ➔</span>
       </div>
 
       <!-- Navbar -->
@@ -1218,9 +1218,9 @@
       <section class="landing-features" id="landing-features-section">
         <!-- Feature 1 -->
         <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-          <h3>SAP &amp; ERP Ingest</h3>
-          <p>Stream massive financial tables (like BSEG/BKPF) directly from SAP and Oracle into partitioned S3 Iceberg tables without high cluster compute costs.</p>
+          <div class="landing-feature-icon"><i class="fa-solid fa-bolt"></i></div>
+          <h3>Smart Meter &amp; Grid Ingest</h3>
+          <p>Stream massive smart meter interval readings directly from HES, MDM, and SCADA telemetry into partitioned S3 Iceberg tables without high cluster compute costs.</p>
         </div>
         <!-- Feature 2 -->
         <div class="landing-feature-card">
@@ -1288,9 +1288,9 @@
           <div style="text-align: center; margin-bottom: 1.5rem;">
             <p style="color: #475569; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Works with any data source</p>
             <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;">
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📄 CSV / Excel</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔗 REST APIs</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">💰 SAP ERP</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">⚡ Smart Meter HES</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 SCADA / DMS Telemetry</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔒 ETP Encrypted Streams</span>
               <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🗃️ PostgreSQL Exports</span>
               <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 IoT &amp; Sensor Data</span>
               <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📊 JSON Feeds</span>
@@ -1362,9 +1362,9 @@
               <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
                 <span style="font-size: 1.2rem;">💬</span>
                 <div>
-                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">CFO asks:</div>
-                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Show me all purchase orders above £50k that haven't been invoiced yet."</div>
-                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Pulls from SAP ERP data, returns table instantly</div>
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Grid Operations Engineer asks:</div>
+                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Show me all feeders in UK_NORTH zone exceeding 90% peak transformer capacity."</div>
+                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Pulls from HES &amp; SCADA telemetry, returns table instantly</div>
                 </div>
               </div>
               <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
@@ -1395,7 +1395,7 @@
               <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏦</div>
               <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Finance &amp; Banking</h4>
               <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest GL journals, AP/AR ledgers, and trade data. Run compliance checks in plain English. Audit trails built-in.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">SAP BSEG · BKPF · GL journals · Trade data</div>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Smart Meter HES · SCADA DMS · Feeder Telemetry</div>
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
               <div style="font-size: 2rem; margin-bottom: 0.75rem;">🛒</div>
@@ -1514,7 +1514,6 @@
              </div>
              <div class="video-card-body">
                <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Hands-On</div>
-               <div class="video-card-title" style="color: #0f172a;">Build Your First Pipeline: SAP → Iceberg → AI</div>
                <div class="video-card-desc" style="color: #475569;">Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.</div>
                <div class="video-card-footer">
                  <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-code"></i> Tutorial · 10 min</div>
@@ -1585,11 +1584,11 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">SAP_US</td>
+                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">GRID_UK_NORTH</td>
                     <td style="padding: 0.25rem 0.5rem;">$142,395,024.12</td>
                   </tr>
                   <tr>
-                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">SAP_EU</td>
+                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">GRID_UK_SOUTH</td>
                     <td style="padding: 0.25rem 0.5rem;">$98,104,235.80</td>
                   </tr>
                 </tbody>
@@ -1682,7 +1681,7 @@
             <div style="width: 32px; height: 32px; background: #16a34a; color: #fff; border-radius: 50%; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-family: var(--font-sans);">2</div>
             <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.65rem; font-family: var(--font-sans);">Configure Ingestion Tables</h3>
             <p style="color: #475569; font-size: 0.85rem; line-height: 1.6;">
-              Under the <strong>Ingest</strong> tab, select your table sources (CSV uploads, PostgreSQL sync, or SAP ledgers). meldra.ai reads the schemas and maps partition layout files on S3.
+              Under the <strong>Ingest</strong> tab, select your table sources (CSV uploads, PostgreSQL sync, or HES telemetry). meldra.ai reads the schemas and maps partition layout files on S3.
             </p>
           </div>
 
@@ -2777,43 +2776,43 @@
                   </button>
                 </div>
 
-                <!-- Card 2: E-Commerce Orders -->
+                <!-- Card 2: Feeder Load & Substation Capacity -->
                 <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
                   <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                    <span class="logo-icon" style="background:#16a34a; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">EC</span>
+                    <span class="logo-icon" style="background:#059669; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">SCD</span>
                     <div>
-                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">E-Commerce Orders</h4>
-                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">5,000 rows · 7 columns</p>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Feeder &amp; Substation Telemetry</h4>
+                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">5,000 rows · 6 columns</p>
                     </div>
                   </div>
                   <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
-                    Transactional sales history containing order status, total price, payment methods, customer IDs, and store branches. Great for business intelligence reporting and time-series analysis.
+                    Real-time DNO feeder telemetry including feeder ID, substation name, active power (MW), power factor, phase balance, and transformer temperature.
                   </p>
                   <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
-                    <strong>Fields:</strong> order_id, customer_id, order_date, amount, status, payment_method, branch
+                    <strong>Fields:</strong> feeder_id, substation_name, active_power_mw, power_factor, transformer_temp_c, timestamp
                   </div>
                   <button class="btn btn-primary btn-block" id="btn-sample-orders" style="margin-top: 0.5rem;">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Orders Dataset
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Feeder Dataset
                   </button>
                 </div>
 
-                <!-- Card 3: Web Traffic -->
+                <!-- Card 3: ETP Route Mutation Audit Logs -->
                 <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
                   <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                    <span class="logo-icon" style="background:#7c3aed; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">WT</span>
+                    <span class="logo-icon" style="background:#7c3aed; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">ETP</span>
                     <div>
-                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Web Traffic Logs</h4>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">ETP Mutation Audit Logs</h4>
                       <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">10,000 rows · 6 columns</p>
                     </div>
                   </div>
                   <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
-                    Web server clickstream events including IP addresses, HTTP request paths, status codes, referrer URLs, and response latencies. Ideal for log auditing and performance dashboards.
+                    Security audit events recorded at the metering boundary including route HMACs, sequence nonces, latency drift tolerance, and Phantom Grid honeypot diversions.
                   </p>
                   <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
-                    <strong>Fields:</strong> timestamp, ip, path, status, referrer, response_time_ms
+                    <strong>Fields:</strong> route_id, meter_mac, sequence_nonce, hmac_signature, route_drift_ms, phantom_diverted
                   </div>
                   <button class="btn btn-primary btn-block" id="btn-sample-traffic" style="margin-top: 0.5rem;">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Traffic Dataset
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load ETP Audit Dataset
                   </button>
                 </div>
 

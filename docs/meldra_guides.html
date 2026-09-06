@@ -482,7 +482,7 @@
     </div>
 
     <section>
-      <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, Smart Meter HES, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
+      <p class="lead">meldra takes data that's currently scattered across spreadsheets, Smart Meter HES, SCADA DMS, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
     </section>
 
     <section id="hg-jargon">
@@ -553,7 +553,7 @@
           <tr><td>Audit log</td><td><span class="badge live">Live</span></td></tr>
           <tr><td>Graph tab — storing/viewing connections</td><td><span class="badge live">Live</span></td></tr>
           <tr><td>Graph tab — full Cypher query language</td><td><span class="badge roadmap">Roadmap</span></td></tr>
-          <tr><td>MCP Gateway (SAP BAPI, Snowflake, Fraud/IAM)</td><td><span class="badge demo">Demo</span></td></tr>
+          <tr><td>MCP Gateway (SCADA DMS, Siemens, Schneider, ETP)</td><td><span class="badge demo">Demo</span></td></tr>
           <tr><td>Single Sign-On (SSO)</td><td><span class="badge roadmap">Roadmap</span></td></tr>
           <tr><td>Multi-tenant SaaS isolation</td><td><span class="badge roadmap">Roadmap</span> — in progress</td></tr>
         </tbody>
@@ -603,7 +603,7 @@
       <p>Being upfront about this protects the relationship long-term.</p>
       <ul>
         <li>Companies needing <strong>petabyte-scale distributed compute</strong> across thousands of concurrent users.</li>
-        <li>Companies requiring <strong>live, certified integrations</strong> with SAP RFC/BAPI, Snowflake, or automated IAM/fraud systems today — those are currently illustrative demo flows, not working connections.</li>
+        <li>Companies requiring <strong>live, certified integrations</strong> with Siemens Spectrum, Schneider EcoStruxure, or automated IAM/fraud systems today — those are currently illustrative demo flows, not working connections.</li>
         <li>Companies that need <strong>SSO, SOC2/HIPAA-certified compliance, or full multi-tenant isolation</strong> as a signed contractual requirement right now.</li>
         <li>A buyer looking for a fully non-technical, zero-setup product — someone on the team still needs to be comfortable configuring ingestion and RBAC policies.</li>
       </ul>
@@ -613,30 +613,30 @@
       <h2>Real Use Cases</h2>
 
       <div class="usecase">
-        <h4>A. Vendor Master Consolidation <span style="color:var(--ink-soft); font-weight:400;">— Procurement</span></h4>
-        <div class="uc-row"><span class="uc-label">Problem</span>Vendor records duplicated across SAP, legacy ERPs, and portals cause duplicate payments and compliance risk.</div>
-        <div class="uc-row"><span class="uc-label">How meldra helps</span>Load vendor extracts into Bronze, apply a contract requiring <code>vendor_id</code> and a valid tax ID, deduplicate in Silver keeping the latest record, build a Gold "spend by region" table analysts query directly.</div>
-        <div class="uc-row"><span class="uc-label">Good fit if</span>you have vendor data in 2+ systems and no single deduplicated source of truth today.</div>
+        <h4>A. Substation &amp; Feeder Telemetry Consolidation <span style="color:var(--ink-soft); font-weight:400;">— Operations</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Grid telemetry records duplicated across SCADA, DMS, and HES systems cause missing outage alerts and load forecasting risk.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Load feeder extracts into Bronze, apply a contract requiring <code>feeder_id</code> and valid active power kW, deduplicate in Silver, build a Gold "feeder load profile" table engineers query directly.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>you have telemetry data in 2+ grid systems and no single deduplicated source of truth today.</div>
       </div>
 
       <div class="usecase">
-        <h4>B. SAP Reporting Offload <span style="color:var(--ink-soft); font-weight:400;">— Finance</span></h4>
-        <div class="uc-row"><span class="uc-label">Problem</span>Heavy reporting queries against live SAP tables slow down the system everyone else uses for transactions.</div>
-        <div class="uc-row"><span class="uc-label">How meldra helps</span>Pull reporting-relevant tables into Iceberg via CSV/OData export, run reports against DuckDB/Query Lab instead of hitting SAP directly, use Time Travel to permanently pin month-end snapshots.</div>
-        <div class="uc-row"><span class="uc-label">Good fit if</span>ad-hoc finance reporting is currently competing with production SAP transactions for compute.</div>
+        <h4>B. Grid Feeder Capacity Reporting Offload <span style="color:var(--ink-soft); font-weight:400;">— Grid Planning</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Heavy reporting queries against live SCADA DMS tables slow down real-time control room operations.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Pull telemetry-relevant tables into Iceberg via CSV/OData export, run capacity reports against DuckDB/Query Lab instead of hitting SCADA directly, use Time Travel to permanently pin peak load snapshots.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>ad-hoc grid planning reporting is currently competing with production SCADA transactions for compute.</div>
       </div>
 
       <div class="usecase">
-        <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— Smart Meter HES</span></h4>
-        <div class="uc-row"><span class="uc-label">Problem</span>Attrition/compensation reporting is compiled manually, with raw PII exported into spreadsheets emailed around.</div>
-        <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real Smart Meter HES OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
+        <h4>C. Smart Meter Telemetry Analytics <span style="color:var(--ink-soft); font-weight:400;">— Smart Meter HES</span></h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>AMI interval telemetry reporting is compiled manually, with raw meter IDs exported into spreadsheets emailed around.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real Smart Meter HES OData connector, mask customer account fields for non-grid roles, enforce <code>meter_id</code> uniqueness via contracts.</div>
         <div class="uc-row"><span class="uc-label">Good fit if</span>you already have Smart Meter HES and do this reporting via spreadsheet exports today.</div>
       </div>
 
       <div class="usecase">
-        <h4>D. Vendor/Transaction Relationship Analysis</h4>
-        <div class="uc-row"><span class="uc-label">Problem</span>Fraud or collusion patterns — shared bank accounts, unusual new-vendor payment velocity — aren't visible in flat tables.</div>
-        <div class="uc-row"><span class="uc-label">How meldra helps</span>The Graph tab visualizes vendor-to-bank-account-to-address relationships from your existing tables.</div>
+        <h4>D. ETP Meter Route Mutation &amp; Deception Analysis</h4>
+        <div class="uc-row"><span class="uc-label">Problem</span>Meter tampering or spoofing attacks — unsigned blocks, nonce replay attacks — aren't visible in flat tables.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>The Graph tab visualizes meter-to-feeder-to-substation relationships from your ETP audit logs.</div>
         <div class="uc-row"><span class="uc-label">Good fit if</span>you want an exploratory first look now, understanding the query language itself is still basic. <span class="badge roadmap" style="margin-left:0.35rem;">Roadmap</span></div>
       </div>
     </section>
@@ -659,7 +659,7 @@
           <ul>
             <li><strong>Young product.</strong> Expect rough edges; this is not a decade-mature platform.</li>
             <li><strong>Single environment today.</strong> Multi-tenant isolation is in progress, best suited to one deployment per customer for now.</li>
-            <li><strong>Some integrations are illustrative</strong> — SAP/Snowflake/Fraud automation demonstrate the intended workflow, not live system connections yet.</li>
+            <li><strong>Some integrations are illustrative</strong> — SCADA/Siemens/Schneider automation demonstrate the intended workflow, not live system connections yet.</li>
             <li><strong>Graph query language is a simplified subset</strong>, not full Cypher, today.</li>
             <li><strong>No SSO yet</strong> — access is email/password plus email OTP MFA.</li>
             <li><strong>Needs one SQL-comfortable person</strong> on the team for full value.</li>
@@ -679,7 +679,7 @@
       </div>
       <div class="checklist" style="margin-top: 1rem;">
         <h3 style="color: var(--roadmap);">Wait, or look elsewhere for now, if —</h3>
-        <label><input type="checkbox" /> You have a hard contractual requirement for SSO, certified compliance, or live SAP/Snowflake integration on day one.</label>
+        <label><input type="checkbox" /> You have a hard contractual requirement for SSO, certified compliance, or live Siemens/Schneider integration on day one.</label>
         <label><input type="checkbox" /> You need multiple customer organizations securely isolated on one shared instance today.</label>
         <label><input type="checkbox" /> You need proven scale at petabyte / thousands-of-concurrent-users level.</label>
       </div>
