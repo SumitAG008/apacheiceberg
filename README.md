@@ -15,6 +15,7 @@ Patented security layer for smart meter telemetry ingestion, with an Apache Iceb
 | 3 | **[HLD-001 High-Level Design](HLD-001-high-level-design.md)** | How do system components wire together and scale to 52B rows/year? | Mermaid visual architecture maps, the 7 Core System Blocks, Escalation State Machine (S0–S5), STRIDE threat model, Redis sharded nonce store, scaling topology. |
 | 4 | **[LLD-001 Low-Level Design](LLD-001-low-level-design.md)** | What are the exact cryptographic formulas, code contracts, and test matrices? | HMAC-SHA256 MTD route scrambling, byte canonicalization standards, production Python code contracts, Redis Lua atomic CAS script, domain-separated Merkle algorithms, T1–T25 test matrix. |
 | 5 | **[DD-001 Data Design](DD-001-data-design.md)** | How are Apache Iceberg tables, Apache AGE graphs, and IEC CIM profiles structured? | Executable Iceberg DDLs (`bronze_ami_readings`, `_etp_checkpoints`, `_etp_threat_log`), Medallion SQL pipelines, Apache AGE Cypher graph queries, IEC CIM (IEC 61970/61968) mapping, proposed `cim:TelemetryProvenance` extension RDF schema. |
+| 6 | **[MSG-001 Messaging Pack](MSG-001-messaging-pack.md)** | How to communicate ETP to Business, Technical, Security, AI, Partner, and Investor audiences without unmeasured claims? | Verified benchmark metrics (0.108 ms/block, 9,254/sec), audience-tailored narratives (CFO, CISO, Data Architect, Siemens, Investors), 60-second demo script, words to avoid vocabulary rules. |
 
 ---
 

@@ -23,7 +23,8 @@ icebergAgent/
 │   ├── DIRECTORY_MANIFEST.md           # This Directory Manifest
 │   ├── business/
 │   │   ├── BC-001-business-case.md     # BC-001: Early Baseline Analysis
-│   │   └── BC-002-etp-business-case.md # BC-002: Formal ETP Business Case & Strategy
+│   │   ├── BC-002-etp-business-case.md # BC-002: Formal ETP Business Case & Strategy
+│   │   └── MSG-001-messaging-pack.md   # MSG-001: Verified Messaging Pack & Audience Frameworks
 │   ├── functional/
 │   │   └── UC-001-use-cases.md         # UC-001: Formal Use Cases Catalog
 │   ├── architecture/
