@@ -2182,60 +2182,66 @@
           </button>
         </div>
 
-        <div class="sidebar-content" style="padding: 0.9rem 0.75rem; gap: 0;">
-          <!-- Grouped nav — replaces the old flat top tab-bar. Same ids/data-tab
-               attributes as before, so switchTab(), applyRoleNavGating() and
-               the Experience Switcher's querySelectorAll('.tab-btn') all keep
-               working unchanged; only where these buttons live moved. -->
+        <div class="sidebar-content" style="padding: 0.9rem 0.75rem; display: flex; flex-direction: column; gap: 0.2rem;">
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.3rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-compass" style="font-size: 0.6rem; opacity: 0.7;"></i> Overview
+          </div>
           <button class="tab-btn sidebar-nav-item active" data-tab="chat-tab" id="nav-chat">
             <i class="fa-solid fa-house"></i> Home
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="assistant-tab" id="nav-assistant">
-            <i class="fa-solid fa-robot"></i> Assistant
+            <i class="fa-solid fa-robot"></i> AI Assistant
           </button>
 
-          <div class="sidebar-nav-label">Data</div>
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-database" style="font-size: 0.6rem; opacity: 0.7;"></i> Data Lakehouse
+          </div>
+          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
+            <i class="fa-solid fa-layer-group"></i> Workspace &amp; Storage
+          </button>
           <button class="tab-btn sidebar-nav-item" data-tab="ingest-tab" id="nav-ingest">
-            <i class="fa-solid fa-cloud-arrow-up"></i> Ingest
+            <i class="fa-solid fa-cloud-arrow-up"></i> Ingest Data
+          </button>
+
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-chart-diagram" style="font-size: 0.6rem; opacity: 0.7;"></i> Analytics &amp; Query
+          </div>
+          <button class="tab-btn sidebar-nav-item" data-tab="studio-tab" id="nav-studio">
+            <i class="fa-solid fa-code-branch"></i> Data Studio &amp; SQL
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="query-lab-tab" id="nav-query-lab">
+            <i class="fa-solid fa-flask-vial"></i> Query Lab (DQE)
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="graph-tab" id="nav-graph">
-            <i class="fa-solid fa-circle-nodes"></i> Graph
-          </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
-            <i class="fa-solid fa-layer-group"></i> Workspace
-          </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="studio-tab" id="nav-studio">
-            <i class="fa-solid fa-code-branch"></i> Data Studio
+            <i class="fa-solid fa-circle-nodes"></i> Grid Graph Topology
           </button>
 
-          <button class="tab-btn sidebar-nav-item" data-tab="query-lab-tab" id="nav-query-lab" style="margin-top: 0.6rem;">
-            <i class="fa-solid fa-flask-vial"></i> Query Lab
-          </button>
-
-          <div class="sidebar-nav-label">Governance</div>
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-shield-halved" style="font-size: 0.6rem; opacity: 0.7;"></i> Governance &amp; Security
+          </div>
           <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-audit">
-            <i class="fa-solid fa-shield-halved"></i> Audit
+            <i class="fa-solid fa-shield-cat"></i> Audit Ledger
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="users-tab" id="nav-users">
             <i class="fa-solid fa-users-gear"></i> Users &amp; Roles
           </button>
+
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-sliders" style="font-size: 0.6rem; opacity: 0.7;"></i> Platform &amp; Dev
+          </div>
           <button class="tab-btn sidebar-nav-item" data-tab="mcp-tab" id="nav-mcp">
             <i class="fa-solid fa-network-wired"></i> MCP Gateway
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="api-tab" id="nav-api">
-            <i class="fa-solid fa-book"></i> API Docs
+            <i class="fa-solid fa-book"></i> API Reference
           </button>
-
-          <button class="tab-btn sidebar-nav-item" data-tab="traffic-tab" id="nav-traffic" style="margin-top: 0.6rem;">
+          <button class="tab-btn sidebar-nav-item" data-tab="traffic-tab" id="nav-traffic">
             <i class="fa-solid fa-chart-line"></i> Observability
           </button>
-
-          <a class="tab-btn sidebar-nav-item" href="https://help.meldra.ai" target="_blank" rel="noopener" id="nav-help" style="margin-top: 0.6rem;">
+          <a class="tab-btn sidebar-nav-item" href="https://help.meldra.ai" target="_blank" rel="noopener" id="nav-help">
             <i class="fa-solid fa-circle-question"></i> Help Guide
           </a>
 
-          <!-- Data lake connection — was a permanently-open form taking up
-               the whole sidebar; now a status pill that opens a drawer on
                demand (see #connection-drawer-overlay near the other modals). -->
           <button id="btn-open-connection" class="sidebar-connection-pill" style="margin-top: auto;">
             <span class="status-dot pending" id="connection-status-dot"></span>
