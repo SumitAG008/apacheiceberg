@@ -1843,23 +1843,27 @@ function buildMcpTab() {
 // BACKEND HEALTH STATUS
 // ─────────────────────────────────────────
 async function checkBackendStatus() {
-  const dot  = document.getElementById('backend-status-dot')!;
-  const text = document.getElementById('backend-status-text')!;
+  const dot  = document.getElementById('backend-status-dot');
+  const text = document.getElementById('backend-status-text');
   const homeBackendEl = document.getElementById('home-stat-backend');
   try {
     const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
-      dot.className  = 'status-dot online';
-      text.textContent = 'Backend online';
-      text.style.color = 'var(--color-success)';
-      if (homeBackendEl) homeBackendEl.textContent = 'Online';
+      if (dot) dot.className  = 'status-dot online';
+      if (text) {
+        text.textContent = 'API Gateway Operational';
+        text.style.color = 'var(--color-success)';
+      }
+      if (homeBackendEl) homeBackendEl.textContent = 'Active';
     } else {
       throw new Error('not ok');
     }
   } catch {
-    dot.className  = 'status-dot offline';
-    text.textContent = 'Backend offline';
-    text.style.color = 'var(--color-danger)';
+    if (dot) dot.className  = 'status-dot offline';
+    if (text) {
+      text.textContent = 'Gateway Offline';
+      text.style.color = 'var(--color-danger)';
+    }
     if (homeBackendEl) homeBackendEl.textContent = 'Offline';
   }
 }
