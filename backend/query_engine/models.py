@@ -72,6 +72,9 @@ class QueryJob(BaseModel):
     # stale projection degrades to reading more data, never to an error.
     projection: Optional[List[str]] = None
 
+    # Maximum rows to return (default 1000)
+    limit: int = Field(default=1000, ge=1, le=50_000)
+
     # Metadata (set by engine)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None

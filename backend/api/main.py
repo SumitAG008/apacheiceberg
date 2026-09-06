@@ -99,6 +99,14 @@ JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 JWT_API_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_API_TOKEN_EXPIRE_DAYS", 90))
 
+def _safe_iso(val: Any) -> Optional[str]:
+    """Safely convert a datetime object or string to an ISO formatted string without crashing."""
+    if val is None:
+        return None
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
 app = FastAPI(
     title="Meldra AI — LakeMind Iceberg API",
     version="1.0.0",
@@ -130,7 +138,7 @@ app.add_middleware(
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "X-Tenant-Tier", "X-Tenant-ID"],
+    allow_headers=["*"],
 )
 
 # ── Live Traffic Monitoring Middleware ───────────────────────────────────────
@@ -757,7 +765,7 @@ async def verify_mfa(payload: VerifyMFARequest):
 
     log_audit(user_id, user["tier"], "mfa_verify", f"MFA verified for {user['email']}", "success")
 
-    expires_str = user["expires_at"].isoformat() if user.get("expires_at") else None
+    expires_str = _safe_iso(user.get("expires_at"))
 
     return TokenResponse(
         access_token=access_token,
@@ -860,8 +868,8 @@ async def get_me(user: Dict[str, Any] = Depends(get_current_user)):
         "email": db_user["email"],
         "mfa_method": db_user["mfa_method"],
         "is_verified": db_user["is_verified"],
-        "created_at": db_user["created_at"].isoformat() if db_user["created_at"] else None,
-        "last_login_at": db_user["last_login_at"].isoformat() if db_user.get("last_login_at") else None,
+        "created_at": _safe_iso(db_user.get("created_at")),
+        "last_login_at": _safe_iso(db_user.get("last_login_at")),
         "role": db_user.get("user_role", "Business Analyst"),
         "is_approver": bool(db_user.get("is_approver", False)),
     }
@@ -1870,6 +1878,7 @@ async def dqe_explain(
     and graph statistics (for Graph mode). Does not consume compute resources.
     """
     from query_engine.models import QueryJob, QueryMode, QueryExplainRequest as _QER
+    from tenancy import get_current_tenant_id
 
     try:
         # SEC-2026-002: /query/explain loads and registers the real table
@@ -2800,8 +2809,8 @@ async def get_all_users(user: Dict[str, Any] = Depends(get_current_user)):
                 "is_approver": bool(u.get("is_approver", False)),
                 "is_verified": bool(u.get("is_verified", False)),
                 "is_active": bool(u.get("is_active", True)),
-                "created_at": u["created_at"].isoformat() if u.get("created_at") else None,
-                "last_login_at": u["last_login_at"].isoformat() if u.get("last_login_at") else None,
+                "created_at": _safe_iso(u.get("created_at")),
+                "last_login_at": _safe_iso(u.get("last_login_at")),
             }
             for u in users
         ]

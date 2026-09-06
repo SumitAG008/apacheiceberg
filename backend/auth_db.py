@@ -52,6 +52,16 @@ def verify_password(plain: str, hashed: str) -> bool:
     except Exception:
         return False
 
+def _ensure_utc(val: Any) -> datetime:
+    """Safely parse a datetime or ISO string and return a timezone-aware UTC datetime."""
+    if isinstance(val, str):
+        val = datetime.fromisoformat(val.replace("Z", "+00:00"))
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            return val.replace(tzinfo=timezone.utc)
+        return val.astimezone(timezone.utc)
+    raise ValueError(f"Cannot parse datetime from {val}")
+
 # ─────────────────────────────────────────
 # SCHEMA INIT
 # ─────────────────────────────────────────
@@ -429,7 +439,7 @@ def verify_mfa_token(user_id: str, code: str, purpose: str = "login") -> bool:
         if row["used"]:
             raise ValueError("OTP has already been used.")
 
-        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
+        if datetime.now(timezone.utc) > _ensure_utc(row["expires_at"]):
             raise ValueError("OTP has expired. Please request a new one.")
 
         if row["attempts"] >= MFA_MAX_ATTEMPTS:
@@ -471,7 +481,7 @@ def can_resend_otp(user_id: str, purpose: str = "login") -> bool:
         row = cur.fetchone()
         if not row:
             return True
-        elapsed = datetime.now(timezone.utc) - row["created_at"].replace(tzinfo=None)
+        elapsed = datetime.now(timezone.utc) - _ensure_utc(row["created_at"])
         return elapsed.total_seconds() >= 60
     finally:
         conn.close()
@@ -518,7 +528,7 @@ def validate_refresh_token(raw_token: str) -> Optional[str]:
         row = cur.fetchone()
         if not row:
             return None
-        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
+        if datetime.now(timezone.utc) > _ensure_utc(row["expires_at"]):
             return None
         cur.execute(
             "UPDATE auth.sessions SET last_used_at = NOW() WHERE refresh_token_hash = %s",
