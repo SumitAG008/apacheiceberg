@@ -5454,102 +5454,21 @@ async function loadTableContracts() {
   }
 
   try {
-    const re    // Update sandbox code template
-    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
-    if (textCode) {
-      textCode.value = `import meldra
-
-# Initialize Meldra engine (AWS credentials read from env)
-catalog = meldra.MeldraCatalog()
-
-# 1. Read S3 Parquet tables without copy
-arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
-df = arrow_table.to_pandas()
-
-# 2. Perform manipulations (deduplicate and filter)
-clean_df = df.dropna(subset=["kw_active"])
-print(f"[sandbox] Cleaned data shape: {clean_df.shape}")
-
-# 3. Save to database lakehouse properties
-catalog.optimize_table("default", "smartmeter_readings_sample")`;
+    const res = await api.catalog.getContracts(activeNamespace, activeTableName);
+    if (!res || !res.rules || res.rules.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem;">No data quality contracts configured for this table.</div>';
+      return;
     }
 
-    // Update Airflow DAG template
-    const dagEl = document.getElementById('airflow-dag-code')!;
-    if (dagEl) {
-      dagEl.textContent = `from datetime import datetime, timedelta
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-
-default_args = {
-    'owner': 'meldra',
-    'start_date': datetime(2025, 1, 1),
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5),
-}
-
-def run_aws_meldra_compaction():
-    from meldra import MeldraCatalog
-    # Connect directly to AWS S3 & Glue Catalog
-    catalog = MeldraCatalog()
-    catalog.optimize_table("default", "smartmeter_readings_sample")
-
-with DAG(
-    'aws_meldra_lakehouse_compaction_dag',
-    default_args=default_args,
-    description='Compacts manifest Parquet files on AWS S3 & Glue Catalog',
-    schedule_interval='@daily',
-    catchup=False,
-) as dag:
-    
-    compact_task = PythonOperator(
-        task_id='trigger_aws_compaction',
-        python_callable=run_aws_meldra_compaction,
-    )`;
-    }
-  } else {
-    btnAws.className = 'btn btn-secondary btn-sm';
-    btnGcp.className = 'btn btn-primary btn-sm';
-    labelBucket.textContent = 'Target GCS Bucket URI';
-    inputBucket.placeholder = 'gs://meldra-lakehouse-bucket/';
-    labelCatalog.textContent = 'BigQuery / BigLake Catalog Namespace';
-    inputCatalog.placeholder = 'meldra_biglake_catalog';
-    labelKey.textContent = 'GCP Service Account JSON Key';
-    inputKey.placeholder = '{ "type": "service_account", "project_id": ... }';
-    inputRegion.placeholder = 'us-central1';
-    
-    // Update sandbox code template
-    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
-    if (textCode) {
-      textCode.value = `import meldra
-
-# Initialize Meldra GCP engine
-catalog = meldra.MeldraCatalog(provider="gcp")
-
-# 1. Read GCS Parquet tables directly from Google Storage
-arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
-df = arrow_table.to_pandas()
-
-# 2. Perform manipulations (deduplicate and filter)
-clean_df = df[df["kw_active"] > 2.0]
-print(f"[sandbox] Filtered data shape: {clean_df.shape}")
-
-# 3. Optimize and sync metadata to Google BigLake Catalog
-catalog.optimize_table("default", "smartmeter_readings_sample")`;
-    }
-
-    // Update Airflow DAG template
-    const dagEl = document.getElementById('airflow-dag-code')!;
-    if (dagEl) {
-      dagEl.textContent = `from datetime import datetime, timedelta
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-
-default_args = {
-    'owner': 'meldra',
-    'start_date': datetime(2025, 1, 1),
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5),
+    container.innerHTML = res.rules.map((rule: any) => `
+      <div class="contract-rule-card">
+        <span class="badge ${rule.level === 'error' ? 'badge-red' : 'badge-yellow'}">${rule.level.toUpperCase()}</span>
+        <span style="font-family:var(--font-mono); font-size:0.75rem;">${rule.column} ${rule.condition}</span>
+      </div>
+    `).join('');
+  } catch (e: any) {
+    container.innerHTML = `<div style="color:#ef4444; font-size:0.7rem;">Failed to load contracts: ${e.message}</div>`;
+  }
 }
 
 // SUB-TAB 6: Maintenance Optimize & Expire
