@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Meldra AI — Meldra Lakehouse: Talk to your Apache Iceberg data lake in plain English. Query, ingest, and explore your S3 lakehouse with AI.">
     <meta name="copyright" content="Copyright (c) 2025 Meldra AI Ltd. All rights reserved.">
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="index, follow">
     <title>meldra.ai — Zero-Replication Lakehouse</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="/src/style.css" />
@@ -1202,14 +1202,20 @@
       </nav>
 
       <!-- Hero Section -->
-      <header class="landing-hero">
-        <h1>The Serverless S3<br>Iceberg Lakehouse.</h1>
-        <p>
-          Upload any CSV, ERP export, or JSON feed. meldra.ai writes open Apache Iceberg tables directly to your S3 bucket — queryable instantly with natural language, DuckDB, or any Spark engine. No servers. No copies. No lock-in.
+      <header class="landing-hero" style="text-align: center; padding: 4rem 1.5rem 3rem;">
+        <div style="display:inline-flex; align-items:center; gap:0.5rem; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); border-radius:999px; padding:0.35rem 1rem; margin-bottom:1.25rem;">
+          <span style="color:#22c55e; font-size:0.75rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">EnergyTrust Protocol (ETP) · Verifiable Telemetry Lakehouse</span>
+        </div>
+        <h1 style="font-size: 3.2rem; font-weight: 900; color: #0f172a; margin-bottom: 1rem; letter-spacing: -0.03em; line-height: 1.1;">Telemetry you can prove.</h1>
+        <p style="font-size: 1.1rem; line-height: 1.65; max-width: 780px; margin: 0 auto 1.5rem; color: #475569;">
+          A utility can prove a reading was authentic at the meter, and separately that a warehouse row hasn't changed. Nothing joins the two — so substantiating a settlement figure to a regulator takes days of manual reconciliation. <strong>meldra</strong> verifies smart grid telemetry at the ingestion boundary and writes cryptographic proof into an open Apache Iceberg lakehouse. Every query returns its figure, its snapshot ID, and its verification together.
         </p>
-        <div class="landing-ctas">
-          <button id="landing-hero-signup" class="landing-btn landing-btn-teal" style="font-size: 1.05rem; padding: 0.8rem 1.75rem;">
-            Create Free Workspace (30 Days) <i class="fa-solid fa-arrow-right"></i>
+        <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: #0b150f; border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 0.55rem 1.2rem; font-family: var(--font-mono); font-size: 0.78rem; color: #bef264; margin-bottom: 2rem;">
+          <i class="fa-solid fa-shield-check" style="color: #22c55e;"></i> Measured: 9,254 verified telemetry blocks/sec (single thread) · ECDSA P-256 + SHA-256 + Nonce CAS
+        </div>
+        <div class="landing-ctas" style="display: flex; justify-content: center; gap: 1rem;">
+          <button id="landing-hero-signup" class="landing-btn landing-btn-teal" style="font-size: 1rem; padding: 0.8rem 1.75rem;">
+            Explore Live Lakehouse Workspace <i class="fa-solid fa-arrow-right"></i>
           </button>
         </div>
       </header>
@@ -1218,27 +1224,27 @@
       <section class="landing-features" id="landing-features-section">
         <!-- Feature 1 -->
         <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-bolt"></i></div>
-          <h3>Smart Meter &amp; Grid Ingest</h3>
-          <p>Stream massive smart meter interval readings directly from HES, MDM, and SCADA telemetry into partitioned S3 Iceberg tables without high cluster compute costs.</p>
+          <div class="landing-feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3>ETP Boundary Verification</h3>
+          <p>Cryptographically verify smart meter interval readings at the network boundary using ECDSA P-256 keys, HMAC-SHA256 signatures, and sequence nonces before materializing to Iceberg.</p>
         </div>
         <!-- Feature 2 -->
         <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
-          <h3>DuckDB SQL Querying</h3>
-          <p>Query massive object store files in sub-second times. DuckDB reads S3 Iceberg data directly using metadata file filters and column pushdowns.</p>
+          <div class="landing-feature-icon"><i class="fa-solid fa-mask"></i></div>
+          <h3>Cryptographic Deception</h3>
+          <p>Silently divert replayed nonces or tampered grid streams into Phantom Grid honeypots for forensic analysis while maintaining zero corruption in your primary Iceberg tables.</p>
         </div>
         <!-- Feature 3 -->
         <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-diagram-project"></i></div>
-          <h3>Postgres Graph Sync</h3>
-          <p>Map S3 ledger tables to relational graphs inside Neon PostgreSQL. Reconcile transaction paths and detect compliance audit loops instantly.</p>
+          <div class="landing-feature-icon"><i class="fa-solid fa-bolt"></i></div>
+          <h3>Siemens &amp; Schneider ADMS Ingest</h3>
+          <p>Native zero-copy ingress connectors for Siemens Spectrum Power ADMS, Schneider Electric EcoStruxure, Itron AMI HES, Landis+Gyr MDM, and SCADA telemetry.</p>
         </div>
         <!-- Feature 4 -->
         <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-sliders"></i></div>
-          <h3>Instant Schema Evolution</h3>
-          <p>Safely add, rename, or drop columns as metadata-only actions. Older Parquet files are read dynamically without needing full table rewrites.</p>
+          <div class="landing-feature-icon"><i class="fa-solid fa-diagram-project"></i></div>
+          <h3>Grid Topology Graph</h3>
+          <p>Project tabular Iceberg telemetry directly into directional graph vertices and edges using openCypher traversals to map substation-to-feeder load capacity.</p>
         </div>
       </section>
 
@@ -1248,54 +1254,51 @@
           <div style="text-align: center; margin-bottom: 3rem;">
             <span style="color: #22c55e; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Architecture</span>
             <h2 style="font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-              How the Zero-Copy Engine Works
+              Verifiable Telemetry Pipeline
             </h2>
-            <p style="color: #94a3b8; font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-              Your data stays exactly where it is. meldra.ai adds an open Iceberg metadata layer on top — making it instantly queryable by AI, SQL, and any engine in the world.
+            <p style="color: #94a3b8; font-size: 1rem; max-width: 650px; margin: 0 auto; line-height: 1.6;">
+              Your smart grid telemetry is verified at ingestion and written directly to your S3 bucket in open Apache Iceberg format — queryable instantly with zero copy.
             </p>
           </div>
 
           <!-- Architecture steps -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center; position: relative;">
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
               <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#14532d,#16a34a); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">📥</div>
               <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 1</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Ingest Any Source</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">CSV, ERP exports, REST APIs, database dumps, IoT streams — drag, drop, or automate.</p>
-              <div style="position: absolute; right: -12px; top: 50%; transform: translateY(-50%); color: #22c55e; font-size: 1.2rem; z-index: 2; display: none;" class="arch-arrow">→</div>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Ingest Grid Telemetry</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Ingest smart meter interval readings, feeder loads, and SCADA switch states from Siemens, Schneider, Itron, or Landis+Gyr.</p>
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#0c4a6e,#0ea5e9); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🧠</div>
+              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#0c4a6e,#0ea5e9); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🔒</div>
               <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 2</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">AI Auto-Schemas</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Our AI detects column types, builds Iceberg schemas, and writes partitioned Parquet files to your S3 — automatically.</p>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">ETP Cryptographic Verification</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Validate ECDSA hardware keys and nonces. Tampered streams are diverted to Phantom Grid honeypots.</p>
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
               <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#4a044e,#a855f7); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🗄️</div>
               <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 3</div>
               <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Open Iceberg on S3</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Data lives in open Apache Iceberg format in <strong style="color:#94a3b8;">your own S3 bucket</strong>. You own it. We never touch the original.</p>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Verified rows are committed to Apache Iceberg format in your cloud S3 bucket with full ACID snapshot history.</p>
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
               <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#7c2d12,#f97316); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">⚡</div>
               <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 4</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Query in Plain English</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Ask anything. The AI translates your question to DuckDB SQL, runs it serverlessly, and returns a formatted answer in seconds.</p>
+              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Auditable Queries</h4>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Query via serverless DuckDB SQL or openCypher graph. Every query result returns its data, snapshot ID, and proof.</p>
             </div>
           </div>
 
           <!-- Source tags -->
           <div style="text-align: center; margin-bottom: 1.5rem;">
-            <p style="color: #475569; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Works with any data source</p>
+            <p style="color: #475569; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Grid &amp; Telemetry Standards</p>
             <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;">
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">⚡ Smart Meter HES</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 SCADA / DMS Telemetry</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔒 ETP Encrypted Streams</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🗃️ PostgreSQL Exports</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 IoT &amp; Sensor Data</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📊 JSON Feeds</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🛒 Shopify / E-Commerce</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📋 CRM Exports</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">⚡ Siemens Spectrum ADMS</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔌 Schneider EcoStruxure</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 Itron AMI Head-End (HES)</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔒 Landis+Gyr MDM</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🛡️ ETP Telemetry Gateway</span>
+              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📊 IEC 61970/61968 CIM</span>
             </div>
           </div>
         </div>
@@ -1305,38 +1308,40 @@
       <section style="padding: 5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
         <div style="max-width: 1100px; margin: 0 auto;">
           <div style="text-align: center; margin-bottom: 3.5rem;">
-            <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Why Customers Choose meldra.ai</span>
+            <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Why Utilities Choose meldra.ai</span>
             <h2 style="font-size: 2.2rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-              What Your Business Gets
+              Built for Energy Grids &amp; Smart Metering
             </h2>
             <p style="color: #475569; font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-              Stop spending on compute clusters. Stop waiting on engineers. Start getting answers from your own data — instantly.
+              Prove telemetry integrity to regulators, prevent meter tampering, and query grid performance serverlessly.
             </p>
           </div>
 
           <!-- 4 metric cards -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 3rem; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">90%</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Cost Reduction</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">vs traditional data warehouse cluster pricing</div>
+              <div style="font-size: 2.4rem; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">9,254</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Verified Blocks/sec</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Single-thread ECDSA P-256 + SHA-256 CAS verification</div>
             </div>
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 3rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">&lt;1s</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Query Latency</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">DuckDB serverless SQL on S3 datasets up to 50TB</div>
+              <div style="font-size: 2.4rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">Zero</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Cluster Compute</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Serverless DuckDB query scans over S3 Iceberg Parquet</div>
             </div>
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 3rem; font-weight: 900; color: #a855f7; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">0</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Data Copies</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Query data in-place from S3. No duplication, ever.</div>
+              <div style="font-size: 2.4rem; font-weight: 900; color: #a855f7; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">0</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Data Duplication</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Data lives in open Apache Iceberg format in your S3 bucket</div>
             </div>
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 3rem; font-weight: 900; color: #f97316; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">∞</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Scale Ceiling</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">No cluster limits, no idle costs, no capacity planning</div>
+              <div style="font-size: 2.4rem; font-weight: 900; color: #f97316; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">CIM</div>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">IEC 61970/61968</div>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Native Common Information Model schema compatibility</div>
             </div>
           </div>
+        </div>
+      </section>
 
           <!-- What non-technical users get -->
           <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 20px; padding: 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center;">
@@ -1406,8 +1411,8 @@
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
               <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏥</div>
               <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Healthcare &amp; Life Sciences</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Store patient data, trial results, and clinical records in compliant open format. HIPAA-ready audit logs on every query.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Clinical data · Drug trials · Patient records · HIPAA</div>
+              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest smart meter interval readings, feeder loads, and SCADA switch states from Siemens, Schneider, Itron, or Landis+Gyr.</p>
+              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Smart Grid Telemetry · SCADA DMS · Feeder Load · CIM</div>
             </div>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
               <div style="font-size: 2rem; margin-bottom: 0.75rem;">🚚</div>
@@ -2906,12 +2911,12 @@
             </div>
           </div>
 
-          <!-- TAB 5: API HELP -->
+                  <!-- TAB 5: API HELP -->
           <div id="api-tab" class="tab-content">
             <div class="api-help-container">
               <div class="api-help-header">
                 <h2>📖 REST API Reference</h2>
-                <p>Complete documentation for the LakeMind backend API. All endpoints are available at your configured backend URL.</p>
+                <p>Complete documentation for the meldra backend API. All endpoints are available at your configured backend URL.</p>
               </div>
 
               <div class="api-base-url-bar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface2); border: 1px solid var(--border-subtle); padding: 0.75rem 1.25rem; border-radius: var(--radius-md); box-sizing: border-box;">
@@ -3386,7 +3391,7 @@ with DAG(
                         </p>
                       </div>
                       <div>
-                        <span class="badge badge-green" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fa-solid fa-shield-halved"></i> Unity Governance Active</span>
+                        <span class="badge badge-green" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fa-solid fa-shield-halved"></i> Iceberg Spec Governance Active</span>
                       </div>
                     </div>
 
@@ -4334,7 +4339,7 @@ with DAG(
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-label">Email Address</span>
-                <span class="info-value" id="settings-info-email">sumit@meldra.ai</span>
+                <span class="info-value" id="settings-info-email">operator@utility.grid.ai</span>
               </div>
               <div class="info-item">
                 <span class="info-label">Subscription Tier</span>
