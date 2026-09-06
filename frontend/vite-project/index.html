@@ -4,10 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Meldra AI — Meldra Lakehouse: Talk to your Apache Iceberg data lake in plain English. Query, ingest, and explore your S3 lakehouse with AI.">
-    <meta name="copyright" content="Copyright (c) 2025 Meldra AI Ltd. All rights reserved.">
+    <meta name="description" content="meldra verifies smart meter telemetry at the ingestion boundary and writes the proof into an Apache Iceberg lakehouse, so a query returns its figure, its snapshot and its verification together.">
+    <meta name="copyright" content="Copyright (c) 2026 meldra.ai Ltd. All rights reserved.">
     <meta name="robots" content="index, follow">
-    <title>meldra.ai — Zero-Replication Lakehouse</title>
+    <title>meldra — verified telemetry for the grid</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="/src/style.css" />
     <style>
@@ -196,29 +199,153 @@
         transition: width 0.3s, background 0.3s;
       }
 
-      /* ── LANDING PAGE ──────────────────────────────────────────────────── */
+      /* ── LANDING PAGE THEME TOKENS & STYLES ──────────────────────────────── */
       #landing-page {
+        --paper: #F1F2EE;
+        --paper-2: #E7E9E3;
+        --ink: #17262A;
+        --ink-2: #4A5B5F;
+        --rule: #C9CEC6;
+        --verified: #1B6B54;
+        --flagged: #7A2E3B;
+        --panel: #16252A;
+        --panel-ink: #DCE3DD;
+        --panel-dim: #7E9098;
+        --measure: 64ch;
+
         position: fixed;
         inset: 0;
         z-index: 9990;
-        background-color: #fafafa;
-        background-image:
-          linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-        background-size: 24px 24px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 17px;
+        line-height: 1.62;
+        font-variant-numeric: tabular-nums;
         overflow-y: auto;
-        /* GPU-accelerated momentum scrolling on iOS — without this, a fixed
-           full-screen container with its own internal scroll is prone to
-           visible tearing/clipping mid-scroll on Safari, exactly the
-           "wavering" symptom seen on mobile. */
         -webkit-overflow-scrolling: touch;
-        color: #0f172a;
-        font-family: var(--font-sans);
         display: flex;
         flex-direction: column;
       }
       #landing-page.hidden {
         display: none !important;
+      }
+
+      #landing-page .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .88em; letter-spacing: -.01em; }
+      #landing-page .wrap { width: min(1080px, calc(100% - 3rem)); margin-inline: auto; }
+      #landing-page a { color: inherit; }
+
+      /* ---------- header ---------- */
+      #landing-page .masthead { border-bottom: 1px solid var(--rule); }
+      #landing-page .masthead .bar { display: flex; align-items: baseline; gap: 1.5rem; padding: 1.1rem 0; }
+      #landing-page .wordmark { font-weight: 700; font-size: 1.22rem; letter-spacing: -.03em; text-decoration: none; }
+      #landing-page .legal-note { font-size: .8rem; color: var(--ink-2); margin: 0; }
+      #landing-page .bar nav { margin-left: auto; display: flex; gap: 1.4rem; font-size: .92rem; }
+      #landing-page .bar nav a { text-decoration: none; border-bottom: 1px solid transparent; padding-bottom: 2px; }
+      #landing-page .bar nav a:hover, #landing-page .bar nav a:focus-visible { border-bottom-color: var(--ink); }
+
+      /* ---------- hero ---------- */
+      #landing-page .hero { padding: 5.5rem 0 4rem; }
+      #landing-page .hero h1 {
+        font-size: clamp(2.6rem, 6.4vw, 4.6rem);
+        line-height: 1.02;
+        letter-spacing: -.035em;
+        font-weight: 700;
+        margin: 0 0 1.4rem;
+        max-width: 14ch;
+      }
+      #landing-page .standfirst { font-size: clamp(1.05rem, 1.9vw, 1.28rem); max-width: var(--measure); margin: 0 0 2.8rem; color: var(--ink-2); }
+
+      /* ---------- evidence artifact ---------- */
+      #landing-page .evidence {
+        background: var(--panel);
+        color: var(--panel-ink);
+        border-radius: 3px;
+        padding: 1.9rem 2rem 1.6rem;
+        max-width: 760px;
+      }
+      #landing-page .evidence .caption {
+        font-size: .78rem; color: var(--panel-dim);
+        margin: 0 0 1.5rem;
+        display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      }
+      #landing-page .evidence .question { font-size: 1.02rem; color: #AFC0C2; margin: 0 0 .5rem; }
+      #landing-page .figure {
+        font-size: clamp(2.1rem, 5vw, 3rem);
+        font-weight: 600; letter-spacing: -.03em; line-height: 1.1;
+        margin: 0 0 1.6rem;
+      }
+      #landing-page .figure span { font-size: .44em; font-weight: 400; color: var(--panel-dim); margin-left: .4rem; letter-spacing: 0; }
+      #landing-page .receipt { border-top: 1px solid #2A3D43; margin: 0; display: grid; gap: .05rem; }
+      #landing-page .receipt div {
+        display: grid; grid-template-columns: 11.5rem 1fr; gap: 1rem;
+        padding: .62rem 0; border-bottom: 1px solid #22343A;
+        font-size: .86rem; align-items: baseline;
+      }
+      #landing-page .receipt dt { color: var(--panel-dim); }
+      #landing-page .receipt dd { margin: 0; word-break: break-all; }
+      #landing-page .stamp { color: #5FCFA3; font-weight: 500; }
+
+      /* ---------- generic sections ---------- */
+      #landing-page section { padding: 4.6rem 0; border-top: 1px solid var(--rule); }
+      #landing-page h2 {
+        font-size: clamp(1.7rem, 3.2vw, 2.3rem);
+        letter-spacing: -.025em; line-height: 1.14; font-weight: 600;
+        margin: 0 0 1.3rem; max-width: 22ch;
+      }
+      #landing-page h3 { font-size: 1.06rem; font-weight: 600; letter-spacing: -.01em; margin: 0 0 .45rem; }
+      #landing-page p { max-width: var(--measure); }
+      #landing-page .lede { font-size: 1.12rem; }
+
+      /* ---------- the two behaviours ---------- */
+      #landing-page .wire { display: grid; gap: 2.4rem; margin-top: 2.6rem; }
+      @media(min-width: 760px){ #landing-page .wire { grid-template-columns: 1fr 1fr; gap: 3.4rem; } }
+      #landing-page .wire > div { border-left: 2px solid var(--verified); padding-left: 1.3rem; }
+      #landing-page .wire > div.divert { border-left-color: var(--flagged); }
+      #landing-page .wire p { margin: 0; color: var(--ink-2); }
+
+      /* ---------- measured table ---------- */
+      #landing-page table { border-collapse: collapse; width: 100%; margin-top: 2.2rem; font-size: .94rem; }
+      #landing-page caption { text-align: left; color: var(--ink-2); font-size: .9rem; padding-bottom: .9rem; max-width: var(--measure); }
+      #landing-page th, #landing-page td { text-align: left; padding: .78rem .9rem .78rem 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+      #landing-page thead th { font-weight: 600; font-size: .82rem; color: var(--ink-2); border-bottom-color: var(--ink); }
+      #landing-page td.val { font-weight: 600; white-space: nowrap; }
+      #landing-page td.cond { color: var(--ink-2); font-size: .9rem; }
+      #landing-page .arith { margin-top: 1.6rem; font-size: .92rem; color: var(--ink-2); max-width: var(--measure); }
+
+      /* ---------- gaps ---------- */
+      #landing-page .gaps { background: var(--paper-2); }
+      #landing-page .gap-list { list-style: none; padding: 0; margin: 2.2rem 0 0; max-width: calc(var(--measure) + 6ch); }
+      #landing-page .gap-list li { padding: 1.05rem 0; border-bottom: 1px solid var(--rule); }
+      #landing-page .gap-list li:first-child { border-top: 1px solid var(--rule); }
+      #landing-page .gap-list p { margin: .3rem 0 0; color: var(--ink-2); font-size: .95rem; max-width: none; }
+
+      /* ---------- close ---------- */
+      #landing-page .close { padding-bottom: 5rem; }
+      #landing-page .actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; }
+      #landing-page .btn {
+        display: inline-block; padding: .78rem 1.5rem; border-radius: 2px;
+        text-decoration: none; font-weight: 500; font-size: .97rem;
+        border: 1px solid var(--ink);
+        cursor: pointer;
+      }
+      #landing-page .btn-solid { background: var(--ink); color: var(--paper); }
+      #landing-page .btn-solid:hover, #landing-page .btn-solid:focus-visible { background: #0C171A; }
+      #landing-page .btn-line:hover, #landing-page .btn-line:focus-visible { background: var(--paper-2); }
+
+      #landing-page footer { border-top: 1px solid var(--rule); padding: 2.4rem 0 3.4rem; font-size: .85rem; color: var(--ink-2); }
+      #landing-page footer p { max-width: none; margin: 0 0 .5rem; }
+
+      #landing-page :focus-visible { outline: 2px solid var(--verified); outline-offset: 3px; }
+
+      /* one orchestrated moment: the receipt resolving */
+      @media(prefers-reduced-motion: no-preference){
+        #landing-page .receipt div { opacity: 0; animation: settle .5s ease-out forwards; }
+        #landing-page .receipt div:nth-child(1) { animation-delay: .35s; }
+        #landing-page .receipt div:nth-child(2) { animation-delay: .5s; }
+        #landing-page .receipt div:nth-child(3) { animation-delay: .65s; }
+        #landing-page .receipt div:nth-child(4) { animation-delay: .8s; }
+        @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
       }
       
       /* ── ACADEMY PORTAL PAGE ───────────────────────────────────────────── */
@@ -1129,582 +1256,168 @@
         #community-videos-section .video-grid {
           grid-template-columns: 1fr !important;
         }
-        
-        /* Custom horizontal video card stack */
-        #community-videos-section .video-card[style*="grid-template-columns"] {
-          grid-template-columns: 1fr !important;
-        }
-        #community-videos-section .video-card[style*="grid-template-columns"] img,
-        #community-videos-section .video-card[style*="grid-template-columns"] .video-thumb-wrap {
-          border-radius: 12px 12px 0 0 !important;
-          height: 180px !important;
-          min-height: 180px !important;
-        }
-        #community-videos-section .video-card[style*="grid-template-columns"] .video-card-body {
-          border-radius: 0 0 12px 12px !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
-
     <!-- ── LANDING PAGE ── -->
     <div id="landing-page">
-      <!-- Banner -->
-      <div class="landing-banner">
-        <span>🚀 Ingest Smart Meter HES and SCADA DMS tables to S3 Iceberg instantly. Learn More ➔</span>
-      </div>
-
-      <!-- Navbar -->
-      <nav class="landing-nav">
-        <div class="landing-nav-logo" style="display: flex; align-items: center; gap: 0.65rem;">
-          <svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 8px; flex-shrink: 0;">
-            <rect width="36" height="36" rx="8" fill="url(#meldra-logo-grad-1)"/>
-            <path d="M18 6L28 24H8L18 6Z" fill="#bef264" opacity="0.35"/>
-            <path d="M18 10L25 24H11L18 10Z" fill="#ffffff" opacity="0.95"/>
-            <path d="M18 30L24 24H12L18 30Z" fill="#22c55e" opacity="0.8"/>
-            <circle cx="18" cy="17" r="1.5" fill="#16a34a"/>
-            <circle cx="15" cy="22" r="1.2" fill="#16a34a"/>
-            <circle cx="21" cy="22" r="1.2" fill="#16a34a"/>
-            <line x1="18" y1="17" x2="15" y2="22" stroke="#16a34a" stroke-width="0.8" opacity="0.6"/>
-            <line x1="18" y1="17" x2="21" y2="22" stroke="#16a34a" stroke-width="0.8" opacity="0.6"/>
-            <defs>
-              <linearGradient id="meldra-logo-grad-1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#14532d"/>
-                <stop offset="1" stop-color="#16a34a"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <div>
-            <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1;">meldra</h2>
-            <div style="font-size: 0.55rem; color: #16a34a; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px;">ZERO-REPLICATION LAKEHOUSE</div>
-          </div>
-        </div>
-        <div class="landing-nav-links">
-          <span class="landing-nav-link" onclick="document.getElementById('landing-features-section').scrollIntoView({ behavior: 'smooth' })">Features</span>
-          <span class="landing-nav-link" onclick="showAcademyPage()">Academy</span>
-          <span class="landing-nav-link" onclick="document.getElementById('landing-examples-section').scrollIntoView({ behavior: 'smooth' })">Examples</span>
-          <span class="landing-nav-link" onclick="document.getElementById('landing-blog-section').scrollIntoView({ behavior: 'smooth' })">Blog</span>
-          <span class="landing-nav-link" onclick="document.getElementById('landing-resources-section').scrollIntoView({ behavior: 'smooth' })">Resources</span>
-        </div>
-        <!-- Hamburger Button -->
-        <button class="landing-mobile-menu-toggle" style="display:none;" onclick="toggleLandingMobileMenu(this)" aria-label="Toggle Navigation">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="landing-nav-actions">
-          <button id="landing-btn-login" class="landing-btn landing-btn-secondary">
-            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
-          </button>
-          <button id="landing-btn-signup" class="landing-btn landing-btn-teal">
-            Start now
-          </button>
-        </div>
-      </nav>
-
-      <!-- Hero Section -->
-      <header class="landing-hero" style="text-align: center; padding: 4rem 1.5rem 3rem;">
-        <div style="display:inline-flex; align-items:center; gap:0.5rem; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); border-radius:999px; padding:0.35rem 1rem; margin-bottom:1.25rem;">
-          <span style="color:#22c55e; font-size:0.75rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">EnergyTrust Protocol (ETP) · Verifiable Telemetry Lakehouse</span>
-        </div>
-        <h1 style="font-size: 3.2rem; font-weight: 900; color: #0f172a; margin-bottom: 1rem; letter-spacing: -0.03em; line-height: 1.1;">Telemetry you can prove.</h1>
-        <p style="font-size: 1.1rem; line-height: 1.65; max-width: 780px; margin: 0 auto 1.5rem; color: #475569;">
-          A utility can prove a reading was authentic at the meter, and separately that a warehouse row hasn't changed. Nothing joins the two — so substantiating a settlement figure to a regulator takes days of manual reconciliation. <strong>meldra</strong> verifies smart grid telemetry at the ingestion boundary and writes cryptographic proof into an open Apache Iceberg lakehouse. Every query returns its figure, its snapshot ID, and its verification together.
-        </p>
-        <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: #0b150f; border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 0.55rem 1.2rem; font-family: var(--font-mono); font-size: 0.78rem; color: #bef264; margin-bottom: 2rem;">
-          <i class="fa-solid fa-shield-check" style="color: #22c55e;"></i> Measured: 9,254 verified telemetry blocks/sec (single thread) · ECDSA P-256 + SHA-256 + Nonce CAS
-        </div>
-        <div class="landing-ctas" style="display: flex; justify-content: center; gap: 1rem;">
-          <button id="landing-hero-signup" class="landing-btn landing-btn-teal" style="font-size: 1rem; padding: 0.8rem 1.75rem;">
-            Explore Live Lakehouse Workspace <i class="fa-solid fa-arrow-right"></i>
-          </button>
+      <header class="masthead">
+        <div class="wrap bar">
+          <a class="wordmark" href="/">meldra</a>
+          <p class="legal-note">Patent pending — UK application filed</p>
+          <nav>
+            <a href="#wire">How it works</a>
+            <a href="#measured">Measured</a>
+            <a href="#gaps">What we can't claim</a>
+            <a href="#" id="landing-btn-login">Sign in</a>
+          </nav>
         </div>
       </header>
 
-      <!-- Features Section -->
-      <section class="landing-features" id="landing-features-section">
-        <!-- Feature 1 -->
-        <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
-          <h3>ETP Boundary Verification</h3>
-          <p>Cryptographically verify smart meter interval readings at the network boundary using ECDSA P-256 keys, HMAC-SHA256 signatures, and sequence nonces before materializing to Iceberg.</p>
-        </div>
-        <!-- Feature 2 -->
-        <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-mask"></i></div>
-          <h3>Cryptographic Deception</h3>
-          <p>Silently divert replayed nonces or tampered grid streams into Phantom Grid honeypots for forensic analysis while maintaining zero corruption in your primary Iceberg tables.</p>
-        </div>
-        <!-- Feature 3 -->
-        <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-bolt"></i></div>
-          <h3>Siemens &amp; Schneider ADMS Ingest</h3>
-          <p>Native zero-copy ingress connectors for Siemens Spectrum Power ADMS, Schneider Electric EcoStruxure, Itron AMI HES, Landis+Gyr MDM, and SCADA telemetry.</p>
-        </div>
-        <!-- Feature 4 -->
-        <div class="landing-feature-card">
-          <div class="landing-feature-icon"><i class="fa-solid fa-diagram-project"></i></div>
-          <h3>Grid Topology Graph</h3>
-          <p>Project tabular Iceberg telemetry directly into directional graph vertices and edges using openCypher traversals to map substation-to-feeder load capacity.</p>
-        </div>
-      </section>
+      <main>
+        <div class="wrap hero">
+          <h1>Telemetry you can prove.</h1>
+          <p class="standfirst">A utility can prove a reading was authentic at the meter, and separately that a warehouse row hasn't changed. Nothing joins the two. meldra verifies telemetry at the ingestion boundary and writes the proof into the lakehouse, so an answer arrives with its evidence attached.</p>
 
-      <!-- ── HOW THE ZERO-COPY ENGINE WORKS ── -->
-      <section style="padding: 5rem 2rem; background: #0a0f1e; border-top: 1px solid #1e293b;">
-        <div style="max-width: 1100px; margin: 0 auto;">
-          <div style="text-align: center; margin-bottom: 3rem;">
-            <span style="color: #22c55e; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Architecture</span>
-            <h2 style="font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-              Verifiable Telemetry Pipeline
-            </h2>
-            <p style="color: #94a3b8; font-size: 1rem; max-width: 650px; margin: 0 auto; line-height: 1.6;">
-              Your smart grid telemetry is verified at ingestion and written directly to your S3 bucket in open Apache Iceberg format — queryable instantly with zero copy.
+          <div class="evidence">
+            <p class="caption">
+              <span>Example response</span>
+              <span class="mono">GET /v1/query/submit</span>
             </p>
-          </div>
-
-          <!-- Architecture steps -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#14532d,#16a34a); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">📥</div>
-              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 1</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Ingest Grid Telemetry</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Ingest smart meter interval readings, feeder loads, and SCADA switch states from Siemens, Schneider, Itron, or Landis+Gyr.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#0c4a6e,#0ea5e9); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🔒</div>
-              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 2</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">ETP Cryptographic Verification</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Validate ECDSA hardware keys and nonces. Tampered streams are diverted to Phantom Grid honeypots.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#4a044e,#a855f7); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">🗄️</div>
-              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 3</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Open Iceberg on S3</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Verified rows are committed to Apache Iceberg format in your cloud S3 bucket with full ACID snapshot history.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(34,197,94,0.2); border-radius: 16px; padding: 1.75rem 1.25rem; text-align: center;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg,#7c2d12,#f97316); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem;">⚡</div>
-              <div style="color: #22c55e; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.4rem;">STEP 4</div>
-              <h4 style="color: #f1f5f9; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Auditable Queries</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5;">Query via serverless DuckDB SQL or openCypher graph. Every query result returns its data, snapshot ID, and proof.</p>
-            </div>
-          </div>
-
-          <!-- Source tags -->
-          <div style="text-align: center; margin-bottom: 1.5rem;">
-            <p style="color: #475569; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Grid &amp; Telemetry Standards</p>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;">
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">⚡ Siemens Spectrum ADMS</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔌 Schneider EcoStruxure</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📡 Itron AMI Head-End (HES)</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🔒 Landis+Gyr MDM</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">🛡️ ETP Telemetry Gateway</span>
-              <span style="background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); border-radius: 999px; padding: 0.35rem 1rem; font-size: 0.78rem; font-weight: 600;">📊 IEC 61970/61968 CIM</span>
-            </div>
+            <p class="question">Settled consumption, feeder F‑4471, period 2026‑08‑01 to 2026‑08‑31</p>
+            <p class="figure">4,182,904<span>kWh</span></p>
+            <dl class="receipt">
+              <div><dt>Iceberg snapshot</dt><dd class="mono">7742901883364117205</dd></div>
+              <div><dt>Contributing rows</dt><dd class="mono">1,428,096 — all verified at ingest</dd></div>
+              <div><dt>Merkle root</dt><dd class="mono">a41f…9c02, anchored RFC 3161</dd></div>
+              <div><dt>Status</dt><dd class="stamp">Reproducible. Re-run returns the same figure.</dd></div>
+            </dl>
           </div>
         </div>
-      </section>
 
-      <!-- ── BUSINESS VALUE / METRICS ── -->
-      <section style="padding: 5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
-        <div style="max-width: 1100px; margin: 0 auto;">
-          <div style="text-align: center; margin-bottom: 3.5rem;">
-            <span style="color: #16a34a; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Why Utilities Choose meldra.ai</span>
-            <h2 style="font-size: 2.2rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-              Built for Energy Grids &amp; Smart Metering
-            </h2>
-            <p style="color: #475569; font-size: 1rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
-              Prove telemetry integrity to regulators, prevent meter tampering, and query grid performance serverlessly.
-            </p>
+        <section>
+          <div class="wrap">
+            <h2>The gap is between the meter and the record</h2>
+            <p class="lede">Encryption and authentication at the meter are solved problems — IEC 62351 and DLMS handle them. What isn't solved is integrity that survives into the data lake, and what you can hand a third party months later.</p>
+            <p>When Ofgem or a settlement counterparty challenges a figure today, substantiating it means pulling source readings, matching them to the aggregate and writing a narrative. That's days of senior analyst time, and what it produces is an argument rather than a proof.</p>
+            <p>meldra changes what you hand over. Every answer carries the exact data snapshot it was computed from and a verification that the contributing readings were checked at the gateway and unaltered since. Your counterparty re-runs it and gets the same number. The dispute ends in arithmetic instead of negotiation.</p>
           </div>
+        </section>
 
-          <!-- 4 metric cards -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 4rem;">
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 2.4rem; font-weight: 900; color: #16a34a; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">9,254</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Verified Blocks/sec</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Single-thread ECDSA P-256 + SHA-256 CAS verification</div>
-            </div>
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 2.4rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">Zero</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Cluster Compute</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Serverless DuckDB query scans over S3 Iceberg Parquet</div>
-            </div>
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 2.4rem; font-weight: 900; color: #a855f7; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">0</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">Data Duplication</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Data lives in open Apache Iceberg format in your S3 bucket</div>
-            </div>
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
-              <div style="font-size: 2.4rem; font-weight: 900; color: #f97316; line-height: 1; margin-bottom: 0.5rem; font-family: var(--font-sans);">CIM</div>
-              <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">IEC 61970/61968</div>
-              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.4;">Native Common Information Model schema compatibility</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-          <!-- What non-technical users get -->
-          <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 20px; padding: 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center;">
-            <div>
-              <span style="color: #16a34a; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">The Business Unlock</span>
-              <h3 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0.5rem 0 1rem; font-family: var(--font-sans);">Your Non-Technical Teams Get Answers — Today</h3>
-              <p style="color: #475569; font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem;">
-                Finance managers, HR directors, and operations leads no longer need to raise a ticket and wait 2 weeks for a SQL report. They simply ask meldra.ai in plain English.
-              </p>
-              <button id="landing-btn-signup" class="landing-btn landing-btn-teal" style="font-size: 0.9rem; padding: 0.7rem 1.5rem;">
-                Start Free 30-Day Trial <i class="fa-solid fa-arrow-right"></i>
-              </button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
-                <span style="font-size: 1.2rem;">💬</span>
-                <div>
-                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">HR Director asks:</div>
-                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Which departments had the highest headcount growth in Q3?"</div>
-                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Answer returned in 0.8 seconds</div>
-                </div>
+        <section id="wire">
+          <div class="wrap">
+            <h2>Two things happen at the wire</h2>
+            <p>Ingress routes derive from a shared secret and a 60-second epoch window, with three windows valid at once to tolerate clock drift. There is no fixed endpoint to scan for.</p>
+            <div class="wire">
+              <div>
+                <h3>Valid traffic is verified and recorded</h3>
+                <p>Each block carries a hardware monotonic nonce and an ECDSA P‑256 signature. The gateway performs an atomic nonce compare-and-swap, recomputes the hash and verifies the signature before the reading is written. Verification state becomes a first-class column in Iceberg, not a log line. A broken chain link is flagged <span class="mono">CHAIN_GAP</span> rather than silently dropped, because a missing reading is evidence.</p>
               </div>
-              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
-                <span style="font-size: 1.2rem;">💬</span>
-                <div>
-                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Grid Operations Engineer asks:</div>
-                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Show me all feeders in UK_NORTH zone exceeding 90% peak transformer capacity."</div>
-                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Pulls from HES &amp; SCADA telemetry, returns table instantly</div>
-                </div>
-              </div>
-              <div style="background: white; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #d1fae5; display: flex; gap: 0.75rem; align-items: flex-start;">
-                <span style="font-size: 1.2rem;">💬</span>
-                <div>
-                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Ops Manager asks:</div>
-                  <div style="font-size: 0.78rem; color: #475569; font-style: italic;">"Which warehouse had the most stock discrepancies last month?"</div>
-                  <div style="font-size: 0.75rem; color: #16a34a; margin-top: 0.3rem;">→ Graph analysis complete in 1.2 seconds</div>
-                </div>
+              <div class="divert">
+                <h3>Invalid traffic is diverted, not blocked</h3>
+                <p>Existing AMI standards respond to detected reconnaissance by blocking, which tells the attacker they've been seen. They rotate address and try again; you learn nothing. meldra sends an invalid or stale route to an isolated decoy that returns plausible synthetic telemetry, and flags the source. The attacker keeps probing a system that isn't real.</p>
               </div>
             </div>
           </div>
+        </section>
+
+        <section id="measured">
+          <div class="wrap">
+            <h2>Every number here was measured</h2>
+            <table>
+              <caption>Benchmarked against a specific commit, single thread, on commodity hardware. The conditions column is part of the claim.</caption>
+              <thead>
+                <tr><th scope="col">Operation</th><th scope="col">Measured</th><th scope="col">Conditions</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Verified ingest</th>
+                  <td class="val mono">0.108 ms/block</td>
+                  <td class="cond">1,000 blocks, ECDSA P‑256 + SHA‑256 + nonce compare-and-swap</td>
+                </tr>
+                <tr>
+                  <th scope="row">Throughput</th>
+                  <td class="val mono">9,254 blocks/sec</td>
+                  <td class="cond">Single thread</td>
+                </tr>
+                <tr>
+                  <th scope="row">Route validation</th>
+                  <td class="val mono">0.007 ms</td>
+                  <td class="cond">HMAC‑SHA256, constant-time compare — 142,052/sec</td>
+                </tr>
+                <tr>
+                  <th scope="row">Diversion to decoy</th>
+                  <td class="val mono">0.020 ms</td>
+                  <td class="cond">Invalid route path — 50,295/sec</td>
+                </tr>
+                <tr>
+                  <th scope="row">Headroom, 3M-meter estate</th>
+                  <td class="val mono">5.4×</td>
+                  <td class="cond">Against roughly 1,700 blocks/sec sustained</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="arith">Where 1,700 comes from: 3,000,000 meters × 48 half-hourly readings ÷ 86,400 seconds = 1,667 blocks per second sustained. We're happy to show the arithmetic.</p>
+          </div>
+        </section>
+
+        <section id="gaps" class="gaps">
+          <div class="wrap">
+            <h2>What we can't claim yet</h2>
+            <p class="lede">These are unmeasured or unfinished. We publish them because you'd find them anyway, and because a vendor claiming a clean history isn't one you should believe.</p>
+            <ul class="gap-list">
+              <li>
+                <h3>Detection accuracy and false-positive rate</h3>
+                <p>Not measured. Neither is attacker containment duration. We won't put a number on any of them until we've run it.</p>
+              </li>
+              <li>
+                <h3>Multi-thread and multi-gateway throughput</h3>
+                <p>Every figure above is single-thread. Horizontal scaling is designed but not benchmarked.</p>
+              </li>
+              <li>
+                <h3>Nothing has run against real meters</h3>
+                <p>All measurements come from a meter simulator producing signed blocks. No production AMI estate has been through this.</p>
+              </li>
+              <li>
+                <h3>Scan pushdown needs explicit filters</h3>
+                <p>SQL <span class="mono">WHERE</span> predicates aren't automatically translated into Iceberg expressions yet, so callers who need file pruning must populate <span class="mono">filters</span> themselves.</p>
+              </li>
+              <li>
+                <h3>The fast scan path is conditional</h3>
+                <p>The zero-materialisation Arrow path only engages when no access-control policy applies to the query. With masking in force, the data is materialised.</p>
+              </li>
+              <li>
+                <h3>Two defects we found in our own gateway</h3>
+                <p>One was an availability bug: the nonce counter advanced before signature verification, so a single unsigned packet could permanently lock out a meter. We exploit-tested it, fixed it and pinned it with regression tests. The write-up is public.</p>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <div class="wrap">
+            <h2>Your storage, your data, your exit</h2>
+            <p>Tables are Apache Iceberg on your own object storage. Spark, Trino, DuckDB and Dremio can read every byte with us entirely out of the picture. If meldra disappears tomorrow, your data is untouched and readable.</p>
+            <p>Access control is enforced below the query engine. Masking is applied to the Arrow data before the relation is registered with DuckDB, so column aliasing, subqueries, CTEs and <span class="mono">SELECT *</span> cannot recover a masked value — the value was never in the relation the engine saw. That's a stronger property than rewriting SQL, which creative queries defeat.</p>
+            <p>The catalogue maps to the IEC Common Information Model: 61970‑301 for the base model, 61968 for distribution including part 9 for meter reading. A CIM RDF export is implemented and tested. CIM has no way to express provenance — no standard class for "this reading was verified at ingest, here's the proof, here's the anchor." That hole in the standard is where our work sits.</p>
+          </div>
+        </section>
+
+        <section class="close">
+          <div class="wrap">
+            <h2>Come and break it</h2>
+            <p class="lede">The most useful sixty seconds we can spend with you: two terminals, no slides. Meters posting signed readings. The route rotates and the meters follow it. A scanner hits the old route, receives a plausible response, and never learns it's talking to a decoy. Then we change one byte in a stored reading, run the verifier, and it names the block.</p>
+            <div class="actions">
+              <button id="landing-hero-signup" class="btn btn-solid" style="cursor:pointer;">Book the demo</button>
+              <button id="landing-btn-signup" class="btn btn-solid" style="cursor:pointer; background:#1B6B54; border-color:#1B6B54;">Start now</button>
+              <a class="btn btn-line" href="#measured">Read the specification</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <div class="wrap">
+          <p>meldra.ai Ltd — registered in England and Wales. Patent pending, UK application filed.</p>
+          <p>Figures on this page were measured against a tagged commit and are reproducible from the specification documents.</p>
         </div>
-      </section>
-
-      <!-- ── INDUSTRIES / WHO IS THIS FOR ── -->
-      <section style="padding: 5rem 2rem; background: #0f172a; border-top: 1px solid #1e293b;">
-        <div style="max-width: 1100px; margin: 0 auto; text-align: center;">
-          <span style="color: #22c55e; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;">Built for Every Industry</span>
-          <h2 style="font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0.5rem 0 0.75rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-            Any Business With Data Can Use This
-          </h2>
-          <p style="color: #64748b; font-size: 0.95rem; max-width: 600px; margin: 0 auto 3rem; line-height: 1.6;">
-            You don't need a data engineering team. You don't need a warehouse. You just need your data and an S3 bucket.
-          </p>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; text-align: left;">
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏦</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Finance &amp; Banking</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest GL journals, AP/AR ledgers, and trade data. Run compliance checks in plain English. Audit trails built-in.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Smart Meter HES · SCADA DMS · Feeder Telemetry</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🛒</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Retail &amp; E-Commerce</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Sync orders, inventory, and customer data from Shopify, WooCommerce, or any ERP. Query trends instantly without a BI tool.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Orders · Inventory · Customer segments · Returns</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏥</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Healthcare &amp; Life Sciences</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest smart meter interval readings, feeder loads, and SCADA switch states from Siemens, Schneider, Itron, or Landis+Gyr.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Smart Grid Telemetry · SCADA DMS · Feeder Load · CIM</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🚚</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Logistics &amp; Supply Chain</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Track shipments, warehouse stock levels, and supplier performance across millions of rows. Detect anomalies with AI graph analysis.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Shipments · Stock levels · Supplier KPIs · IoT</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">👥</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">HR &amp; People Analytics</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Analyse headcount, salary bands, hiring funnels, and attrition without a data team. Ask HR questions in plain English.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Headcount · Salary · Attrition · Hiring pipeline</div>
-            </div>
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.75rem;">
-              <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏗️</div>
-              <h4 style="color: #f1f5f9; font-weight: 700; margin-bottom: 0.5rem;">Manufacturing &amp; OT</h4>
-              <p style="color: #64748b; font-size: 0.82rem; line-height: 1.5; margin-bottom: 0.75rem;">Ingest sensor readings, production line metrics, and quality control data. Run root-cause analysis with AI-powered graph traversal.</p>
-              <div style="color: #22c55e; font-size: 0.75rem; font-weight: 600;">Sensors · OEE metrics · Quality control · MES data</div>
-            </div>
-          </div>
-
-          <!-- CTA bar -->
-          <div style="margin-top: 3.5rem; background: linear-gradient(135deg, rgba(22,163,74,0.15), rgba(5,150,105,0.1)); border: 1px solid rgba(34,197,94,0.25); border-radius: 20px; padding: 2.5rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
-            <div style="text-align: left;">
-              <h3 style="color: #f1f5f9; font-size: 1.4rem; font-weight: 800; margin-bottom: 0.4rem; font-family: var(--font-sans);">Ready to build your own lakehouse?</h3>
-              <p style="color: #94a3b8; font-size: 0.88rem;">30-day free trial. No credit card. Your S3 bucket. Your data. Zero lock-in.</p>
-            </div>
-            <button id="landing-hero-signup2" class="landing-btn landing-btn-teal" style="font-size: 1rem; padding: 0.85rem 2rem; white-space: nowrap;" onclick="document.getElementById('landing-hero-signup') && document.getElementById('landing-hero-signup').click()">
-              Create Free Workspace <i class="fa-solid fa-arrow-right"></i>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Public Academy Section -->
-      <section class="landing-academy" id="landing-academy-section" style="padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid #cbd5e1;">
-
-        <div style="margin-bottom: 3rem; text-align: center;">
-          <h2 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem; font-family: var(--font-sans);">
-            <i class="fa-solid fa-graduation-cap" style="color: #16a34a;"></i> meldra Academy
-          </h2>
-          <p style="color: #475569; font-size: 0.95rem; max-width: 580px; margin: 0.4rem auto 0; line-height: 1.5;">
-            Learn how the Zero-Copy Lakehouse works, watch technical demonstrations, and discover the business challenges we solve.
-          </p>
-        </div>
-        
-        <div class="video-grid">
- 
-           <!-- Video 1 -->
-           <div class="video-card" id="landing-vc-1" onclick="openVideoModal(1)">
-             <div class="video-thumb-wrap premium-thumb-1">
-               <div class="thumb-glow"></div>
-               <div class="thumb-graphic">
-                 <i class="fa-solid fa-cube"></i>
-               </div>
-               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
-               <div class="video-duration-badge">8:42</div>
-             </div>
-             <div class="video-card-body">
-               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Introduction</div>
-               <div class="video-card-title" style="color: #0f172a;">What is meldra.ai &amp; the Zero-Copy Lakehouse?</div>
-               <div class="video-card-desc" style="color: #475569;">A complete walkthrough of what meldra.ai is, why we built it, and how the Zero-Copy Lakehouse architecture works without replicating your data.</div>
-               <div class="video-card-footer">
-                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-eye"></i> Overview · 8 min</div>
-                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(1)">
-                   <i class="fa-solid fa-play"></i> Watch
-                 </button>
-               </div>
-             </div>
-           </div>
- 
-           <!-- Video 2 -->
-           <div class="video-card" id="landing-vc-2" onclick="openVideoModal(2)">
-             <div class="video-thumb-wrap premium-thumb-2">
-               <div class="thumb-glow"></div>
-               <div class="thumb-graphic">
-                 <i class="fa-solid fa-diagram-project"></i>
-               </div>
-               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
-               <div class="video-duration-badge">12:17</div>
-             </div>
-             <div class="video-card-body">
-               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Business Case</div>
-               <div class="video-card-title" style="color: #0f172a;">Why Zero-Copy? The Business Problems We Solve</div>
-               <div class="video-card-desc" style="color: #475569;">Learn the real business problems — ERP data silos, Spark cluster costs, and audit complexity — and how meldra resolves them without rewriting your stack.</div>
-               <div class="video-card-footer">
-                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-briefcase"></i> Enterprise · 12 min</div>
-                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(2)">
-                   <i class="fa-solid fa-play"></i> Watch
-                 </button>
-               </div>
-             </div>
-           </div>
- 
-           <!-- Video 3 -->
-           <div class="video-card" id="landing-vc-3" onclick="openVideoModal(3)">
-             <div class="video-thumb-wrap premium-thumb-3">
-               <div class="thumb-glow"></div>
-               <div class="thumb-graphic">
-                 <i class="fa-solid fa-network-wired"></i>
-               </div>
-               <div class="video-play-btn"><i class="fa-solid fa-play" style="margin-left:3px;"></i></div>
-               <div class="video-duration-badge">10:05</div>
-             </div>
-             <div class="video-card-body">
-               <div class="video-card-tag"><i class="fa-solid fa-circle" style="font-size:0.4rem;"></i> Hands-On</div>
-               <div class="video-card-desc" style="color: #475569;">Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.</div>
-               <div class="video-card-footer">
-                 <div class="video-card-meta" style="color: #64748b;"><i class="fa-solid fa-code"></i> Tutorial · 10 min</div>
-                 <button class="video-watch-btn" onclick="event.stopPropagation();openVideoModal(3)">
-                   <i class="fa-solid fa-play"></i> Watch
-                 </button>
-               </div>
-             </div>
-           </div>
- 
-        </div>
-      </section>
-
-      <!-- ── EXAMPLES SECTION ── -->
-      <section class="landing-examples" id="landing-examples-section" style="padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid #cbd5e1;">
-        <div class="landing-examples-grid" style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 3.5rem; align-items: center;">
-          <div>
-            <h2 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-              ⚡ Sub-second SQL Queries Over S3
-            </h2>
-            <p style="color: #475569; font-size: 0.96rem; line-height: 1.6; margin-bottom: 1.5rem;">
-              meldra.ai separates storage and compute. Your raw tables are stored in open Apache Iceberg format on your own S3 bucket, while our serverless DuckDB query engine runs analytical operations at memory speeds. No cluster warm-up delays, no idle-compute tax.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-              <div style="display: flex; gap: 0.65rem; align-items: flex-start;">
-                <i class="fa-solid fa-circle-check" style="color: #16a34a; margin-top: 0.25rem;"></i>
-                <span style="color: #334155; font-size: 0.9rem;"><strong>Open Metadata Catalogs:</strong> Iceberg tracking maps partition lists and excludes unneeded Parquet files automatically.</span>
-              </div>
-              <div style="display: flex; gap: 0.65rem; align-items: flex-start;">
-                <i class="fa-solid fa-circle-check" style="color: #16a34a; margin-top: 0.25rem;"></i>
-                <span style="color: #334155; font-size: 0.9rem;"><strong>Zero-Copy Clones:</strong> Duplicate massive staging environments instantly without duplicating a single byte of S3 storage.</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Terminal mockup -->
-          <div class="terminal-mockup" style="background: #090d16; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.3); font-family: 'Fira Code', monospace; font-size: 0.8rem; line-height: 1.5;">
-            <div class="terminal-header" style="background: #111827; padding: 0.6rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b;">
-              <div style="display: flex; gap: 0.4rem;">
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-              </div>
-              <span style="color: #64748b; font-size: 0.72rem; font-weight: 600;">meldra-query.sql</span>
-            </div>
-            <div class="terminal-body" style="padding: 1.25rem; color: #a7f3d0; overflow-x: auto;">
-              <span style="color: #64748b;">-- Define open Iceberg table on AWS S3</span><br>
-              <span style="color: #f472b6;">CREATE TABLE</span> s3.finance_ledger (<br>
-              &nbsp;&nbsp;entry_id <span style="color: #38bdf8;">VARCHAR</span>,<br>
-              &nbsp;&nbsp;company_code <span style="color: #38bdf8;">VARCHAR</span>,<br>
-              &nbsp;&nbsp;amount <span style="color: #38bdf8;">DECIMAL</span>(15,2)<br>
-              ) <span style="color: #f472b6;">USING</span> ICEBERG<br>
-              <span style="color: #f472b6;">LOCATION</span> <span style="color: #fb7185;">'s3://meldra-lakehouse-warehouse/ledger'</span>;<br><br>
-              
-              <span style="color: #64748b;">-- High-speed serverless aggregation</span><br>
-              <span style="color: #f472b6;">SELECT</span> company_code, <span style="color: #f472b6;">SUM</span>(amount)<br>
-              <span style="color: #f472b6;">FROM</span> s3.finance_ledger<br>
-              <span style="color: #f472b6;">GROUP BY</span> company_code;<br><br>
-              
-              <span style="color: #34d399;">Executing query...</span><br>
-              <span style="color: #64748b;">[100% processed, 12.4M rows scanned in 0.08 seconds]</span><br>
-              <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem; color: #e2e8f0; font-size:0.75rem;">
-                <thead>
-                  <tr style="border-bottom: 1px solid #1e293b; color: #94a3b8; text-align: left;">
-                    <th style="padding: 0.25rem 0.5rem;">company_code</th>
-                    <th style="padding: 0.25rem 0.5rem;">total_amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">GRID_UK_NORTH</td>
-                    <td style="padding: 0.25rem 0.5rem;">$142,395,024.12</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 0.25rem 0.5rem; color: #a7f3d0;">GRID_UK_SOUTH</td>
-                    <td style="padding: 0.25rem 0.5rem;">$98,104,235.80</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── BLOG SECTION ── -->
-      <section class="landing-blog" id="landing-blog-section" style="padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid #cbd5e1;">
-        <div style="margin-bottom: 3.5rem; text-align: center;">
-          <h2 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-            📰 Architectural Insights &amp; Blog
-          </h2>
-          <p style="color: #475569; font-size: 0.95rem;">
-            Read about enterprise grounding, serverless query performance, and the future of open table formats.
-          </p>
-        </div>
-        
-        <div class="landing-blog-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
-          <!-- Article 1 -->
-          <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <span style="color: #16a34a; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.6rem;">Enterprise AI</span>
-              <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; line-height: 1.35; font-family: var(--font-sans);">Enterprise AI Agents Grounded in Context</h3>
-              <p style="color: #475569; font-size: 0.82rem; line-height: 1.5; margin-bottom: 1.25rem;">
-                Why enterprise AI agents need structured context to deliver zero-hallucination, audit-ready answers — and how meldra.ai's Iceberg-native memory layer makes this possible at scale.
-              </p>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="openPublicArticle(1)" style="align-self: flex-start;">
-              Read Article <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; margin-left: 0.25rem;"></i>
-            </button>
-          </div>
-
-          <!-- Article 2 -->
-          <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <span style="color: #0284c7; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.6rem;">Data Engineering</span>
-              <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; line-height: 1.35; font-family: var(--font-sans);">DuckDB vs Spark for S3 Lakehouses</h3>
-              <p style="color: #475569; font-size: 0.82rem; line-height: 1.5; margin-bottom: 1.25rem;">
-                A comprehensive benchmark of serverless column pushdowns against distributed cluster runtimes for queries scanning under 50GB.
-              </p>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="openPublicArticle(2)" style="align-self: flex-start;">
-              Read Article <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; margin-left: 0.25rem;"></i>
-            </button>
-          </div>
-
-          <!-- Article 3 -->
-          <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <span style="color: #d97706; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.6rem;">Architecture</span>
-              <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; line-height: 1.35; font-family: var(--font-sans);">Zero-Replication Architecture Deep Dive</h3>
-              <p style="color: #475569; font-size: 0.82rem; line-height: 1.5; margin-bottom: 1.25rem;">
-                Why copying tables across environments is a security and financial vulnerability. Map schemas to S3 files dynamically using Iceberg's metadata catalog.
-              </p>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="openPublicArticle(3)" style="align-self: flex-start;">
-              Read Article <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.65rem; margin-left: 0.25rem;"></i>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── RESOURCES & SETUP SECTION ── -->
-      <section class="landing-resources" id="landing-resources-section" style="padding: 5rem 2rem 6rem; max-width: 1100px; margin: 0 auto; border-top: 1px solid #cbd5e1;">
-        <div style="margin-bottom: 4rem; text-align: center;">
-          <h2 style="font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; font-family: var(--font-sans); letter-spacing: -0.02em;">
-            🛠️ How to Create &amp; Configure Your Workspace
-          </h2>
-          <p style="color: #475569; font-size: 0.95rem; max-width: 600px; margin: 0.4rem auto 0; line-height: 1.5;">
-            Follow this step-by-step setup guide to provision a secure, zero-copy analytical pipeline for your database.
-          </p>
-        </div>
-        
-        <div class="landing-resources-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2rem;">
-          
-          <!-- Step 1 -->
-          <div style="position: relative;">
-            <div style="width: 32px; height: 32px; background: #16a34a; color: #fff; border-radius: 50%; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-family: var(--font-sans);">1</div>
-            <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.65rem; font-family: var(--font-sans);">Register &amp; Connect S3</h3>
-            <p style="color: #475569; font-size: 0.85rem; line-height: 1.6;">
-              Sign up for your free workspace, then navigate to <strong>Data Lake Config</strong> in the sidebar. Input your S3 Bucket URI (e.g. <code>s3://my-lakehouse/warehouse</code>) and AWS Role ARN credentials.
-            </p>
-          </div>
-
-          <!-- Step 2 -->
-          <div style="position: relative;">
-            <div style="width: 32px; height: 32px; background: #16a34a; color: #fff; border-radius: 50%; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-family: var(--font-sans);">2</div>
-            <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.65rem; font-family: var(--font-sans);">Configure Ingestion Tables</h3>
-            <p style="color: #475569; font-size: 0.85rem; line-height: 1.6;">
-              Under the <strong>Ingest</strong> tab, select your table sources (CSV uploads, PostgreSQL sync, or HES telemetry). meldra.ai reads the schemas and maps partition layout files on S3.
-            </p>
-          </div>
-
-          <!-- Step 3 -->
-          <div style="position: relative;">
-            <div style="width: 32px; height: 32px; background: #16a34a; color: #fff; border-radius: 50%; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; font-family: var(--font-sans);">3</div>
-            <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.65rem; font-family: var(--font-sans);">Ask AI &amp; Track Progress</h3>
-            <p style="color: #475569; font-size: 0.85rem; line-height: 1.6;">
-              Ask our natural-language AI agent in the <strong>Chat</strong> tab to run S3 queries, detect transaction paths, or evolve table columns. Completed setup milestones are tracked in the <strong>Audit</strong> trail.
-            </p>
-          </div>
-          
-        </div>
-      </section>
-
-      <!-- Footer -->
-      <footer class="landing-footer" style="border-top: 1px solid #cbd5e1; color: #64748b;">
-        <p>Copyright &copy; 2025 meldra.ai Ltd. All rights reserved. meldra.ai Lakehouse and its source code are proprietary.</p>
       </footer>
     </div>
     <!-- ── END LANDING PAGE ── -->
