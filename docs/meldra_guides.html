@@ -482,7 +482,7 @@
     </div>
 
     <section>
-      <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, SuccessFactors, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
+      <p class="lead">meldra takes data that's currently scattered across spreadsheets, SAP, Smart Meter HES, and other systems, and lands it in one place — your own cloud storage — in a format that keeps a full version history, can be validated before it's trusted, and can be queried or asked questions of in plain English. You own the storage. Nothing is locked into a vendor's proprietary database.</p>
     </section>
 
     <section id="hg-jargon">
@@ -496,7 +496,7 @@
         <div class="gterm"><dt>Snapshot / Time Travel</dt><dd>Every change is saved as a snapshot. Time Travel lets you view — or restore — the table exactly as it was earlier, useful for "what did this look like before the bad import."</dd></div>
         <div class="gterm"><dt>Schema Evolution</dt><dd>Adding, removing, or renaming a column without rebuilding the whole table.</dd></div>
         <div class="gterm"><dt>Data Contract</dt><dd>A rule on a table — e.g. "this column can never be empty." Contracts can block bad data from loading at all.</dd></div>
-        <div class="gterm"><dt>Ingestion</dt><dd>Loading data in, from a CSV file or a connected system like SuccessFactors.</dd></div>
+        <div class="gterm"><dt>Ingestion</dt><dd>Loading data in, from a CSV file or a connected system like Smart Meter HES.</dd></div>
         <div class="gterm"><dt>Append / Overwrite / Upsert</dt><dd>Append adds new rows. Overwrite replaces everything. Upsert updates existing rows and adds new ones, matched on a key column.</dd></div>
         <div class="gterm"><dt>RBAC</dt><dd>Rules about who can see what. A Business Analyst might see a vendor table with the bank account column blanked out; an Admin sees everything.</dd></div>
         <div class="gterm"><dt>Column Masking</dt><dd>Redacting a specific column's real values for certain roles, instead of hiding the whole table.</dd></div>
@@ -511,7 +511,7 @@
     <section id="hg-flow" class="wide">
       <h2>How Data Actually Flows</h2>
       <div class="flow">
-        <span class="flow-step">Source (CSV, SuccessFactors)</span>
+        <span class="flow-step">Source (CSV, Smart Meter HES)</span>
         <span class="flow-arrow">→</span>
         <span class="flow-step">Ingest + Data Contracts</span>
         <span class="flow-arrow">→</span>
@@ -543,7 +543,7 @@
       <table>
         <thead><tr><th>Feature</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td>Iceberg ingestion (CSV, SuccessFactors OData)</td><td><span class="badge live">Live</span></td></tr>
+          <tr><td>Iceberg ingestion (CSV, Smart Meter HES OData)</td><td><span class="badge live">Live</span></td></tr>
           <tr><td>Data Quality Contracts (blocking bad loads)</td><td><span class="badge live">Live</span></td></tr>
           <tr><td>Time Travel / snapshots</td><td><span class="badge live">Live</span></td></tr>
           <tr><td>Query Lab — SQL mode</td><td><span class="badge live">Live</span></td></tr>
@@ -582,14 +582,14 @@
     </div>
 
     <section>
-      <p class="lead">Your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
+      <p class="lead">Your SAP, Smart Meter HES, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
     </section>
 
     <section id="bc-fit">
       <h2>Who This Is a Good Fit For</h2>
       <p>meldra fits best if most of the following are true for you:</p>
       <ul>
-        <li>You have data scattered across SAP, SuccessFactors, Salesforce, or plain CSV/Excel exports, with no single place it all lands.</li>
+        <li>You have data scattered across SAP, Smart Meter HES, Salesforce, or plain CSV/Excel exports, with no single place it all lands.</li>
         <li>You don't have — or don't want to hire — a dedicated data engineering team just to stand up a governed data lake.</li>
         <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3), not locked inside a vendor's proprietary storage.</li>
         <li>You need <strong>some</strong> governance — audit trails, column-level masking, contracts that block bad data — but not a full enterprise compliance program on day one.</li>
@@ -627,10 +627,10 @@
       </div>
 
       <div class="usecase">
-        <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— SuccessFactors</span></h4>
+        <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— Smart Meter HES</span></h4>
         <div class="uc-row"><span class="uc-label">Problem</span>Attrition/compensation reporting is compiled manually, with raw PII exported into spreadsheets emailed around.</div>
-        <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real SuccessFactors OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
-        <div class="uc-row"><span class="uc-label">Good fit if</span>you already have SuccessFactors and do this reporting via spreadsheet exports today.</div>
+        <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real Smart Meter HES OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
+        <div class="uc-row"><span class="uc-label">Good fit if</span>you already have Smart Meter HES and do this reporting via spreadsheet exports today.</div>
       </div>
 
       <div class="usecase">

@@ -32,6 +32,36 @@ class TelemetryBlock:
         return asdict(self)
 
 
+def compute_canonical_hash(
+    mpan: str,
+    reading_kwh: float,
+    timestamp: str,
+    prev_hash: str,
+    nonce: int,
+    crypto_suite_id: str,
+    key_id: str
+) -> str:
+    """Calculates canonical SHA-256 block hash using ASCII 0x1F unit separators.
+    
+    PayloadBytes = mpan || 0x1F || reading_kwh (3dp) || 0x1F || timestamp || 0x1F ||
+                   prev_hash || 0x1F || nonce || 0x1F || crypto_suite_id || 0x1F || key_id
+    """
+    formatted_kwh = f"{reading_kwh:.3f}"
+    
+    parts = [
+        mpan.encode('utf-8'),
+        formatted_kwh.encode('utf-8'),
+        timestamp.encode('utf-8'),
+        prev_hash.encode('utf-8'),
+        str(nonce).encode('utf-8'),
+        crypto_suite_id.encode('utf-8'),
+        key_id.encode('utf-8')
+    ]
+    
+    payload_bytes = UNIT_SEPARATOR.join(parts)
+    return hashlib.sha256(payload_bytes).hexdigest()
+
+
 class SmartMeterSimulator:
     """Simulates a physical smart meter edge device with a hardware Secure Element."""
 
@@ -64,25 +94,16 @@ class SmartMeterSimulator:
         crypto_suite_id: str,
         key_id: str
     ) -> str:
-        """Calculates canonical SHA-256 block hash using ASCII 0x1F unit separators.
-        
-        PayloadBytes = mpan || 0x1F || reading_kwh (3dp) || 0x1F || timestamp || 0x1F ||
-                       prev_hash || 0x1F || nonce || 0x1F || crypto_suite_id || 0x1F || key_id
-        """
-        formatted_kwh = f"{reading_kwh:.3f}"
-        
-        parts = [
-            mpan.encode('utf-8'),
-            formatted_kwh.encode('utf-8'),
-            timestamp.encode('utf-8'),
-            prev_hash.encode('utf-8'),
-            str(nonce).encode('utf-8'),
-            crypto_suite_id.encode('utf-8'),
-            key_id.encode('utf-8')
-        ]
-        
-        payload_bytes = UNIT_SEPARATOR.join(parts)
-        return hashlib.sha256(payload_bytes).hexdigest()
+        """Delegates to top-level compute_canonical_hash function."""
+        return compute_canonical_hash(
+            mpan=mpan,
+            reading_kwh=reading_kwh,
+            timestamp=timestamp,
+            prev_hash=prev_hash,
+            nonce=nonce,
+            crypto_suite_id=crypto_suite_id,
+            key_id=key_id
+        )
 
     def generate_block(self, reading_kwh: float, timestamp_iso: str = None) -> TelemetryBlock:
         """Increments monotonic nonce, computes canonical hash, and signs in Secure Element."""

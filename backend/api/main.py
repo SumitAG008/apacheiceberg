@@ -397,29 +397,27 @@ class IngestRequest(BaseModel):
     write_mode: Optional[str] = "append" # "append", "overwrite", "upsert"
     merge_key: Optional[str] = None
 
-class SuccessFactorsRequest(BaseModel):
-    # Connection
-    sf_endpoint: str          # e.g. https://api4.successfactors.com
-    company_id: str           # e.g. ACME_CORP
-    # Auth
+class SmartMeterHesRequest(BaseModel):
+    sf_endpoint: str          # e.g. https://hes-gateway.utility.internal
+    company_id: str           # e.g. DNO_TENANT_01
     auth_type: str            # "basic" or "oauth2"
-    username: Optional[str] = None      # Basic auth
-    password: Optional[str] = None      # Basic auth
-    client_id: Optional[str] = None     # OAuth2
-    client_secret: Optional[str] = None # OAuth2
-    token_url: Optional[str] = None     # OAuth2 token endpoint override
-    # Entity & target
-    entity_name: str          # e.g. PerPersonal, EmpJob, EmpCompensation
-    top: Optional[int] = 1000 # OData $top (max records per page)
-    select_fields: Optional[List[str]] = None  # OData $select -- specific
-                               # properties to pull instead of every field
-                               # the entity defines (some entities, e.g.
-                               # User, have 100+ properties)
+    username: Optional[str] = None
+    password: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    token_url: Optional[str] = None
+    entity_name: str          # e.g. IntervalReadings, UsagePoints, MeterEvents
+    top: Optional[int] = 1000
+    select_fields: Optional[List[str]] = None
     namespace: str = "default"
     table_name: str
     write_mode: Optional[str] = "overwrite"
 
-class SuccessFactorsTestRequest(BaseModel):
+# Backwards compatibility alias
+SuccessFactorsRequest = SmartMeterHesRequest
+
+
+class SmartMeterHesTestRequest(BaseModel):
     sf_endpoint: str
     company_id: str
     auth_type: str
@@ -428,6 +426,9 @@ class SuccessFactorsTestRequest(BaseModel):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     token_url: Optional[str] = None
+
+# Backwards compatibility alias
+SuccessFactorsTestRequest = SmartMeterHesTestRequest
 
 class CypherRequest(BaseModel):
     graph_name: str

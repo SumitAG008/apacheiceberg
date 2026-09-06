@@ -5,7 +5,7 @@ and Apache Iceberg lakehouses.
 """
 
 from .route_mutator import RouteMutator
-from .meter import SmartMeterSimulator, TelemetryBlock
+from .meter import SmartMeterSimulator, TelemetryBlock, compute_canonical_hash
 from .gateway import ETPGateway, MemoryNonceStore
 from .phantom_grid import PhantomGridHoneypot
 from .writer import MicroBatchWriter
@@ -18,6 +18,7 @@ __all__ = [
     "RouteMutator",
     "SmartMeterSimulator",
     "TelemetryBlock",
+    "compute_canonical_hash",
     "ETPGateway",
     "MemoryNonceStore",
     "PhantomGridHoneypot",

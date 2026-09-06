@@ -4878,7 +4878,7 @@ const catalogGlossaryRegistry: Record<string, {
     certified: true,
     lineage: {
       srcType: 'OData Source',
-      srcName: 'SuccessFactors',
+      srcName: 'Smart Meter HES',
       bronze: 'bronze.vendors_raw',
       silver: 'silver.vendors_clean',
       gold: 'gold.vendors',
@@ -4903,7 +4903,7 @@ const catalogGlossaryRegistry: Record<string, {
     certified: true,
     lineage: {
       srcType: 'OData Source',
-      srcName: 'SuccessFactors',
+      srcName: 'Smart Meter HES',
       bronze: 'bronze.sf_employees',
       silver: 'silver.employee',
       gold: 'gold.headcount_mart',
@@ -4926,7 +4926,7 @@ const catalogGlossaryRegistry: Record<string, {
     certified: true,
     lineage: {
       srcType: 'OData Source',
-      srcName: 'SuccessFactors',
+      srcName: 'Smart Meter HES',
       bronze: 'bronze.sf_employees',
       silver: 'silver.employees',
       gold: 'gold.headcount_mart',
@@ -4949,7 +4949,7 @@ const catalogGlossaryRegistry: Record<string, {
     certified: false,
     lineage: {
       srcType: 'REST API',
-      srcName: 'SuccessFactors',
+      srcName: 'Smart Meter HES',
       bronze: 'bronze.sf_employees',
       silver: 'silver.employees',
       gold: 'gold.headcount_mart',
@@ -6504,7 +6504,7 @@ const CONNECTORS: Record<string, ConnectorDef> = {
   successfactors: {
     // No hardcoded entity list -- Test Connection discovers the real ones
     // from this tenant's own OData $metadata (see dynamicEntities below).
-    name: "SAP SuccessFactors", desc:"Employee central, comp", color:"#0a6ed1", initials:"SF",
+    name: "AMI Smart Meter HES", desc:"Telemetry, readings & MTD", color:"#0a6ed1", initials:"AMI",
     entities: [],
     methods: {
       oauth_saml: {

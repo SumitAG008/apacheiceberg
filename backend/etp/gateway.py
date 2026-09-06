@@ -12,35 +12,59 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 
 from .route_mutator import RouteMutator
-from .meter import TelemetryBlock, UNIT_SEPARATOR, SmartMeterSimulator
+from .meter import TelemetryBlock, UNIT_SEPARATOR, compute_canonical_hash
 from .phantom_grid import PhantomGridHoneypot
 from .security import ETPSecurityManager
 
 
+import threading
+import warnings
+
 class MemoryNonceStore:
-    """In-memory atomic Check-And-Set (CAS) nonce store (simulating Redis/Valkey Lua script)."""
+    """In-memory atomic nonce store with separate non-committal check and commit operations."""
 
     def __init__(self):
         # mpan -> {"last_nonce": int, "last_hash": str, "updated_at": str}
         self._store: Dict[str, Dict[str, Any]] = {}
+        self._lock = threading.Lock()
 
-    def atomic_cas(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
-        """Atomic Compare-And-Swap.
-        Returns: (status: 1=ACCEPT/0=REPLAY, last_nonce: int, message: str)
+    def check_only(self, mpan: str, incoming_nonce: int) -> Tuple[int, int, str]:
+        """Non-committal replay check. NEVER mutates state.
+        Returns: (status: 1=OK / 0=REPLAY, last_nonce: int, message: str)
         """
         record = self._store.get(mpan)
         if record is not None:
             last_nonce = record["last_nonce"]
             if incoming_nonce <= last_nonce:
                 return 0, last_nonce, "REPLAY_REJECTED"
-        
-        # Accept & update state
-        self._store[mpan] = {
-            "last_nonce": incoming_nonce,
-            "last_hash": incoming_hash,
-            "updated_at": timestamp
-        }
-        return 1, incoming_nonce, "ACCEPT"
+            return 1, last_nonce, "OK"
+        return 1, -1, "OK"
+
+    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
+        """Advance counter for a FULLY VERIFIED block under thread lock."""
+        with self._lock:
+            record = self._store.get(mpan)
+            if record is not None and incoming_nonce <= record["last_nonce"]:
+                return 0, record["last_nonce"], "REPLAY_REJECTED"
+            self._store[mpan] = {
+                "last_nonce": incoming_nonce,
+                "last_hash": incoming_hash,
+                "updated_at": timestamp,
+            }
+            return 1, incoming_nonce, "ACCEPT"
+
+    def atomic_cas(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
+        """DEPRECATED — check-and-commit in one step."""
+        warnings.warn(
+            "atomic_cas() commits before verification (ETP-2026-001); "
+            "use check_only() then commit()",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        status, last, msg = self.check_only(mpan, incoming_nonce)
+        if status == 0:
+            return status, last, msg
+        return self.commit(mpan, incoming_nonce, incoming_hash, timestamp)
 
     def get_last_hash(self, mpan: str) -> Optional[str]:
         record = self._store.get(mpan)
@@ -114,16 +138,8 @@ class ETPGateway:
         except Exception as e:
             return 400, {"status": "error", "message": f"Malformed block schema: {str(e)}"}
 
-        # Capture expected previous hash before atomic CAS updates the store
-        expected_prev_hash = self.nonce_store.get_last_hash(block.mpan)
-
-        # 3. Fast Nonce CAS Check (Executed BEFORE expensive ECDSA math for DoS resistance)
-        cas_status, last_nonce, cas_msg = self.nonce_store.atomic_cas(
-            mpan=block.mpan,
-            incoming_nonce=block.nonce,
-            incoming_hash=block.block_hash,
-            timestamp=block.timestamp
-        )
+        # 3. Fast Nonce Check (PEEK only, zero state mutation before ECDSA verification)
+        cas_status, last_nonce, cas_msg = self.nonce_store.check_only(block.mpan, block.nonce)
         if cas_status == 0:
             self.audit_log.append({
                 "action": "telemetry.replay_rejected",
@@ -134,9 +150,8 @@ class ETPGateway:
             })
             return 401, {"status": "rejected", "reason": "REPLAY_REJECTED"}
 
-        # 4. Hash Recomputation Check
-        simulator_stub = SmartMeterSimulator(mpan=block.mpan)
-        recomputed_hash = simulator_stub.compute_canonical_hash(
+        # 4. Canonical Hash Recomputation Check (using standalone module function, zero keygen cost)
+        recomputed_hash = compute_canonical_hash(
             mpan=block.mpan,
             reading_kwh=block.reading_kwh,
             timestamp=block.timestamp,
@@ -164,9 +179,27 @@ class ETPGateway:
             return 401, {"status": "rejected", "reason": "SIGNATURE_INVALID"}
 
         # 6. Chain Link Check (VERIFIED vs CHAIN_GAP)
+        expected_prev_hash = self.nonce_store.get_last_hash(block.mpan)
         verify_status = "VERIFIED"
         if expected_prev_hash is not None and block.prev_hash != expected_prev_hash:
             verify_status = "CHAIN_GAP"
+
+        # 7. State Commit (Only NOW after signature + hash verification pass!)
+        commit_status, committed_last, _ = self.nonce_store.commit(
+            mpan=block.mpan,
+            incoming_nonce=block.nonce,
+            incoming_hash=block.block_hash,
+            timestamp=block.timestamp
+        )
+        if commit_status == 0:
+            self.audit_log.append({
+                "action": "telemetry.replay_rejected",
+                "mpan": block.mpan,
+                "submitted_nonce": block.nonce,
+                "last_nonce": committed_last,
+                "outcome": "REPLAY_REJECTED_ON_COMMIT",
+            })
+            return 401, {"status": "rejected", "reason": "REPLAY_REJECTED"}
 
         self.audit_log.append({
             "action": "telemetry.ingest",

@@ -5,22 +5,49 @@ Phantom Grid Deception, Merkle Tree Domain Separation, Verification-Aware Querie
 AES-256-GCM Encryption, and IEC CIM Profile Exporter.
 """
 
+import sys
 import time
+from pathlib import Path
+
+# Enable running tests from workspace root or backend/ directory
+root_dir = Path(__file__).resolve().parent.parent.parent
+backend_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
 import pytest
-from backend.etp import (
-    RouteMutator,
-    SmartMeterSimulator,
-    TelemetryBlock,
-    ETPGateway,
-    MemoryNonceStore,
-    PhantomGridHoneypot,
-    MicroBatchWriter,
-    MerkleCheckpointer,
-    canonical_merkle_root,
-    ETPVerifier,
-    ETPSecurityManager,
-    CIMProfileExporter
-)
+try:
+    from backend.etp import (
+        RouteMutator,
+        SmartMeterSimulator,
+        TelemetryBlock,
+        ETPGateway,
+        MemoryNonceStore,
+        PhantomGridHoneypot,
+        MicroBatchWriter,
+        MerkleCheckpointer,
+        canonical_merkle_root,
+        ETPVerifier,
+        ETPSecurityManager,
+        CIMProfileExporter
+    )
+except ImportError:
+    from etp import (
+        RouteMutator,
+        SmartMeterSimulator,
+        TelemetryBlock,
+        ETPGateway,
+        MemoryNonceStore,
+        PhantomGridHoneypot,
+        MicroBatchWriter,
+        MerkleCheckpointer,
+        canonical_merkle_root,
+        ETPVerifier,
+        ETPSecurityManager,
+        CIMProfileExporter
+    )
 
 
 @pytest.fixture
@@ -123,6 +150,33 @@ def test_t1_t4_t5_gateway_ingestion(gateway, meter, mutator):
     code_tamper, res_tamper = gateway.process_request(current_route, tampered_dict, now)
     assert code_tamper == 401
     assert res_tamper["reason"] == "TAMPER_REJECTED"
+
+
+def test_poisoned_nonce_dos_protection(gateway, meter, mutator):
+    """Verifies that an unverified packet with an extreme nonce does NOT poison the store (DoS Protection)."""
+    now = int(time.time())
+    gateway.register_meter_public_key(meter.mpan, meter.public_key)
+    routes = mutator.active_routes(now)
+    current_route = routes["current"]
+
+    # 1. Attacker sends tampered block with giant poisoned nonce = 9223372036854775807
+    attacker_block = meter.generate_block(0.412)
+    poisoned_dict = attacker_block.to_dict()
+    poisoned_dict["nonce"] = 9223372036854775807
+    poisoned_dict["reading_kwh"] = 888.888  # Invalid hash signature!
+
+    code_attack, res_attack = gateway.process_request(current_route, poisoned_dict, now)
+    assert code_attack == 401
+    assert res_attack["reason"] in ("TAMPER_REJECTED", "SIGNATURE_INVALID")
+
+    # 2. Legitimate meter sends next normal block with sequential nonce
+    legit_block = meter.generate_block(0.415)
+    code_legit, res_legit = gateway.process_request(current_route, legit_block.to_dict(), now)
+
+    # MUST be accepted! Store was NOT poisoned by unverified attack packet!
+    assert code_legit == 200
+    assert res_legit["status"] == "accepted"
+    assert res_legit["verify_status"] == "VERIFIED"
 
 
 def test_t8_t9_phantom_grid_deception(gateway, meter):
