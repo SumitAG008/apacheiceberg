@@ -4,7 +4,7 @@
  * Covers:
  *  ✅ Ingest tab renders correctly
  *  ✅ Upload drop zone is visible
- *  ✅ Sample data buttons are shown (Employees, Orders, Web Traffic)
+ *  ✅ Sample data buttons are shown (Smart Meter, Orders, Web Traffic)
  *  ✅ Schema configuration panel is on the right
  *  ✅ Namespace field defaults to "default"
  *  ✅ Target Table Name field is editable
@@ -22,12 +22,12 @@ const BASE_URL = process.env.BASE_URL || 'https://zerocopy.meldra.ai';
 function makeTempCsv(): string {
   const tmpPath = path.join(process.cwd(), 'tmp_test_upload.csv');
   const csvContent = [
-    'employee_id,name,department,salary,hire_date',
-    '1,Alice Johnson,Engineering,95000,2021-03-15',
-    '2,Bob Smith,Marketing,72000,2020-08-01',
-    '3,Carol Davis,HR,68000,2022-01-10',
-    '4,David Wilson,Engineering,105000,2019-06-20',
-    '5,Eve Brown,Finance,88000,2021-11-05',
+    'meter_id,kw_active,kvar_reactive,voltage,timestamp',
+    'MTR-1001,4.82,0.61,230.4,2026-09-06T12:00:00Z',
+    'MTR-1002,3.15,0.42,229.8,2026-09-06T12:00:00Z',
+    'MTR-1003,5.90,0.88,231.2,2026-09-06T12:00:00Z',
+    'MTR-1004,0.00,0.00,0.0,2026-09-06T12:00:00Z',
+    'MTR-1005,2.74,0.31,230.1,2026-09-06T12:00:00Z',
   ].join('\n');
   fs.writeFileSync(tmpPath, csvContent);
   return tmpPath;
@@ -72,7 +72,7 @@ test.describe('Ingest Tab', () => {
 
   test('sample data buttons are visible', async ({ page }) => {
     await goToIngest(page);
-    await expect(page.getByRole('button', { name: /Employees/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Smart Meter/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Orders/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Web Traffic/i })).toBeVisible();
   });
@@ -98,7 +98,7 @@ test.describe('Ingest Tab', () => {
 
   test('Target Table Name field is visible and editable', async ({ page }) => {
     await goToIngest(page);
-    const tableNameInput = page.locator('input[placeholder*="employees"], input[id*="table"]').first();
+    const tableNameInput = page.locator('input[placeholder*="smartmeter"], input[placeholder*="table"], input[id*="table"]').first();
     await expect(tableNameInput).toBeVisible();
     await tableNameInput.click();
     await tableNameInput.fill('test_regression_table');
@@ -132,16 +132,16 @@ test.describe('Ingest Tab', () => {
       // The preview table should have our column headers
       const previewTable = page.locator('#csv-preview-table, .preview-table').first();
       await expect(previewTable).toBeVisible();
-      await expect(previewTable).toContainText('employee_id');
-      await expect(previewTable).toContainText('name');
+      await expect(previewTable).toContainText('meter_id');
+      await expect(previewTable).toContainText('kw_active');
     } finally {
       fs.unlinkSync(csvPath);
     }
   });
 
-  test('clicking "Employees" sample loads sample data', async ({ page }) => {
+  test('clicking "Smart Meter" sample loads sample data', async ({ page }) => {
     await goToIngest(page);
-    await page.getByRole('button', { name: /Employees/i }).click();
+    await page.getByRole('button', { name: /Smart Meter/i }).click();
 
     // Should show a preview or upload status
     const uploadStatus = page.locator('#upload-status');

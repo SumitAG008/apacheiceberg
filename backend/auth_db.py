@@ -156,8 +156,8 @@ def init_auth_schema():
         cur.execute("SELECT count(*) FROM auth.rbac_policies;")
         if cur.fetchone()["count"] == 0:
             default_policies = [
-                ('Business Analyst', 'default', 'sap_hr_data', 'performance_rating', 'mask', '***'),
-                ('Business Analyst', 'default', 'sap_hr_data', 'projects_count', 'mask', '***'),
+                ('Business Analyst', 'default', 'meter_readings', 'meter_mac_address', 'mask', 'MAC-***'),
+                ('Business Analyst', 'default', 'meter_readings', 'customer_account_id', 'mask', 'ACCT-***'),
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'bank_account', 'mask', 'BANK-***'),
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'tax_id', 'mask', 'XX-***'),
                 ('Business Analyst', 'default', 'vendors_10k_50col', 'routing_number', 'mask', 'ROUT-***'),

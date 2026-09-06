@@ -406,7 +406,7 @@ class IngestRequest(BaseModel):
     merge_key: Optional[str] = None
 
 class SmartMeterHesRequest(BaseModel):
-    sf_endpoint: str          # e.g. https://hes-gateway.utility.internal
+    hes_endpoint: str         # e.g. https://hes-gateway.utility.internal
     company_id: str           # e.g. DNO_TENANT_01
     auth_type: str            # "basic" or "oauth2"
     username: Optional[str] = None
@@ -421,12 +421,9 @@ class SmartMeterHesRequest(BaseModel):
     table_name: str
     write_mode: Optional[str] = "overwrite"
 
-# Backwards compatibility alias
-SuccessFactorsRequest = SmartMeterHesRequest
-
 
 class SmartMeterHesTestRequest(BaseModel):
-    sf_endpoint: str
+    hes_endpoint: str
     company_id: str
     auth_type: str
     username: Optional[str] = None
@@ -434,9 +431,6 @@ class SmartMeterHesTestRequest(BaseModel):
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     token_url: Optional[str] = None
-
-# Backwards compatibility alias
-SuccessFactorsTestRequest = SmartMeterHesTestRequest
 
 class CypherRequest(BaseModel):
     graph_name: str
@@ -1346,31 +1340,25 @@ async def update_aws_config(
     return {"status": "success", "message": "AWS config updated successfully."}
 
 
-@app.post("/v1/connectors/successfactors/test", tags=["Ingestion"])
-async def test_successfactors_connection(
-    payload: SuccessFactorsTestRequest,
+@app.post("/v1/connectors/hes/test", tags=["Ingestion"])
+async def test_hes_connection(
+    payload: SmartMeterHesTestRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Real connection test for the Enterprise Connector wizard's SuccessFactors
-    "Test Connection" button -- it used to just be a 1-second setTimeout that
-    always reported success regardless of whether the credentials worked.
-
-    Fetches the tenant's own OData v2 $metadata (EDMX/CSDL XML) and returns
-    every EntityType it defines, so the "Target Object / Entity" dropdown
-    reflects what this specific SuccessFactors instance actually supports
-    instead of a hardcoded 4-item example list.
+    Real connection test for the Smart Meter HES Connector wizard's "Test Connection" button.
+    Fetches the tenant's own OData $metadata (EDMX/CSDL XML) and returns every EntityType it defines,
+    so the "Target Object / Entity" dropdown reflects what this specific HES instance actually supports.
 
     Also returns each entity's real Property names (entity_fields), so the
-    UI can offer a field-level checklist -- e.g. the User entity alone can
-    define 100+ properties, and most integrations only need a handful --
+    UI can offer a field-level checklist -- e.g. the MeterReadings entity --
     without a second round-trip, since $metadata already contains them all.
     """
     import time
     import requests
     import xml.etree.ElementTree as ET
 
-    base_url = payload.sf_endpoint.rstrip("/")
+    base_url = payload.hes_endpoint.rstrip("/")
 
     session = requests.Session()
     if payload.auth_type == "basic":
@@ -1412,11 +1400,7 @@ async def test_successfactors_connection(
     except ET.ParseError as e:
         raise HTTPException(status_code=502, detail=f"$metadata response wasn't valid XML: {e}")
 
-    # Namespace-agnostic: SF's EDMX namespace URI has changed across OData
-    # versions, so match on local tag name rather than a hardcoded namespace.
-    # Property elements are direct children of their EntityType in the EDM,
-    # so a plain child scan (not another full-tree .iter()) keeps each field
-    # correctly attributed to the entity that actually defines it.
+    # Namespace-agnostic: match on local tag name rather than a hardcoded namespace.
     entity_fields: Dict[str, List[str]] = {}
     for el in root.iter():
         if el.tag.rsplit("}", 1)[-1] == "EntityType" and "Name" in el.attrib:
@@ -1441,14 +1425,14 @@ async def test_successfactors_connection(
     }
 
 
-@app.post("/v1/ingest/successfactors", tags=["Ingestion"])
-async def ingest_successfactors(
-    payload: SuccessFactorsRequest,
+@app.post("/v1/ingest/hes", tags=["Ingestion"])
+async def ingest_hes(
+    payload: SmartMeterHesRequest,
     user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Fetch data from SAP SuccessFactors OData API and ingest into the Iceberg lakehouse.
-    Supports Basic Auth (username/password) and OAuth2 Client Credentials flow.
+    Fetch data from Smart Meter HES OData API and ingest into the Iceberg lakehouse.
+    Supports Basic Auth and OAuth2 Client Credentials flow.
     Handles OData pagination ($skiptoken / @odata.nextLink) automatically.
     """
     if user.get("role", "Business Analyst") not in CAN_INGEST:
@@ -1463,7 +1447,7 @@ async def ingest_successfactors(
     from catalog_setup import get_catalog
     from tools import create_iceberg_table
 
-    base_url = payload.sf_endpoint.rstrip("/")
+    base_url = payload.hes_endpoint.rstrip("/")
     company_id = payload.company_id
     entity = payload.entity_name
 
@@ -1476,8 +1460,8 @@ async def ingest_successfactors(
         if not payload.username or not payload.password:
             raise HTTPException(status_code=400,
                 detail="username and password are required for Basic auth")
-        sf_user = f"{payload.username}@{company_id}"
-        session.auth = (sf_user, payload.password)
+        hes_user = f"{payload.username}@{company_id}"
+        session.auth = (hes_user, payload.password)
 
     elif payload.auth_type == "oauth2":
         if not payload.client_id or not payload.client_secret:
@@ -1533,7 +1517,7 @@ async def ingest_successfactors(
             odata_url = next_link if isinstance(next_link, str) else None
 
     except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"SuccessFactors API error: {e}")
+        raise HTTPException(status_code=502, detail=f"HES API error: {e}")
 
     if not records:
         raise HTTPException(status_code=404,
@@ -1602,15 +1586,15 @@ async def ingest_successfactors(
     log_audit(
         user_id=user.get("sub", "unknown"),
         tier=user.get("tier", "trial"),
-        action="sf_ingest",
-        details=(f"SuccessFactors {entity} → {payload.namespace}.{payload.table_name}: "
+        action="hes_ingest",
+        details=(f"Smart Meter HES {entity} → {payload.namespace}.{payload.table_name}: "
                  f"{len(records)} rows via {payload.auth_type}"),
         status="success"
     )
 
     return {
         "status": "success",
-        "message": (f"Successfully ingested {len(records):,} records from SF entity '{entity}' "
+        "message": (f"Successfully ingested {len(records):,} records from HES entity '{entity}' "
                      f"into {payload.namespace}.{payload.table_name}"),
         "rows_ingested": len(records),
         "columns": len(schema_json),

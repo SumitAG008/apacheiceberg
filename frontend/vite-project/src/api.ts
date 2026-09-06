@@ -330,24 +330,24 @@ export const api = {
     return res.json();
   },
 
-  // ── Ingestion: SuccessFactors OData connector ──────────────────────────
-  async triggerSFIngest(payload: Record<string, any>): Promise<any> {
-    const res = await authFetch(`${BASE_URL}/v1/ingest/successfactors`, {
+  // ── Ingestion: Smart Meter HES OData connector ──────────────────────────
+  async triggerHesIngest(payload: Record<string, any>): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/v1/ingest/hes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.detail || err.error || 'SuccessFactors ingest failed');
+      throw new Error(err.detail || err.error || 'Smart Meter HES ingest failed');
     }
     return res.json();
   },
 
-  // Real connection test: fetches the tenant's own OData $metadata and
+  // Real connection test: fetches the tenant's own HES $metadata and
   // returns every entity it actually defines (not a hardcoded example list).
-  async testSFConnection(payload: Record<string, any>): Promise<{ connected: boolean; latency_ms: number; entity_count: number; entities: string[]; entity_fields: Record<string, string[]> }> {
-    const res = await authFetch(`${BASE_URL}/v1/connectors/successfactors/test`, {
+  async testHesConnection(payload: Record<string, any>): Promise<{ connected: boolean; latency_ms: number; entity_count: number; entities: string[]; entity_fields: Record<string, string[]> }> {
+    const res = await authFetch(`${BASE_URL}/v1/connectors/hes/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -357,6 +357,10 @@ export const api = {
       throw new Error(err.detail || err.error || 'Connection test failed');
     }
     return res.json();
+  },
+
+  async testSFConnection(payload: Record<string, any>): Promise<any> {
+    return this.testHesConnection(payload);
   },
 
   // ── Ingestion: 2. Create + Ingest ─────────────────────────────────────

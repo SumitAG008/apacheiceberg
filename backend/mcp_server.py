@@ -28,7 +28,7 @@ Setup:
              }
            }
 
-External systems (SAP, Snowflake, Salesforce, Oracle, IAM, fraud, etc.)
+External systems (SCADA DMS, Landis+Gyr MDM, Itron HES, etc.)
 are intentionally not represented here — meldra doesn't have real
 connections to those systems yet. Those become their own MCP servers as
 they're actually built, not stand-ins in this one.
@@ -126,7 +126,7 @@ def query_table(sql: str, namespace: str = "default", limit: int = 500) -> dict:
 
 
 @mcp.tool()
-def graph_stats(graph_name: str = "pharma_graph") -> dict:
+def graph_stats(graph_name: str = "grid_topology_graph") -> dict:
     """Get node/edge counts for a graph in the graph store.
 
     Args:

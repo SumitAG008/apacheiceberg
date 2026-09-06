@@ -1863,13 +1863,13 @@
             </div>
             <h3 style="font-size: 1.45rem; font-weight: 800; color:#fff; margin:0 0 1rem 0;">Lakehouse Architecture Foundations</h3>
             <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.88rem; line-height:1.6; color:#cbd5e1;">
-              <p>Traditional architectures replicate enterprise transactional data (e.g. SAP ERP accounts) across several stages (Raw landing ➔ Stage ➔ Core warehouse ➔ Data marts). This results in massive cloud compute charges (the Spark Tax) and security vulnerabilities due to scattered copies.</p>
+              <p>Traditional architectures replicate enterprise telemetry across several stages (Raw landing ➔ Stage ➔ Core warehouse ➔ Data marts). This results in massive cloud compute charges (the Spark Tax) and security vulnerabilities due to scattered copies.</p>
               <p><strong>meldra.py Zero-Copy Strategy</strong>: Ingest raw CSV, API feeds, or database logs directly to open Apache Iceberg tables stored on your own S3/GCS. Queries run serverless in DuckDB or PyIceberg, keeping the storage completely decentralized and zero-copy.</p>
               <div style="background: rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:1rem; font-family:monospace; color:#bef264;">
                 # Concept: metadata-only reads
                 import pyiceberg.catalog
                 catalog = pyiceberg.catalog.load_catalog("local")
-                table = catalog.load_table("default.employees")
+                table = catalog.load_table("default.smartmeter_readings")
               </div>
             </div>
           </div>
@@ -2674,7 +2674,7 @@
 
               <!-- Step 2 Card: Authenticate -->
               <div class="stat-card" id="conn-auth-card" style="padding: 1.5rem; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
-                <h3 style="margin:0; font-size: 0.95rem; color: var(--text-main);" id="conn-auth-title">Workday HR Authentication</h3>
+                <h3 style="margin:0; font-size: 0.95rem; color: var(--text-main);" id="conn-auth-title">AMI Smart Meter HES Authentication</h3>
                 <p style="margin:0; font-size: 0.72rem; color: var(--text-muted);">Credentials are stored encrypted in the lakehouse key vault and never shown again.</p>
                 
                 <div class="auth-methods-row" id="conn-auth-methods-container">
@@ -2713,7 +2713,7 @@
                   </div>
                   <div class="field">
                     <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Table Name</label>
-                    <input type="text" id="conn-table-name" class="input-field" placeholder="e.g. workday_workers" style="padding:0.4rem; font-size:0.8rem;">
+                    <input type="text" id="conn-table-name" class="input-field" placeholder="e.g. smartmeter_readings" style="padding:0.4rem; font-size:0.8rem;">
                   </div>
                   <div class="field" style="grid-column: span 2;">
                     <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Write Mode</label>
@@ -2757,23 +2757,23 @@
             <div id="p-sample" class="panel-ingest">
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem;">
                 
-                <!-- Card 1: Employees -->
+                <!-- Card 1: Smart Meter Readings -->
                 <div class="stat-card" style="padding: 1.5rem; text-align: left; align-items: stretch; display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-surface);">
                   <div style="display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
-                    <span class="logo-icon" style="background:#0875e1; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">HR</span>
+                    <span class="logo-icon" style="background:#0875e1; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; font-weight: 700;">AMI</span>
                     <div>
-                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Employee Directory</h4>
-                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">1,000 rows · 8 columns</p>
+                      <h4 style="margin:0; font-size: 0.95rem; color: var(--text-main);">Smart Meter Readings</h4>
+                      <p style="margin:0; font-size: 0.7rem; color: var(--text-muted);">10,000 rows · 6 columns</p>
                     </div>
                   </div>
                   <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; flex-grow: 1;">
-                    HR Master Data including employee ID, full name, department, title, salary, hire date, and manager relationships. Perfect for testing aggregations and organizational graphs.
+                    Conformed AMI interval telemetry including meter ID, active power (kW), reactive power (kVAR), voltage (V), timestamp, and grid status. Perfect for testing load profiling and feeder capacity graphs.
                   </p>
                   <div style="font-size: 0.68rem; color: var(--text-muted); background: var(--bg-surface2); padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-subtle);">
-                    <strong>Fields:</strong> emp_id, name, dept, title, salary, hire_date, email, manager_id
+                    <strong>Fields:</strong> meter_id, kw_active, kvar_reactive, voltage, timestamp, status
                   </div>
-                  <button class="btn btn-primary btn-block" id="btn-sample-employees" style="margin-top: 0.5rem;">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Employees Dataset
+                  <button class="btn btn-primary btn-block" id="btn-sample-smartmeter" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Load Smart Meter Dataset
                   </button>
                 </div>
 
@@ -2863,22 +2863,22 @@
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
                     <div>
                       <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Iceberg Table</label>
-                      <input type="text" id="proj-table" class="input-field" placeholder="sap_hr_data" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                      <input type="text" id="proj-table" class="input-field" placeholder="smartmeter_readings" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
                     </div>
                     <div>
                       <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Edge Label</label>
-                      <input type="text" id="proj-edge" class="input-field" placeholder="REPORTS_TO" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                      <input type="text" id="proj-edge" class="input-field" placeholder="FED_BY" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
                     </div>
                   </div>
 
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
                     <div>
                       <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Source Column (From)</label>
-                      <input type="text" id="proj-source" class="input-field" placeholder="name" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                      <input type="text" id="proj-source" class="input-field" placeholder="meter_id" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
                     </div>
                     <div>
                       <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Target Column (To)</label>
-                      <input type="text" id="proj-target" class="input-field" placeholder="manager" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
+                      <input type="text" id="proj-target" class="input-field" placeholder="feeder_id" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; width: 100%;">
                     </div>
                   </div>
 
@@ -3000,15 +3000,15 @@
 catalog = meldra.MeldraCatalog()
 
 # 1. Read S3 Parquet tables without copy
-arrow_table = catalog.run_time_travel_scan("default", "employees_sample")
+arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
 df = arrow_table.to_pandas()
 
 # 2. Perform manipulations (deduplicate and filter)
-clean_df = df.dropna(subset=["salary"])
+clean_df = df.dropna(subset=["kw_active"])
 print(f"[sandbox] Cleaned data shape: {clean_df.shape}")
 
 # 3. Save to database lakehouse properties
-catalog.optimize_table("default", "employees_sample")</textarea>
+catalog.optimize_table("default", "smartmeter_readings_sample")</textarea>
 
                   <div style="width: 100%;">
                     <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Console logs output</div>
@@ -3045,7 +3045,7 @@ def run_meldra_compaction():
     from meldra import MeldraCatalog
     catalog = MeldraCatalog()
     # Optimize small files into manifest clusters on S3
-    catalog.optimize_table("default", "employees_sample")
+    catalog.optimize_table("default", "smartmeter_readings_sample")
 
 with DAG(
     'meldra_lakehouse_compaction_dag',

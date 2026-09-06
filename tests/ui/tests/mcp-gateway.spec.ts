@@ -53,9 +53,9 @@ test.describe('MCP Gateway Tab', () => {
     await expect(page.getByText('PORT 8001')).toBeVisible();
   });
 
-  test('SAP BAPI & RFC server is listed', async ({ page }) => {
+  test('ETP Telemetry Gateway server is listed', async ({ page }) => {
     await goToMCP(page);
-    await expect(page.getByText('SAP BAPI & RFC')).toBeVisible();
+    await expect(page.getByText('ETP Telemetry Gateway')).toBeVisible();
   });
 
   test('Snowflake Zero-Copy server is listed', async ({ page }) => {

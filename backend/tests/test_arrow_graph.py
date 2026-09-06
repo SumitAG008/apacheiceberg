@@ -86,17 +86,17 @@ def test_graph_projection_endpoint(test_admin):
     
     payload = {
         "namespace": "default",
-        "table_name": "sap_hr_data",
-        "source_col": "name",
-        "target_col": "manager",
-        "edge_label": "REPORTS_TO",
-        "graph_name": "test_org_graph"
+        "table_name": "meter_readings",
+        "source_col": "meter_id",
+        "target_col": "feeder_id",
+        "edge_label": "FED_BY",
+        "graph_name": "grid_topology_graph"
     }
     
     # Send post request to project table
     res = client.post("/v1/graph/project", json=payload, headers=headers)
     
-    # If sap_hr_data table is not preloaded in catalog, it will return 500 NoSuchTableError,
+    # If meter_readings table is not preloaded in catalog, it will return 500 NoSuchTableError,
     # which proves that it attempted to load the table from the Iceberg catalog!
     # Let's verify it gets handled (either successful project or NoSuchTableError, not a 404/405/422).
     print(f"\n[TEST] Status code: {res.status_code}, Response JSON: {res.json()}")

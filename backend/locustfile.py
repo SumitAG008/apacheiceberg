@@ -241,7 +241,7 @@ class AuthenticatedUser(HttpUser):
     def send_chat_message(self):
         """POST /v1/chat — AI query (main revenue feature)."""
         questions = [
-            "How many rows are in the sap_bseg table?",
+            "How many rows are in the smartmeter_readings table?",
             "Show me the top 5 customers by revenue",
             "What is the total transaction volume this month?",
             "List all tables in the default namespace",

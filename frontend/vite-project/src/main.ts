@@ -71,7 +71,7 @@ const ingestLoadingOverlay = document.getElementById('ingest-loading-overlay') a
 const ingestLoadingText = document.getElementById('ingest-loading-text') as HTMLHeadingElement;
 
 // Sample CSV Download Buttons
-const btnSampleEmployees = document.getElementById('btn-sample-employees') as HTMLButtonElement;
+const btnSampleSmartmeter = document.getElementById('btn-sample-smartmeter') as HTMLButtonElement;
 const btnSampleOrders = document.getElementById('btn-sample-orders') as HTMLButtonElement;
 const btnSampleTraffic = document.getElementById('btn-sample-traffic') as HTMLButtonElement;
 
@@ -504,7 +504,7 @@ function initChat() {
     </ul>
     <p><strong>Try asking:</strong></p>
     <div class="prompt-box" style="background: rgba(139,92,246,0.08); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-glass); font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-primary); margin-top: 0.5rem; cursor: pointer;" id="welcome-sample-prompt">
-      Create a table named employees in namespace default with columns: emp_id (integer), name (string), salary (float), dept (string)
+      Create a table named smartmeter_readings in namespace default with columns: meter_id (string), kw_active (float), kvar_reactive (float), voltage (float), timestamp (string)
     </div>
   `;
   appendMessageBubble('assistant', welcomeText);
@@ -942,20 +942,20 @@ function downloadCSVFile(filename: string, content: string) {
   document.body.removeChild(link);
 }
 
-btnSampleEmployees?.addEventListener('click', () => {
-  const content = `emp_id,name,department,salary,hire_date
-1,Alice Smith,Engineering,85000,2020-01-15
-2,Bob Jones,Marketing,72000,2019-03-22
-3,Carol White,Engineering,91000,2021-06-01
-4,David Brown,Sales,68000,2018-11-30
-5,Eva Green,HR,75000,2022-02-14
-6,Frank Black,Engineering,88000,2020-08-10
-7,Grace Lee,Finance,79000,2017-05-25
-8,Henry Martin,Marketing,65000,2023-01-08
-9,Iris Wang,Sales,71000,2021-09-15
-10,Jack Wilson,HR,77000,2022-07-20`;
-  downloadCSVFile('employees_sample.csv', content);
-  showToast('Generated employees_sample.csv', 'info');
+btnSampleSmartmeter?.addEventListener('click', () => {
+  const content = `meter_id,kw_active,kvar_reactive,voltage,timestamp,status
+MTR-1001,4.82,0.61,230.4,2026-09-06T12:00:00Z,NORMAL
+MTR-1002,3.15,0.42,229.8,2026-09-06T12:00:00Z,NORMAL
+MTR-1003,5.90,0.88,231.2,2026-09-06T12:00:00Z,HIGH_LOAD
+MTR-1004,0.00,0.00,0.0,2026-09-06T12:00:00Z,OUTAGE
+MTR-1005,2.74,0.31,230.1,2026-09-06T12:00:00Z,NORMAL
+MTR-1006,6.12,0.95,228.9,2026-09-06T12:00:00Z,HIGH_LOAD
+MTR-1007,1.85,0.22,230.5,2026-09-06T12:00:00Z,NORMAL
+MTR-1008,4.20,0.55,229.9,2026-09-06T12:00:00Z,NORMAL
+MTR-1009,3.60,0.48,230.8,2026-09-06T12:00:00Z,NORMAL
+MTR-1010,8.45,1.20,227.4,2026-09-06T12:00:00Z,SURGE`;
+  downloadCSVFile('smartmeter_readings_sample.csv', content);
+  showToast('Generated smartmeter_readings_sample.csv', 'info');
 });
 
 btnSampleOrders?.addEventListener('click', () => {
@@ -1236,20 +1236,20 @@ const ENDPOINTS: EndpointDef[] = [
       { name: 'messages', type: 'ChatMessage[]', required: true, desc: 'Previous conversation history [{role, content}]' }
     ],
     body: `{
-  "prompt": "Show me the first 10 rows of employees",
+  "prompt": "Show me the first 10 rows of smartmeter_readings",
   "messages": []
 }`,
-    response: `{ "output": "The employees table contains the following records..." }`
+    response: `{ "output": "The smartmeter_readings table contains the following records..." }`
   },
   {
     method: 'POST', path: '/v1/upload-csv', desc: 'Upload a CSV file. Returns auto-detected schema and 5-row preview.', tag: 'Ingestion',
     body: `FormData: { file: <CSV File> }`,
     response: `{
-  "file_path": "/app/data/uploaded_employees.csv",
-  "filename": "employees.csv",
+  "file_path": "/app/data/uploaded_smartmeter_readings.csv",
+  "filename": "smartmeter_readings.csv",
   "row_count": 250,
-  "schema": [{"name": "emp_id", "type": "integer"}, ...],
-  "preview": [{"emp_id": 1, "name": "Alice"}]
+  "schema": [{"name": "meter_id", "type": "string"}, ...],
+  "preview": [{"meter_id": "MTR-1001", "kw_active": 4.82}]
 }`
   },
   {
@@ -1262,11 +1262,11 @@ const ENDPOINTS: EndpointDef[] = [
     ],
     body: `{
   "namespace": "default",
-  "table_name": "employees",
-  "file_path": "/app/data/uploaded_employees.csv",
-  "schema_json": [{"name": "emp_id", "type": "integer"}, {"name": "name", "type": "string"}]
+  "table_name": "smartmeter_readings",
+  "file_path": "/app/data/uploaded_smartmeter_readings.csv",
+  "schema_json": [{"name": "meter_id", "type": "string"}, {"name": "kw_active", "type": "float"}]
 }`,
-    response: `{ "status": "success", "message": "Successfully created and ingested table default.employees" }`
+    response: `{ "status": "success", "message": "Successfully created and ingested table default.smartmeter_readings" }`
   },
   {
     method: 'GET', path: '/v1/config/aws', desc: 'Get current AWS / S3 data lake configuration.', tag: 'AWS Config',
@@ -4816,7 +4816,7 @@ function initPremiumStudioFeatures() {
   const btnSimulateS3Upload = document.getElementById('btn-simulate-s3-upload');
   if (btnSimulateS3Upload) {
     btnSimulateS3Upload.onclick = () => {
-      const csvFiles = ['sap_bseg_20260706.csv', 'general_ledger_new.csv', 'accounts_receivable_v2.csv'];
+      const csvFiles = ['smartmeter_readings_20260706.csv', 'interval_telemetry_new.csv', 'grid_events_v2.csv'];
       const file = csvFiles[Math.floor(Math.random() * csvFiles.length)];
       
       showToast('S3 event detected: New file landed at s3://meldra-lakehouse-raw/data/' + file, 'info');
@@ -4895,89 +4895,66 @@ const catalogGlossaryRegistry: Record<string, {
       'routing_number': { definition: 'Standard wire transfer routing code.', tags: ['PII Masked'] }
     }
   },
-  'employee': {
-    desc: 'Standardized internal employee database containing role, salary, and tenure parameters.',
-    owner: 'HR Analytics Team',
+  'smartmeter_readings': {
+    desc: 'Conformed interval telemetry database containing active power, reactive power, voltage, and meter status parameters.',
+    owner: 'AMI Engineering Team',
     freshness: '1 hour ago',
     tier: 'silver',
     certified: true,
     lineage: {
-      srcType: 'OData Source',
-      srcName: 'Smart Meter HES',
-      bronze: 'bronze.sf_employees',
-      silver: 'silver.employee',
-      gold: 'gold.headcount_mart',
-      srcIcon: 'fa-users'
+      srcType: 'HES Telemetry',
+      srcName: 'Itron AMI Head-End',
+      bronze: 'bronze.hes_raw_interval_readings',
+      silver: 'silver.smartmeter_readings',
+      gold: 'gold.grid_analytics_mart',
+      srcIcon: 'fa-bolt'
     },
     columns: {
-      'employee_id': { definition: 'Unique global employee identifier.', tags: ['Primary Key'] },
-      'first_name': { definition: 'Legal given name of the worker.', tags: ['String'] },
-      'last_name': { definition: 'Legal surname of the worker.', tags: ['String'] },
-      'email': { definition: 'Corporate email address.', tags: ['Unique'] },
-      'salary': { definition: 'Base salary adjusted to local currency.', tags: ['Sensitive', 'Financials'] },
-      'hire_date': { definition: 'Date employee officially joined the payroll.', tags: ['Date'] }
+      'meter_id': { definition: 'Unique global smart meter identifier (MPAN / GUID).', tags: ['Primary Key'] },
+      'reading_ts': { definition: 'Timestamp of 15-minute interval telemetry reading.', tags: ['Timestamp'] },
+      'active_power_kw': { definition: 'Real active power demand in kilowatts.', tags: ['Telemetry', 'Metrics'] },
+      'voltage_v': { definition: 'RMS voltage level measured at customer meter terminal.', tags: ['Telemetry', 'Quality'] },
+      'meter_mac_address': { definition: 'Hardware network MAC address of physical meter NIC.', tags: ['Sensitive', 'Device'] },
+      'customer_account_id': { definition: 'Utility account reference linked to supply point.', tags: ['Account'] }
     }
   },
-  'employees': {
-    desc: 'Standardized internal employee database containing role, salary, and tenure parameters.',
-    owner: 'HR Analytics Team',
-    freshness: '1 hour ago',
-    tier: 'silver',
-    certified: true,
-    lineage: {
-      srcType: 'OData Source',
-      srcName: 'Smart Meter HES',
-      bronze: 'bronze.sf_employees',
-      silver: 'silver.employees',
-      gold: 'gold.headcount_mart',
-      srcIcon: 'fa-users'
-    },
-    columns: {
-      'employee_id': { definition: 'Unique global employee identifier.', tags: ['Primary Key'] },
-      'first_name': { definition: 'Legal given name of the worker.', tags: ['String'] },
-      'last_name': { definition: 'Legal surname of the worker.', tags: ['String'] },
-      'email': { definition: 'Corporate email address.', tags: ['Unique'] },
-      'salary': { definition: 'Base salary adjusted to local currency.', tags: ['Sensitive', 'Financials'] },
-      'hire_date': { definition: 'Date employee officially joined the payroll.', tags: ['Date'] }
-    }
-  },
-  'sf_employees': {
-    desc: 'Raw OData payload fetched directly from SAP SuccessFactors OData API.',
-    owner: 'HR Team',
+  'hes_raw_interval_readings': {
+    desc: 'Raw OData payload fetched directly from Itron / Landis+Gyr HES API.',
+    owner: 'AMI Operations Team',
     freshness: '5 mins ago',
     tier: 'bronze',
     certified: false,
     lineage: {
       srcType: 'REST API',
       srcName: 'Smart Meter HES',
-      bronze: 'bronze.sf_employees',
-      silver: 'silver.employees',
-      gold: 'gold.headcount_mart',
+      bronze: 'bronze.hes_raw_interval_readings',
+      silver: 'silver.smartmeter_readings',
+      gold: 'gold.grid_analytics_mart',
       srcIcon: 'fa-network-wired'
     },
     columns: {
-      'EmpJob': { definition: 'Raw XML/JSON embedded object mapping job data.', tags: ['Raw Object'] },
-      'PerPersonal': { definition: 'Raw XML/JSON personal information parameters.', tags: ['Raw Object'] }
+      'RawReadingPayload': { definition: 'Raw XML/JSON embedded payload mapping interval readings.', tags: ['Raw Object'] },
+      'DeviceStatusFlags': { definition: 'Raw telemetry status flags from meter head-end.', tags: ['Raw Object'] }
     }
   },
-  'sales': {
-    desc: 'Validated daily transaction metrics and regional sales aggregates.',
-    owner: 'Finance Team',
+  'grid_feeder_telemetry': {
+    desc: 'Validated daily substation telemetry and feeder load aggregates.',
+    owner: 'Grid Operations Team',
     freshness: '30 mins ago',
     tier: 'gold',
     certified: true,
     lineage: {
-      srcType: 'Database',
-      srcName: 'Salesforce CRM',
-      bronze: 'bronze.sales_raw',
-      silver: 'silver.sales_clean',
-      gold: 'gold.sales',
+      srcType: 'SCADA Gateway',
+      srcName: 'Substation SCADA',
+      bronze: 'bronze.feeder_telemetry_raw',
+      silver: 'silver.feeder_telemetry_clean',
+      gold: 'gold.grid_feeder_telemetry',
       srcIcon: 'fa-database'
     },
     columns: {
-      'transaction_id': { definition: 'Unique ledger receipt serial code.', tags: ['Primary Key'] },
-      'customer_id': { definition: 'Identifier for the corporate customer entity.', tags: ['Foreign Key'] },
-      'amount': { definition: 'Net transaction amount in transaction currency.', tags: ['Financials', 'Metrics'] }
+      'feeder_id': { definition: 'Unique substation feeder circuit identifier.', tags: ['Primary Key'] },
+      'substation_id': { definition: 'Primary distribution substation reference.', tags: ['Foreign Key'] },
+      'total_load_kw': { definition: 'Total aggregated feeder active power load in kW.', tags: ['Telemetry', 'Metrics'] }
     }
   }
 };
@@ -5236,10 +5213,10 @@ async function selectStudioTable(tableName: string) {
     const nodeGold = document.getElementById('dag-node-gold-name');
     
     if (nodeBronze && nodeSilver && nodeGold) {
-      if (tableName === 'employees_sample') {
-        nodeBronze.textContent = 'Ingest EMP_RAW';
-        nodeSilver.textContent = 'Clean Employees';
-        nodeGold.textContent = 'Salary Summary';
+      if (tableName === 'smartmeter_readings_sample' || tableName === 'smartmeter_readings') {
+        nodeBronze.textContent = 'Ingest HES_RAW';
+        nodeSilver.textContent = 'Clean Smart Meters';
+        nodeGold.textContent = 'AMI Load Profile';
       } else if (tableName === 'orders_sample') {
         nodeBronze.textContent = 'Ingest ORD_RAW';
         nodeSilver.textContent = 'Clean Orders';
@@ -5477,78 +5454,102 @@ async function loadTableContracts() {
   }
 
   try {
-    const res = await api.catalog.getContracts(activeNamespace, activeTableName);
-    contractRules = res.rules || [];
-    renderContractRulesList();
-  } catch (e) {
-    container.innerHTML = '<div style="color:#ef4444; font-size:0.75rem;">Failed to load contracts.</div>';
-  }
-}
+    const re    // Update sandbox code template
+    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
+    if (textCode) {
+      textCode.value = `import meldra
 
-function renderContractRulesList() {
-  const container = document.getElementById('contracts-rules-container')!;
-  if (!container) return;
+# Initialize Meldra engine (AWS credentials read from env)
+catalog = meldra.MeldraCatalog()
 
-  if (contractRules.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic; padding:0.5rem 0;">No active rules. Click below to add.</div>';
-    return;
-  }
+# 1. Read S3 Parquet tables without copy
+arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
+df = arrow_table.to_pandas()
 
-  container.innerHTML = contractRules.map((rule, idx) => {
-    return `
-      <div style="display:flex; gap:0.4rem; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-subtle); padding:0.4rem; border-radius:6px;">
-        <input type="text" class="input-field rule-col" placeholder="column" value="${rule.column || ''}" style="padding:0.3rem; font-size:0.8rem; flex:1;">
-        <select class="input-field rule-op" style="padding:0.3rem; font-size:0.8rem; width:100px;">
-          <option value="not_null" ${rule.rule === 'not_null' ? 'selected' : ''}>not_null</option>
-          <option value="min" ${rule.rule === 'min' ? 'selected' : ''}>min</option>
-          <option value="max" ${rule.rule === 'max' ? 'selected' : ''}>max</option>
-          <option value="regex" ${rule.rule === 'regex' ? 'selected' : ''}>regex</option>
-        </select>
-        <input type="text" class="input-field rule-val" placeholder="value" value="${rule.value || ''}" style="padding:0.3rem; font-size:0.8rem; width:80px;">
-        <button class="btn btn-secondary btn-sm" style="color:#ef4444; padding:0.3rem; margin:0;" onclick="removeContractRuleItem(${idx})"><i class="fa-solid fa-trash"></i></button>
-      </div>
-    `;
-  }).join('');
-}
+# 2. Perform manipulations (deduplicate and filter)
+clean_df = df.dropna(subset=["kw_active"])
+print(f"[sandbox] Cleaned data shape: {clean_df.shape}")
 
-function addContractRuleItem() {
-  contractRules.push({ column: '', rule: 'not_null', value: '' });
-  renderContractRulesList();
-}
-
-function removeContractRuleItem(idx: number) {
-  contractRules.splice(idx, 1);
-  renderContractRulesList();
-}
-(window as any).removeContractRuleItem = removeContractRuleItem;
-
-async function saveTableContracts() {
-  if (!activeTableName) return;
-
-  const container = document.getElementById('contracts-rules-container')!;
-  const rows = container.querySelectorAll('div');
-  const rulesList: any[] = [];
-
-  rows.forEach(row => {
-    const col = (row.querySelector('.rule-col') as HTMLInputElement).value.trim();
-    const op = (row.querySelector('.rule-op') as HTMLSelectElement).value;
-    const val = (row.querySelector('.rule-val') as HTMLInputElement).value.trim();
-
-    if (col) {
-      rulesList.push({ column: col, rule: op, value: val });
+# 3. Save to database lakehouse properties
+catalog.optimize_table("default", "smartmeter_readings_sample")`;
     }
-  });
 
-  try {
-    await api.catalog.saveContracts(activeNamespace, activeTableName, rulesList);
-    showToast('Data contracts saved successfully.');
-    // Log message emulator
-    const logEl = document.getElementById('contracts-validation-log')!;
-    logEl.innerHTML += `<br>[contracts] Saved ${rulesList.length} metadata validation constraints to properties.`;
-    logEl.scrollTop = logEl.scrollHeight;
-  } catch (e: any) {
-    showToast(e.message, 'error');
-  }
+    // Update Airflow DAG template
+    const dagEl = document.getElementById('airflow-dag-code')!;
+    if (dagEl) {
+      dagEl.textContent = `from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+default_args = {
+    'owner': 'meldra',
+    'start_date': datetime(2025, 1, 1),
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5),
+}
+
+def run_aws_meldra_compaction():
+    from meldra import MeldraCatalog
+    # Connect directly to AWS S3 & Glue Catalog
+    catalog = MeldraCatalog()
+    catalog.optimize_table("default", "smartmeter_readings_sample")
+
+with DAG(
+    'aws_meldra_lakehouse_compaction_dag',
+    default_args=default_args,
+    description='Compacts manifest Parquet files on AWS S3 & Glue Catalog',
+    schedule_interval='@daily',
+    catchup=False,
+) as dag:
+    
+    compact_task = PythonOperator(
+        task_id='trigger_aws_compaction',
+        python_callable=run_aws_meldra_compaction,
+    )`;
+    }
+  } else {
+    btnAws.className = 'btn btn-secondary btn-sm';
+    btnGcp.className = 'btn btn-primary btn-sm';
+    labelBucket.textContent = 'Target GCS Bucket URI';
+    inputBucket.placeholder = 'gs://meldra-lakehouse-bucket/';
+    labelCatalog.textContent = 'BigQuery / BigLake Catalog Namespace';
+    inputCatalog.placeholder = 'meldra_biglake_catalog';
+    labelKey.textContent = 'GCP Service Account JSON Key';
+    inputKey.placeholder = '{ "type": "service_account", "project_id": ... }';
+    inputRegion.placeholder = 'us-central1';
+    
+    // Update sandbox code template
+    const textCode = document.getElementById('workspace-python-code') as HTMLTextAreaElement;
+    if (textCode) {
+      textCode.value = `import meldra
+
+# Initialize Meldra GCP engine
+catalog = meldra.MeldraCatalog(provider="gcp")
+
+# 1. Read GCS Parquet tables directly from Google Storage
+arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
+df = arrow_table.to_pandas()
+
+# 2. Perform manipulations (deduplicate and filter)
+clean_df = df[df["kw_active"] > 2.0]
+print(f"[sandbox] Filtered data shape: {clean_df.shape}")
+
+# 3. Optimize and sync metadata to Google BigLake Catalog
+catalog.optimize_table("default", "smartmeter_readings_sample")`;
+    }
+
+    // Update Airflow DAG template
+    const dagEl = document.getElementById('airflow-dag-code')!;
+    if (dagEl) {
+      dagEl.textContent = `from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+
+default_args = {
+    'owner': 'meldra',
+    'start_date': datetime(2025, 1, 1),
+    'retries': 2,
+    'retry_delay': timedelta(minutes=5),
 }
 
 // SUB-TAB 6: Maintenance Optimize & Expire
@@ -5607,15 +5608,15 @@ function selectCloudProvider(provider: 'aws' | 'gcp') {
 catalog = meldra.MeldraCatalog()
 
 # 1. Read S3 Parquet tables without copy
-arrow_table = catalog.run_time_travel_scan("default", "employees_sample")
+arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
 df = arrow_table.to_pandas()
 
 # 2. Perform manipulations (deduplicate and filter)
-clean_df = df.dropna(subset=["salary"])
+clean_df = df.dropna(subset=["kw_active"])
 print(f"[sandbox] Cleaned data shape: {clean_df.shape}")
 
 # 3. Save to database lakehouse properties
-catalog.optimize_table("default", "employees_sample")`;
+catalog.optimize_table("default", "smartmeter_readings_sample")`;
     }
 
     // Update Airflow DAG template
@@ -5636,7 +5637,7 @@ def run_aws_meldra_compaction():
     from meldra import MeldraCatalog
     # Connect directly to AWS S3 & Glue Catalog
     catalog = MeldraCatalog()
-    catalog.optimize_table("default", "employees_sample")
+    catalog.optimize_table("default", "smartmeter_readings_sample")
 
 with DAG(
     'aws_meldra_lakehouse_compaction_dag',
@@ -5671,15 +5672,15 @@ with DAG(
 catalog = meldra.MeldraCatalog(provider="gcp")
 
 # 1. Read GCS Parquet tables directly from Google Storage
-arrow_table = catalog.run_time_travel_scan("default", "employees_sample")
+arrow_table = catalog.run_time_travel_scan("default", "smartmeter_readings_sample")
 df = arrow_table.to_pandas()
 
 # 2. Perform manipulations (deduplicate and filter)
-clean_df = df[df["salary"] > 50000]
+clean_df = df[df["kw_active"] > 2.0]
 print(f"[sandbox] Filtered data shape: {clean_df.shape}")
 
 # 3. Optimize and sync metadata to Google BigLake Catalog
-catalog.optimize_table("default", "employees_sample")`;
+catalog.optimize_table("default", "smartmeter_readings_sample")`;
     }
 
     // Update Airflow DAG template
@@ -5700,7 +5701,7 @@ def run_gcp_meldra_compaction():
     from meldra import MeldraCatalog
     # Connect directly to Google Cloud GCS & BigLake Catalog
     catalog = MeldraCatalog(provider="gcp")
-    catalog.optimize_table("default", "employees_sample")
+    catalog.optimize_table("default", "smartmeter_readings_sample")
 
 with DAG(
     'gcp_meldra_lakehouse_compaction_dag',
@@ -6269,7 +6270,7 @@ function runPipelineSimulation(triggerSource = 'manual', actor = 'sumit@company.
       nodeBronze.classList.add('dag-node-glowing');
     }
     if (statusBronze) statusBronze.innerHTML = '● Success (🟢)';
-    terminal.innerHTML += `<br>[Bronze] Ingestion raw data read from CSV logs completed.`;
+    terminal.innerHTML += `<br>[Bronze] Ingestion raw data read from HES logs completed.`;
     terminal.innerHTML += `<br>[Bronze] Committing 1,250 rows to S3 raw manifest files.`;
     terminal.scrollTop = terminal.scrollHeight;
 
@@ -6293,12 +6294,12 @@ function runPipelineSimulation(triggerSource = 'manual', actor = 'sumit@company.
     if (statusSilver) statusSilver.innerHTML = '● Success (🟢)';
     terminal.innerHTML += `<br>[Silver] Schema validated against S3 metadata specifications.`;
     terminal.innerHTML += `<br>[Silver] Data quality contracts check: 0 validation checks failed.`;
-    terminal.innerHTML += `<br>[Silver] Deduplication clean: Materialized employees_sample (Silver table).`;
+    terminal.innerHTML += `<br>[Silver] Deduplication clean: Materialized interval_readings_sample (Silver table).`;
     terminal.scrollTop = terminal.scrollHeight;
 
     newRun.tasks[1].status = 'success';
     newRun.tasks[1].duration = '15s';
-    newRun.tasks[1].logs = '[task] Silver deduplication succeeded. Cleaned accounts rows materialized.';
+    newRun.tasks[1].logs = '[task] Silver deduplication succeeded. Cleaned reading rows materialized.';
     newRun.tasks[2].status = 'running';
     newRun.tasks[2].logs = '[task] Initializing serverless aggregates and compacting Iceberg manifest files...';
     renderRunHistoryTable();
@@ -6381,68 +6382,19 @@ interface ConnectorDef {
   methods: Record<string, MethodDef>;
 }
 
-// Full list of SAP SuccessFactors OData v2 API servers (source: SAP Help
-// Portal, "List of SAP SuccessFactors API Servers"). This field used to be
-// a locked <select> hardcoded to 2-4 example hosts, which meant a real
-// company's actual data center -- e.g. a Sales Demo tenant like
-// apisalesdemo2.successfactors.eu -- had nowhere to go. It's rendered as an
-// editable combobox (type:"combo"): these are autocomplete suggestions, not
-// the only allowed values -- any hostname can be typed in directly.
-const SF_DATA_CENTERS = [
-  "api10.successfactors.com — Sydney, Australia (Production)",
-  "api10preview.sapsf.com — Sydney, Australia (Preview)",
-  "api012.successfactors.eu — Rot, Germany (Production)",
-  "api12preview.sapsf.eu — Rot, Germany (Preview)",
-  "api15.sapsf.cn — Shanghai, China (Production)",
-  "api15preview.sapsf.cn — Shanghai, China (Preview)",
-  "api17.sapsf.com — Toronto, Canada (Production)",
-  "api17preview.sapsf.com — Toronto, Canada (Preview)",
-  "api19.sapsf.com — Sao Paulo, Brazil (Production)",
-  "api19preview.sapsf.com — Sao Paulo, Brazil (Preview)",
-  "api2.successfactors.eu — Eemshaven, Netherlands (Production)",
-  "api.successfactors.eu — Eemshaven, Netherlands (Production alias)",
-  "apisalesdemo2.successfactors.eu — Eemshaven, Netherlands (Sales Demo)",
-  "api2preview.sapsf.eu — Eemshaven, Netherlands (Preview)",
-  "api22.sapsf.com — Dubai, UAE (Production)",
-  "api22preview.sapsf.com — Dubai, UAE (Preview)",
-  "api23.sapsf.com — Riyadh, Saudi Arabia (Production)",
-  "api23preview.sapsf.com — Riyadh, Saudi Arabia (Preview)",
-  "api4.successfactors.com — Virginia, US (Production)",
-  "api4preview.sapsf.com — Virginia, US (Preview)",
-  "api68sales.successfactors.com — Virginia, US (Sales Demo)",
-  "api40sales.sapsf.com — (Sales Demo)",
-  "api41.sapsf.com — Virginia, US (Production)",
-  "api41preview.sapsf.com — Virginia, US (Preview)",
-  "api44.sapsf.com — Singapore (Production)",
-  "api44preview.sapsf.com — Singapore (Preview)",
-  "api47.sapsf.com — Canada Central (Production)",
-  "api47preview.sapsf.com — Canada Central (Preview)",
-  "api50.sapsf.com — Tokyo, Japan (Production)",
-  "api50preview.sapsf.com — Tokyo, Japan (Preview)",
-  "api55.sapsf.eu — Frankfurt, Germany (Production)",
-  "api55preview.sapsf.eu — Frankfurt, Germany (Preview)",
-  "api74.sapsf.eu — Zurich, Switzerland (Production)",
-  "api74preview.sapsf.eu — Zurich, Switzerland (Preview)",
-  "api8.successfactors.com — Ashburn, Virginia, US (Production)",
-  "apisalesdemo8.successfactors.com — Ashburn, Virginia, US (Sales Demo)",
-  "api8preview.sapsf.com — Ashburn, Virginia, US (Preview)",
-  "api-in10.hr.cloud.sap — Mumbai, India (Production)",
-  "api-in10-preview.hr.cloud.sap — Mumbai, India (Preview)",
-  "api-sa20.hr.cloud.sap — Riyadh, Saudi Arabia (Production)",
-  "api-sa20-preview.hr.cloud.sap — Riyadh, Saudi Arabia (Preview)",
+const HES_DATA_CENTERS = [
+  "hes-eu-west-1.grid.meldra.ai — UK National Grid HES (Production)",
+  "hes-us-east-1.grid.meldra.ai — US East AMI Estate (Production)",
+  "hes-ap-southeast-1.grid.meldra.ai — APAC Smart Grid (Production)",
+  "hes-demo.grid.meldra.ai — AMI Sandbox / Test HES (Demo)",
 ];
 
-// Accepts either a picked datalist suggestion ("host — Location (Env)") or
-// a freely typed value (a bare host, or a full https://host URL) and
-// normalizes it down to just the bare hostname.
-function parseSfDataCenterHost(raw: string | undefined): string {
+function parseHesDataCenterHost(raw: string | undefined): string {
   if (!raw) return '';
   return raw.split(' — ')[0].trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
 }
 
-// Shared by Test Connection and the real ingest call so both send identical
-// credentials -- a passing test should mean the ingest call will also work.
-function buildSfConnectionPayload(): Record<string, any> {
+function buildHesConnectionPayload(): Record<string, any> {
   const payload: Record<string, any> = {
     auth_type: activeMethodKey === 'basic' ? 'basic' : 'oauth2',
   };
@@ -6450,16 +6402,15 @@ function buildSfConnectionPayload(): Record<string, any> {
   if (activeMethodKey === 'basic') {
     payload.username = (document.getElementById('conn-cred-user') as HTMLInputElement)?.value.trim();
     payload.password = (document.getElementById('conn-cred-pass') as HTMLInputElement)?.value;
-    const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
-    payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
+    const dcVal = parseHesDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
+    payload.hes_endpoint = dcVal ? `https://${dcVal}` : 'https://hes-demo.grid.meldra.ai';
 
-    // basic auth username contains @CompanyId, split it
     if (payload.username && payload.username.includes('@')) {
       const parts = payload.username.split('@');
       payload.username = parts[0];
       payload.company_id = parts[1];
     } else {
-      payload.company_id = 'acmecorpT1';
+      payload.company_id = 'grid_tenant_01';
     }
   } else {
     // oauth SAML flow
@@ -6468,124 +6419,93 @@ function buildSfConnectionPayload(): Record<string, any> {
     payload.api_user = (document.getElementById('conn-cred-api_user') as HTMLInputElement)?.value.trim();
     payload.saml_key = (document.getElementById('conn-cred-saml_key') as HTMLInputElement)?.value;
 
-    const dcVal = parseSfDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
-    payload.sf_endpoint = dcVal ? `https://${dcVal}` : 'https://api4.successfactors.com';
+    const dcVal = parseHesDataCenterHost((document.getElementById('conn-cred-dc') as HTMLInputElement)?.value);
+    payload.hes_endpoint = dcVal ? `https://${dcVal}` : 'https://hes-eu-west-1.grid.meldra.ai';
   }
 
   return payload;
 }
 
 const CONNECTORS: Record<string, ConnectorDef> = {
-  workday: {
-    name: "Workday HR", desc: "Workers, compensation, orgs", color:"#0875e1", initials:"WD",
-    entities: ["Workers (Human Capital)", "Compensation", "Organizations", "Time Off Balances"],
-    methods: {
-      ws_security: {
-        label: "WS-Security token", flag:{text:"recommended", cls:"rec"},
-        fields: [
-          {k:"tenant", label:"Tenant name", ph:"acme_corp", help:"Found in your Workday URL: wd3-services1.workday.com/ccx/service/{tenant}"},
-          {k:"endpoint", label:"API endpoint URL", ph:"https://wd3-services1.workday.com/ccx/service", full:false},
-          {k:"user", label:"Integration system user (ISU)", ph:"wd_integration"},
-          {k:"pass", label:"Password", type:"password"},
-          {k:"version", label:"API version", ph:"v42.0"}
-        ]
-      },
-      oauth: {
-        label: "OAuth 2.0",
-        fields: [
-          {k:"token_url", label:"Token endpoint", ph:"https://wd3-services1.workday.com/ccx/oauth2/{tenant}/token", full:true},
-          {k:"client_id", label:"Client ID"},
-          {k:"client_secret", label:"Client secret", type:"password"},
-          {k:"refresh", label:"Refresh token", type:"password"}
-        ]
-      }
-    }
-  },
-  successfactors: {
-    // No hardcoded entity list -- Test Connection discovers the real ones
-    // from this tenant's own OData $metadata (see dynamicEntities below).
-    name: "AMI Smart Meter HES", desc:"Telemetry, readings & MTD", color:"#0a6ed1", initials:"AMI",
-    entities: [],
+  itron_hes: {
+    name: "Itron AMI Head-End (HES)", desc: "Interval readings, usage points & MTD", color: "#0a6ed1", initials: "HES",
+    entities: ["IntervalReadings", "UsagePoints", "GridMeterEvents", "AssetLocations"],
     methods: {
       oauth_saml: {
-        label:"OAuth 2.0 SAML bearer", flag:{text:"recommended", cls:"rec"},
+        label: "OAuth 2.0 SAML bearer", flag: { text: "recommended", cls: "rec" },
         fields: [
-          {k:"dc", label:"API server (data center)", type:"combo", options:SF_DATA_CENTERS},
-          {k:"company", label:"Company ID", ph:"acmecorpT1"},
-          {k:"client_id", label:"OAuth client ID (API key)"},
-          {k:"saml_key", label:"SAML private key", type:"password"},
-          {k:"api_user", label:"API user to impersonate", ph:"sfapi_integration"}
+          { k: "dc", label: "HES Endpoint (Data Center)", type: "combo", options: SF_DATA_CENTERS },
+          { k: "company", label: "Utility Tenant ID", ph: "utility_tenant_1" },
+          { k: "client_id", label: "OAuth Client ID (API key)" },
+          { k: "saml_key", label: "SAML Private Key", type: "password" },
+          { k: "api_user", label: "Service Account User", ph: "hes_integration_user" }
         ]
       },
       basic: {
-        label:"Basic auth", flag:{text:"deprecated by SAP", cls:"dep"},
-        deprecation:"SAP retires Basic Auth for the OData API. Use OAuth SAML bearer for new integrations.",
+        label: "Basic Authentication", flag: { text: "legacy", cls: "dep" },
         fields: [
-          {k:"dc", label:"API server (data center)", type:"combo", options:SF_DATA_CENTERS},
-          {k:"user", label:"Username@CompanyID", ph:"sfadmin@acmecorpT1"},
-          {k:"pass", label:"Password", type:"password"}
+          { k: "dc", label: "HES Endpoint", type: "combo", options: SF_DATA_CENTERS },
+          { k: "user", label: "Username@TenantID", ph: "hes_admin@utility_tenant_1" },
+          { k: "pass", label: "Password", type: "password" }
         ]
       }
     }
   },
-  s4hana: {
-    name:"SAP S/4HANA", desc:"Finance — BSEG, BKPF, ACDOCA", color:"#354a5f", initials:"S4",
-    entities:["ACDOCA — universal journal","BKPF — accounting headers","BSEG — accounting line items","LFA1 — vendor master"],
+  landis_gyr: {
+    name: "Landis+Gyr MDM", desc: "Meter Data Management & Grid Topology", color: "#059669", initials: "MDM",
+    entities: ["MeterRegisterReadings", "FeederTopology", "VoltageViolations", "OutageEvents"],
+    methods: {
+      ws_security: {
+        label: "CIM Web Service Token", flag: { text: "recommended", cls: "rec" },
+        fields: [
+          { k: "tenant", label: "Utility Estate Name", ph: "uk_grid_south" },
+          { k: "endpoint", label: "IEC 61968 API Endpoint", ph: "https://mdm.grid.meldra.ai/cim/v9", full: true },
+          { k: "user", label: "CIM Gateway User", ph: "mdm_service" },
+          { k: "pass", label: "Password", type: "password" }
+        ]
+      }
+    }
+  },
+  scada_dms: {
+    name: "SCADA / DMS Grid Telemetry", desc: "Substation telemetry — Active Power, Voltage & Feeder Load", color: "#354a5f", initials: "SCD",
+    entities: ["SubstationFeederReadings", "TransformerLoadEvents", "VoltageProfileIntervals", "GridSwitchStateLogs"],
     methods: {
       comm_user: {
-        label:"Communication user", flag:{text:"recommended", cls:"rec"},
+        label: "SCADA Gateway User", flag: { text: "recommended", cls: "rec" },
         fields: [
-          {k:"host", label:"API host", ph:"https://myXXXXXX-api.s4hana.ondemand.com", full:true},
-          {k:"user", label:"Communication user", ph:"CC_MELDRA"},
-          {k:"pass", label:"Password", type:"password"},
-          {k:"client", label:"Client (MANDT)", ph:"100", help:"3-digit client number; on-premise systems only"}
-        ]
-      },
-      oauth_cc: {
-        label:"OAuth 2.0 client credentials",
-        fields: [
-          {k:"token_url", label:"Token endpoint", ph:"https://myXXXXXX.authentication.eu20.hana.ondemand.com/oauth/token", full:true},
-          {k:"client_id", label:"Client ID"},
-          {k:"client_secret", label:"Client secret", type:"password"}
+          { k: "host", label: "DMS Host", ph: "https://scada.grid.meldra.ai", full: true },
+          { k: "user", label: "Operator Username", ph: "scada_operator" },
+          { k: "pass", label: "Password", type: "password" }
         ]
       }
     }
   },
-  salesforce: {
-    name:"Salesforce", desc:"Accounts, opportunities, cases", color:"#00a1e0", initials:"SF",
-    entities:["Account","Opportunity","Contact","Case"],
+  etp_gateway: {
+    name: "ETP Telemetry Gateway", desc: "EnergyTrust Protocol encrypted meter streams", color: "#7c3aed", initials: "ETP",
+    entities: ["EncryptedMeterBlocks", "RouteMutatorAudit", "MerkleCheckpoints", "PhantomGridDiversions"],
     methods: {
       oauth: {
-        label:"OAuth 2.0 connected app", flag:{text:"recommended", cls:"rec"},
+        label: "ETP ECDSA Key Authentication", flag: { text: "recommended", cls: "rec" },
         fields: [
-          {k:"instance", label:"Instance URL", ph:"https://acme.my.salesforce.com", full:true},
-          {k:"client_id", label:"Consumer key"},
-          {k:"client_secret", label:"Consumer secret", type:"password"}
-        ]
-      },
-      userpass: {
-        label:"Username and password", flag:{text:"legacy", cls:"dep"},
-        deprecation:"Username-password flow is disabled by default in new Salesforce orgs. Prefer a connected app.",
-        fields: [
-          {k:"user", label:"Username", ph:"integration@acme.com"},
-          {k:"pass", label:"Password", type:"password"},
-          {k:"token", label:"Security token", type:"password"}
+          { k: "instance", label: "ETP Ingress Gateway URL", ph: "https://etp.meldra.ai", full: true },
+          { k: "client_id", label: "Meter Hardware ID (EUI-64)" },
+          { k: "client_secret", label: "Route Mutation Seed Key", type: "password" }
         ]
       }
     }
   }
 };
 
-let activeConnectorKey = 'workday';
-let activeMethodKey = 'ws_security';
+let activeConnectorKey = 'itron_hes';
+let activeMethodKey = 'oauth_saml';
 let connectionTested = false;
-// Populated by a real Test Connection call (currently SuccessFactors only)
+// Populated by a real Test Connection call (currently Itron AMI HES)
 // from the tenant's own OData $metadata. Overrides CONNECTORS[...].entities
 // -- a hardcoded example list -- with what that specific instance actually
 // supports. Reset whenever the connector/auth method changes.
 let dynamicEntities: string[] | null = null;
 // Real per-entity property names from the same $metadata call, e.g.
-// { "User": ["userId","firstName","lastName", ...994 more...], ... }.
+// { "IntervalReadings": ["meterId","kwActive","kvarReactive", ...], ... }.
 // Backs the field-selection checklist -- some entities (User included)
 // define 100+ properties and most integrations only need a handful.
 let dynamicEntityFields: Record<string, string[]> | null = null;
@@ -6831,20 +6751,20 @@ setTimeout(() => {
         testResultEl.style.color = '';
       }
 
-      // Only SuccessFactors has a real backend test today -- it fetches the
+      // Only Itron AMI HES has a real backend test today -- it fetches the
       // tenant's own OData $metadata. Other connectors here don't have a
       // live backend endpoint yet, so they fall back to a clearly-labeled
       // simulated check rather than silently pretending to be real.
-      if (activeConnectorKey === 'successfactors') {
+      if (activeConnectorKey === 'itron_hes') {
         try {
-          const data = await api.testSFConnection(buildSfConnectionPayload());
+          const data = await api.testHesConnection(buildHesConnectionPayload());
           dynamicEntities = data.entities;
           dynamicEntityFields = data.entity_fields;
           connectionTested = true;
           if (testResultEl) {
             testResultEl.innerHTML = `<span style="color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Connected · ${data.latency_ms} ms · ${data.entity_count} entities found</span>`;
           }
-          showToast(`Connected — found ${data.entity_count} OData entities on this tenant.`, 'success');
+          showToast(`Connected — found ${data.entity_count} HES entities on this tenant.`, 'success');
         } catch (err: any) {
           connectionTested = false;
           dynamicEntities = null;
@@ -6903,13 +6823,13 @@ setTimeout(() => {
       btnConnIngest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Fetching &amp; Ingesting...';
 
       try {
-        if (activeConnectorKey === 'successfactors') {
+        if (activeConnectorKey === 'itron_hes') {
           const entityName = entity?.split(' — ')[0];
           const allFieldsForEntity = entityName ? dynamicEntityFields?.[entityName] : undefined;
 
-          // Fire real SuccessFactors OData payload!
+          // Fire real Smart Meter HES OData payload!
           const payload: Record<string, any> = {
-            ...buildSfConnectionPayload(),
+            ...buildHesConnectionPayload(),
             entity_name: entityName,
             top: topLimit,
             namespace: namespace,
@@ -6929,7 +6849,7 @@ setTimeout(() => {
             return;
           }
 
-          const data = await api.triggerSFIngest(payload);
+          const data = await api.triggerHesIngest(payload);
           showToast(`Ingested ${data.rows_ingested?.toLocaleString()} rows successfully into ${tableName}!`, 'success');
           
           setTimeout(() => {
@@ -6937,7 +6857,7 @@ setTimeout(() => {
             sendMessage(`Show me the schema and first 10 rows of "${namespace}.${tableName}"`);
           }, 1500);
         } else {
-          // Simulated ingest for S4HANA, Workday, Salesforce
+          // Simulated ingest for SCADA DMS, Landis+Gyr MDM, ETP Gateway
           setTimeout(() => {
             showToast(`Simulated ingestion of 1,240 rows complete for ${entity}!`, 'success');
             setTimeout(() => {
@@ -6956,14 +6876,14 @@ setTimeout(() => {
   }
 
   // Bind Sample buttons to the same functions
-  const sampleEmpBtn = document.getElementById('btn-sample-employees-tab');
+  const sampleSmartmeterBtn = document.getElementById('btn-sample-smartmeter-tab');
   const sampleOrdBtn = document.getElementById('btn-sample-orders-tab');
   const sampleTrafBtn = document.getElementById('btn-sample-traffic-tab');
 
-  if (sampleEmpBtn) sampleEmpBtn.addEventListener('click', () => {
-    const btnOld = document.getElementById('btn-sample-employees');
+  if (sampleSmartmeterBtn) sampleSmartmeterBtn.addEventListener('click', () => {
+    const btnOld = document.getElementById('btn-sample-smartmeter');
     if (btnOld) btnOld.click();
-    else showToast('Running sample loader: Employees data...', 'info');
+    else showToast('Running sample loader: Smart Meter Interval Readings...', 'info');
   });
 
   if (sampleOrdBtn) sampleOrdBtn.addEventListener('click', () => {
