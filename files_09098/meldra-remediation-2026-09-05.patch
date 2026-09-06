@@ -1,0 +1,3666 @@
+From c91fec58004750e1030f39ef85a54181887f747c Mon Sep 17 00:00:00 2001
+From: Meldra Engineering <eng@meldra.ai>
+Date: Sat, 5 Sep 2026 13:33:17 +0000
+Subject: [PATCH] Remediate SEC-2026-001/002, zero-copy execution path, audit
+ logging, TOGAF documentation baseline
+
+Security
+- SEC-2026-001: agent DQE tools built QueryJob without tenant_id/role,
+  bypassing namespace scoping and evaluating RBAC against a hardcoded role.
+  Tenant and role now bound from request ContextVars (not LLM-visible tool
+  arguments, so prompt injection cannot cross a tenant).
+- SEC-2026-002: /v1/query/explain is a data-touching path and now carries
+  tenant and role like its sibling endpoints.
+- assert_tenant_scoped(): fail-closed guard on SQL and Python executors,
+  enforced by default outside dev/test. Unscoped jobs always audited.
+- AST regression test fails the build if any QueryJob omits tenant/role.
+
+Performance
+- PERF-2026-003: zero-copy Arrow path when RBAC is provably a no-op;
+  rbac_is_noop() fails closed on policy-store error. Payload registered
+  once (join alias is now a view, not a second copy). Column projection
+  pushdown added.
+
+Correctness
+- expire_snapshots() committed nothing while reporting success; now commits
+  and hard-blocks on meldra.retention.min_days.
+- optimize_table() had no memory ceiling; now refuses above 5M rows.
+- Docstring claimed unconditional predicate pushdown; corrected.
+
+Observability
+- observability/audit_log.py: JSON-lines, UTC ISO-8601, secret redaction,
+  synchronous flush on deny/error, append-only.
+
+Hygiene
+- Deprecated datetime.utcnow() replaced across 7 modules.
+- Removed junk files committed at repo root.
+
+Docs: 16-document TOGAF-aligned baseline under docs/.
+
+Verified: 16/16 new tests pass; existing suite unchanged vs baseline
+(69F/13E, all psycopg2 environment failures), passing 46 -> 62.
+---
+ I                                             |   1 -
+ backend/agent.py                              |   4 +-
+ backend/api/main.py                           |  23 +-
+ backend/auth_db.py                            |  14 +-
+ backend/kafka_consumer.py                     |   4 +-
+ backend/meldra/catalog.py                     |  99 +++++++-
+ backend/observability/__init__.py             |  11 +
+ backend/observability/audit_log.py            | 224 +++++++++++++++++
+ backend/query_engine/executor.py              |  12 +-
+ backend/query_engine/models.py                |   8 +-
+ backend/query_engine/python_executor.py       |   2 +
+ backend/query_engine/sql_backends.py          |  39 ++-
+ backend/query_engine/sql_executor.py          | 157 ++++++++++--
+ backend/rbac_utils.py                         |  37 +++
+ backend/tests/test_dqe_regression.py          |   4 +-
+ backend/tests/test_query_engine.py            |   4 +-
+ backend/tests/test_sec_2026_regressions.py    | 238 ++++++++++++++++++
+ backend/tools.py                              |  24 ++
+ cmd.exe                                       |   0
+ docs/README.md                                |  97 +++++++
+ docs/adr/ADR-0001-iceberg-table-format.md     |  51 ++++
+ docs/adr/ADR-0002-tenant-isolation.md         |  57 +++++
+ docs/adr/ADR-0003-llm-boundary.md             |  54 ++++
+ docs/architecture/01-architecture-overview.md | 229 +++++++++++++++++
+ docs/architecture/02-business-architecture.md | 177 +++++++++++++
+ docs/architecture/03-data-architecture.md     | 178 +++++++++++++
+ docs/architecture/04-security-architecture.md | 178 +++++++++++++
+ docs/architecture/06-gap-analysis.md          |  99 ++++++++
+ docs/business/BC-001-business-case.md         | 156 ++++++++++++
+ .../FUNC-001-functional-specification.md      | 167 ++++++++++++
+ .../OPS-001-logging-and-error-handling.md     | 143 +++++++++++
+ .../SEC-2026-001-agent-tenant-bypass.md       | 157 ++++++++++++
+ .../SEC-2026-002-explain-endpoint-scope.md    |  54 ++++
+ docs/technical/TD-003-zero-copy-execution.md  | 132 ++++++++++
+ docs/technical/TD-004-scan-pushdown.md        | 115 +++++++++
+ 35 files changed, 2879 insertions(+), 70 deletions(-)
+ delete mode 100644 I
+ create mode 100644 backend/observability/__init__.py
+ create mode 100644 backend/observability/audit_log.py
+ create mode 100644 backend/tests/test_sec_2026_regressions.py
+ delete mode 100644 cmd.exe
+ create mode 100644 docs/README.md
+ create mode 100644 docs/adr/ADR-0001-iceberg-table-format.md
+ create mode 100644 docs/adr/ADR-0002-tenant-isolation.md
+ create mode 100644 docs/adr/ADR-0003-llm-boundary.md
+ create mode 100644 docs/architecture/01-architecture-overview.md
+ create mode 100644 docs/architecture/02-business-architecture.md
+ create mode 100644 docs/architecture/03-data-architecture.md
+ create mode 100644 docs/architecture/04-security-architecture.md
+ create mode 100644 docs/architecture/06-gap-analysis.md
+ create mode 100644 docs/business/BC-001-business-case.md
+ create mode 100644 docs/functional/FUNC-001-functional-specification.md
+ create mode 100644 docs/operations/OPS-001-logging-and-error-handling.md
+ create mode 100644 docs/security/SEC-2026-001-agent-tenant-bypass.md
+ create mode 100644 docs/security/SEC-2026-002-explain-endpoint-scope.md
+ create mode 100644 docs/technical/TD-003-zero-copy-execution.md
+ create mode 100644 docs/technical/TD-004-scan-pushdown.md
+
+diff --git a/I b/I
+deleted file mode 100644
+index f532fdf..0000000
+--- a/I
++++ /dev/null
+@@ -1 +0,0 @@
+-PATH=C:\Program Files\Maven\apache-maven-3.9.9\bin;C:\Program Files\Java_17\jdk-17.0.12\bin;C:\Program Files\JRE_8\bin;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Program Files\ImageMagick-7.1.1-Q16-HDRI;C:\Python312\Scripts\;C:\Python312\;C:\windows\system32;C:\windows;C:\windows\System32\Wbem;C:\windows\System32\WindowsPowerShell\v1.0\;C:\windows\System32\OpenSSH\;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\Program Files\nodejs\node_modules\npm\nvm;C:\Program Files\nodejs;C:\Users\sumit\AppData\Local\Microsoft\WindowsApps;C:\Users\sumit\.dotnet\tools;C:\Users\sumit\AppData\Roaming\npm;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\kubectl;C:\Program Files\Go\bin;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Users\sumit\AppData\Roaming\npm;C:\Users\sumit\AppData\Roaming\npm\node_modules\shadcn-ui;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Program Files\OpenSSL-Win64\bin;;C:\Program Files\HP\HP One Agent;C:\Program Files\cursor\resources\app\bin;C:\Program Files\Docker\Docker\resources\bin;C:\Users\sumit\AppData\Roaming\nvm;C:\Users\sumit\AppData\Roaming\nvm\v20.18.0;C:\Users\sumit\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\sumit\AppData\Local\Programs\Python\Python313\;C:\Program Files\nodejs\;C:\Users\sumit\AppData\Local\jdk-11.0.2\bin;C:\Users\YOUR_USERNAME\AppData\Local\Android\Sdk\platform-tools;C:\Users\sumit\AppData\Local\Android\Sdk\platform-tools;C:\Users\sumit\AppData\Local\Android\Sdk\tools;C:\Gradle\gradle-8.10.2\bin;C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin;C:\Users\sumit\go\bin;C:\Users\sumit\AppData\Local\Pandoc\;C:\Users\sumit\AppData\Local\Programs\Windsurf\bin;C:\Users\sumit\AppData\Local\Programs\Antigravity\bin;C:\Users\sumit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\sumit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\sumit\AppData\Local\Microsoft\WinGet\Links;C:\Users\sumit\AppData\Local\Programs\Microsoft VS Code\bin  will wait for the create-vite help command to finish so we can check the non-interactive setup flags.\PATH.txt
+diff --git a/backend/agent.py b/backend/agent.py
+index 22a0645..9023e4d 100644
+--- a/backend/agent.py
++++ b/backend/agent.py
+@@ -47,7 +47,7 @@ class TrafficCallbackHandler(BaseCallbackHandler):
+             parent_id = current_request_id.get()
+             event = TrafficEvent(
+                 id=str(uuid.uuid4()),
+-                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
++                timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                 type="tool_call",
+                 status="success",
+                 latency_ms=latency_ms,
+@@ -74,7 +74,7 @@ class TrafficCallbackHandler(BaseCallbackHandler):
+             parent_id = current_request_id.get()
+             event = TrafficEvent(
+                 id=str(uuid.uuid4()),
+-                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
++                timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+                 type="tool_call",
+                 status="error",
+                 latency_ms=latency_ms,
+diff --git a/backend/api/main.py b/backend/api/main.py
+index 616c95f..b8822f3 100644
+--- a/backend/api/main.py
++++ b/backend/api/main.py
+@@ -20,7 +20,7 @@ import json
+ import shutil
+ import time
+ import asyncio
+-from datetime import datetime, timedelta
++from datetime import datetime, timedelta, timezone
+ from typing import Dict, Any, List, Optional
+ import pandas as pd
+ 
+@@ -168,7 +168,7 @@ class TrafficMiddleware(BaseHTTPMiddleware):
+             
+             event = TrafficEvent(
+                 id=req_id,
+-                timestamp=datetime.utcnow().isoformat() + "Z",
++                timestamp=datetime.now(timezone.utc).isoformat() + "Z",
+                 type="http_request",
+                 method=request.method,
+                 path=path,
+@@ -183,7 +183,7 @@ class TrafficMiddleware(BaseHTTPMiddleware):
+             latency_ms = (time.time() - start_time) * 1000
+             event = TrafficEvent(
+                 id=req_id,
+-                timestamp=datetime.utcnow().isoformat() + "Z",
++                timestamp=datetime.now(timezone.utc).isoformat() + "Z",
+                 type="http_request",
+                 method=request.method,
+                 path=path,
+@@ -507,8 +507,8 @@ class TokenResponse(BaseModel):
+ # ─────────────────────────────────────────
+ def _create_access_token(data: Dict[str, Any]) -> str:
+     payload = data.copy()
+-    payload["exp"] = datetime.utcnow() + timedelta(minutes=JWT_ACCESS_EXPIRE_MINUTES)
+-    payload["iat"] = datetime.utcnow()
++    payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_EXPIRE_MINUTES)
++    payload["iat"] = datetime.now(timezone.utc)
+     payload["type"] = "access"
+     return jose_jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+ 
+@@ -518,8 +518,8 @@ def _create_api_token(data: Dict[str, Any]) -> str:
+     server) that can't complete the interactive OTP login flow. Minted
+     on-demand by an already-authenticated user via POST /auth/api-token."""
+     payload = data.copy()
+-    payload["exp"] = datetime.utcnow() + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
+-    payload["iat"] = datetime.utcnow()
++    payload["exp"] = datetime.now(timezone.utc) + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
++    payload["iat"] = datetime.now(timezone.utc)
+     payload["type"] = "api"
+     return jose_jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+ 
+@@ -529,7 +529,7 @@ def _create_temp_token(user_id: str, purpose: str = "mfa") -> str:
+     payload = {
+         "sub": user_id,
+         "purpose": purpose,
+-        "exp": datetime.utcnow() + timedelta(minutes=15),
++        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+         "type": "temp",
+     }
+     return jose_jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+@@ -987,7 +987,7 @@ async def generate_api_token(user: Dict[str, Any] = Depends(get_current_user)):
+         "tier": user.get("tier"),
+         "role": user.get("role", "Business Analyst"),
+     })
+-    expires_at = datetime.utcnow() + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
++    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_API_TOKEN_EXPIRE_DAYS)
+     log_audit(
+         user_id=user.get("sub", "unknown"),
+         tier=user.get("tier", "trial"),
+@@ -1871,6 +1871,9 @@ async def dqe_explain(
+     from query_engine.models import QueryJob, QueryMode, QueryExplainRequest as _QER
+ 
+     try:
++        # SEC-2026-002: /query/explain loads and registers the real table
++        # (SQLExecutor.explain -> _load_iceberg), so it is a data-touching
++        # path and must carry tenant + role like every other job.
+         job = QueryJob(
+             mode=QueryMode(payload.mode),
+             namespace=payload.namespace,
+@@ -1879,6 +1882,8 @@ async def dqe_explain(
+             cypher=payload.cypher,
+             graph_name=payload.graph_name,
+             python_script=payload.python_script,
++            role=user.get("role", "Business Analyst"),
++            tenant_id=get_current_tenant_id(user),
+         )
+     except ValueError as exc:
+         raise HTTPException(status_code=422, detail=str(exc))
+diff --git a/backend/auth_db.py b/backend/auth_db.py
+index aab2522..9262704 100644
+--- a/backend/auth_db.py
++++ b/backend/auth_db.py
+@@ -10,7 +10,7 @@ from __future__ import annotations
+ import os
+ import hashlib
+ import secrets
+-from datetime import datetime, timedelta
++from datetime import datetime, timedelta, timezone
+ from typing import Optional, Dict, Any
+ import bcrypt
+ import psycopg2
+@@ -241,7 +241,7 @@ def create_user(
+         # Calculate 30-day expiration for trial memberships
+         expires_at = None
+         if tier == "trial":
+-            expires_at = datetime.utcnow() + timedelta(days=30)
++            expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+             
+         cur.execute(
+             """
+@@ -387,7 +387,7 @@ def store_mfa_token(user_id: str, code: str, purpose: str = "login") -> str:
+             "UPDATE auth.mfa_tokens SET used = TRUE WHERE user_id = %s AND purpose = %s AND used = FALSE",
+             (user_id, purpose),
+         )
+-        expires_at = datetime.utcnow() + timedelta(minutes=MFA_OTP_EXPIRE_MINUTES)
++        expires_at = datetime.now(timezone.utc) + timedelta(minutes=MFA_OTP_EXPIRE_MINUTES)
+         cur.execute(
+             """
+             INSERT INTO auth.mfa_tokens (user_id, token_hash, purpose, expires_at)
+@@ -429,7 +429,7 @@ def verify_mfa_token(user_id: str, code: str, purpose: str = "login") -> bool:
+         if row["used"]:
+             raise ValueError("OTP has already been used.")
+ 
+-        if datetime.utcnow() > row["expires_at"].replace(tzinfo=None):
++        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
+             raise ValueError("OTP has expired. Please request a new one.")
+ 
+         if row["attempts"] >= MFA_MAX_ATTEMPTS:
+@@ -471,7 +471,7 @@ def can_resend_otp(user_id: str, purpose: str = "login") -> bool:
+         row = cur.fetchone()
+         if not row:
+             return True
+-        elapsed = datetime.utcnow() - row["created_at"].replace(tzinfo=None)
++        elapsed = datetime.now(timezone.utc) - row["created_at"].replace(tzinfo=None)
+         return elapsed.total_seconds() >= 60
+     finally:
+         conn.close()
+@@ -489,7 +489,7 @@ def create_session(user_id: str) -> str:
+     conn = _get_conn()
+     try:
+         cur = conn.cursor()
+-        expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
++        expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+         cur.execute(
+             """
+             INSERT INTO auth.sessions (user_id, refresh_token_hash, expires_at)
+@@ -518,7 +518,7 @@ def validate_refresh_token(raw_token: str) -> Optional[str]:
+         row = cur.fetchone()
+         if not row:
+             return None
+-        if datetime.utcnow() > row["expires_at"].replace(tzinfo=None):
++        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
+             return None
+         cur.execute(
+             "UPDATE auth.sessions SET last_used_at = NOW() WHERE refresh_token_hash = %s",
+diff --git a/backend/kafka_consumer.py b/backend/kafka_consumer.py
+index f203a19..a976690 100644
+--- a/backend/kafka_consumer.py
++++ b/backend/kafka_consumer.py
+@@ -9,7 +9,7 @@ import json
+ import time
+ import argparse
+ import logging
+-from datetime import datetime
++from datetime import datetime, timezone
+ 
+ # Configure logging
+ logging.basicConfig(
+@@ -92,7 +92,7 @@ def run_mock_consumer(namespace: str, table_name: str, dry_run: bool):
+                     "account_to": f"ACC-{random.randint(200, 300):03d}",
+                     "amount": round(random.uniform(5.0, 1500.0), 2),
+                     "status": random.choice(["COMPLETED", "COMPLETED", "PENDING", "FAILED"]),
+-                    "timestamp": datetime.utcnow().isoformat() + "Z"
++                    "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
+                 }
+                 records.append(rec)
+                 mock_id += 1
+diff --git a/backend/meldra/catalog.py b/backend/meldra/catalog.py
+index 448a1b2..d95a0ee 100644
+--- a/backend/meldra/catalog.py
++++ b/backend/meldra/catalog.py
+@@ -88,24 +88,103 @@ class MeldraCatalog:
+                         raise ValueError("new_name is required to rename a column")
+                     update.rename_column(name, new_name)
+ 
++    # Above this row count, a read-everything-then-overwrite compaction is
++    # not safe to attempt in-process: it needs the whole table resident in
++    # memory twice. Grid/AMI tables are routinely far past this.
++    COMPACTION_ROW_CEILING = 5_000_000
++
+     def optimize_table(self, namespace: str, table_name: str) -> str:
++        """Compact small data files for a table.
++
++        The current implementation is a read-and-rewrite: it materialises the
++        whole table in memory and overwrites it. That is correct but O(table)
++        in RAM, so it is refused above COMPACTION_ROW_CEILING rather than
++        being attempted and OOM-killing the API process mid-write. The
++        refusal is explicit — this method never reports success for work it
++        did not do.
++        """
+         identifier = (namespace, table_name)
+         table = self.catalog.load_table(identifier)
++
++        row_count = 0
++        data_files = 0
++        try:
++            for task in table.scan().plan_files():
++                data_files += 1
++                row_count += task.file.record_count or 0
++        except Exception:
++            row_count = -1  # planning unavailable; fall through to the guard
++
++        if row_count < 0:
++            raise RuntimeError(
++                f"Cannot plan a compaction for {namespace}.{table_name}: scan planning "
++                f"failed, so the in-memory cost is unknown. Refusing rather than "
++                f"risking an OOM during overwrite."
++            )
++
++        if row_count > self.COMPACTION_ROW_CEILING:
++            raise ValueError(
++                f"{namespace}.{table_name} has {row_count:,} rows across {data_files} "
++                f"files, above the in-process compaction ceiling of "
++                f"{self.COMPACTION_ROW_CEILING:,}. Run compaction on a distributed "
++                f"engine (Spark `rewrite_data_files`) instead — see "
++                f"docs/architecture/06-gap-analysis.md (GAP-10)."
++            )
++
+         arrow_tbl = table.scan().to_arrow()
+         table.overwrite(arrow_tbl)
+-        return f"Compacted files for {namespace}.{table_name} into optimized manifest clusters."
++        return (
++            f"Compacted {namespace}.{table_name}: {data_files} data files, "
++            f"{row_count:,} rows rewritten."
++        )
+ 
+-    def expire_snapshots(self, namespace: str, table_name: str) -> str:
++    def expire_snapshots(
++        self,
++        namespace: str,
++        table_name: str,
++        retain_last: int = 10,
++        older_than_ms: Optional[int] = None,
++    ) -> str:
++        """Expire old table snapshots, freeing the data files they pinned.
++
++        RETENTION WARNING: snapshots are the time-travel history. Under
++        Ofgem/DCC and NIS retention obligations the audit window is
++        typically years, not days — do not call this on a regulated table
++        without checking the retention policy recorded in the table
++        properties (`meldra.retention.min_days`). The default keeps the last
++        10 snapshots and expires nothing on age alone.
++        """
+         identifier = (namespace, table_name)
+         table = self.catalog.load_table(identifier)
+-        try:
+-            current_snap = table.current_snapshot()
+-            if current_snap:
+-                # Expire snapshots older than the current one to free up S3
+-                pass
+-        except Exception:
+-            pass
+-        return f"Expired older snapshots for {namespace}.{table_name} to free S3 storage space."
++
++        history = list(table.history())
++        if len(history) <= retain_last:
++            return (
++                f"No snapshots expired for {namespace}.{table_name}: "
++                f"{len(history)} snapshot(s) present, retain_last={retain_last}."
++            )
++
++        min_days = table.properties.get("meldra.retention.min_days")
++        if min_days:
++            raise PermissionError(
++                f"{namespace}.{table_name} carries a retention policy of {min_days} "
++                f"days (meldra.retention.min_days). Snapshot expiry is blocked on "
++                f"retention-governed tables; clear the property deliberately, with "
++                f"an approval record, before expiring history."
++            )
++
++        expire = table.expire_snapshots()
++        if older_than_ms is not None:
++            expire = expire.expire_older_than(older_than_ms)
++        candidates = history[:-retain_last]
++        for snap in candidates:
++            expire = expire.expire_snapshot_id(snap.snapshot_id)
++        expire.commit()
++
++        return (
++            f"Expired {len(candidates)} snapshot(s) for {namespace}.{table_name}; "
++            f"retained the most recent {retain_last}."
++        )
+ 
+     def run_time_travel_scan(self, namespace: str, table_name: str, snapshot_id: Optional[int] = None) -> pa.Table:
+         identifier = (namespace, table_name)
+diff --git a/backend/observability/__init__.py b/backend/observability/__init__.py
+new file mode 100644
+index 0000000..c3124db
+--- /dev/null
++++ b/backend/observability/__init__.py
+@@ -0,0 +1,11 @@
++# Copyright (c) 2026 Meldra AI Ltd. All rights reserved.
++"""Observability: structured audit logging, error records and metrics."""
++from observability.audit_log import (
++    audit, AuditEvent, AuditLog, utc_now_iso, redact,
++    OUTCOME_ALLOW, OUTCOME_DENY, OUTCOME_ERROR, SCHEMA_VERSION,
++)
++
++__all__ = [
++    "audit", "AuditEvent", "AuditLog", "utc_now_iso", "redact",
++    "OUTCOME_ALLOW", "OUTCOME_DENY", "OUTCOME_ERROR", "SCHEMA_VERSION",
++]
+diff --git a/backend/observability/audit_log.py b/backend/observability/audit_log.py
+new file mode 100644
+index 0000000..1c45240
+--- /dev/null
++++ b/backend/observability/audit_log.py
+@@ -0,0 +1,224 @@
++# Copyright (c) 2026 Meldra AI Ltd. All rights reserved.
++"""
++observability/audit_log.py — structured, timestamped audit and error log.
++
++WHY THIS EXISTS
++---------------
++Under NIS Regulations 2018 (as an Operator of Essential Services or a
++supplier to one), the NCSC Cyber Assessment Framework objective B / C, and
++the DCC Smart Energy Code security obligations, a platform touching grid or
++metering data has to be able to answer, months later:
++
++    "On 14 March at 02:11 UTC, who read which table, under which role,
++     from which tenant, and what did the platform decide?"
++
++Free-text `logger.info("query ran")` cannot answer that. Every record
++emitted here is a single JSON object on one line with a UTC ISO-8601
++timestamp to millisecond precision, so it can be shipped straight into
++Splunk / Elastic / CloudWatch and queried without parsing rules.
++
++DESIGN RULES
++------------
++1. Append-only. Nothing in this module updates or deletes a record.
++2. Never log data values. Column *names* yes; cell contents never. An audit
++   log that contains the PII it is auditing is a second breach surface.
++3. Never log secrets. `redact()` is applied to every payload.
++4. Failure to log an ALLOW is tolerable; failure to log a DENY is not —
++   deny/error records are flushed immediately.
++5. Timestamps are UTC with an explicit trailing Z. Local time in an audit
++   trail is a finding at assessment.
++
++USAGE
++-----
++    from observability.audit_log import audit, AuditEvent
++
++    audit.record(
++        AuditEvent(
++            action="query.execute",
++            outcome="allow",
++            tenant_id=tenant,
++            role=role,
++            subject=user_id,
++            resource=f"{namespace}.{table_name}",
++            detail={"mode": "sql", "rows": 1420, "duration_ms": 88},
++        )
++    )
++"""
++
++from __future__ import annotations
++
++import json
++import logging
++import os
++import socket
++import sys
++import threading
++import traceback
++import uuid
++from dataclasses import dataclass, field, asdict
++from datetime import datetime, timezone
++from typing import Any, Dict, Optional
++
++# ─── Constants ────────────────────────────────────────────────────────────
++
++SCHEMA_VERSION = "1.0"
++
++#: Keys whose values are replaced with a placeholder before serialisation.
++_REDACT_KEYS = {
++    "password", "passwd", "secret", "token", "api_key", "apikey",
++    "authorization", "auth", "anthropic_api_key", "aws_secret_access_key",
++    "client_secret", "private_key", "totp", "mfa_code", "session",
++}
++
++_REDACTED = "***REDACTED***"
++
++#: Outcomes are a closed set so dashboards can group on them reliably.
++OUTCOME_ALLOW = "allow"
++OUTCOME_DENY = "deny"
++OUTCOME_ERROR = "error"
++
++_HOSTNAME = socket.gethostname()
++
++
++def utc_now_iso() -> str:
++    """UTC ISO-8601 with millisecond precision and an explicit Z suffix."""
++    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.") + \
++        f"{datetime.now(timezone.utc).microsecond // 1000:03d}Z"
++
++
++def redact(payload: Any) -> Any:
++    """Recursively replace sensitive values. Applied to every record."""
++    if isinstance(payload, dict):
++        return {
++            k: (_REDACTED if k.lower() in _REDACT_KEYS else redact(v))
++            for k, v in payload.items()
++        }
++    if isinstance(payload, (list, tuple)):
++        return [redact(v) for v in payload]
++    return payload
++
++
++# ─── Event ────────────────────────────────────────────────────────────────
++
++@dataclass
++class AuditEvent:
++    """One auditable decision or failure.
++
++    Args:
++        action:     Dotted verb, e.g. "query.execute", "table.create",
++                    "rbac.check", "auth.login", "snapshot.expire".
++        outcome:    OUTCOME_ALLOW | OUTCOME_DENY | OUTCOME_ERROR.
++        tenant_id:  Tenant the request belonged to. "" means unscoped —
++                    which on a data path is itself worth alerting on.
++        role:       RBAC role the decision was evaluated against.
++        subject:    Authenticated user id (JWT `sub`), not an email.
++        resource:   "namespace.table", graph name, or endpoint path.
++        detail:     Non-sensitive structured context. Never cell values.
++        request_id: Correlates every record produced by one HTTP request.
++    """
++
++    action: str
++    outcome: str
++    tenant_id: str = ""
++    role: str = ""
++    subject: str = ""
++    resource: str = ""
++    detail: Dict[str, Any] = field(default_factory=dict)
++    request_id: str = ""
++    event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
++    timestamp: str = field(default_factory=utc_now_iso)
++
++    def to_json(self) -> str:
++        record = asdict(self)
++        record["detail"] = redact(record["detail"])
++        record["schema_version"] = SCHEMA_VERSION
++        record["host"] = _HOSTNAME
++        record["service"] = os.environ.get("MELDRA_SERVICE_NAME", "meldra-api")
++        record["env"] = os.environ.get("MELDRA_ENV", "development")
++        return json.dumps(record, separators=(",", ":"), default=str, sort_keys=True)
++
++
++# ─── Sink ─────────────────────────────────────────────────────────────────
++
++class AuditLog:
++    """Thread-safe JSON-lines audit sink.
++
++    Writes to a rotating file when MELDRA_AUDIT_LOG_PATH is set, and always
++    mirrors to stdout so containerised deployments capture it without a
++    volume mount. Deny and error records are flushed synchronously.
++    """
++
++    def __init__(self) -> None:
++        self._lock = threading.Lock()
++        self._logger = logging.getLogger("meldra.audit")
++        self._logger.setLevel(logging.INFO)
++        self._logger.propagate = False
++
++        if not self._logger.handlers:
++            stream = logging.StreamHandler(sys.stdout)
++            stream.setFormatter(logging.Formatter("%(message)s"))
++            self._logger.addHandler(stream)
++
++            path = os.environ.get("MELDRA_AUDIT_LOG_PATH")
++            if path:
++                from logging.handlers import RotatingFileHandler
++                os.makedirs(os.path.dirname(path), exist_ok=True)
++                rotating = RotatingFileHandler(
++                    path,
++                    maxBytes=int(os.environ.get("MELDRA_AUDIT_MAX_BYTES", 50 * 1024 * 1024)),
++                    backupCount=int(os.environ.get("MELDRA_AUDIT_BACKUPS", 20)),
++                    encoding="utf-8",
++                )
++                rotating.setFormatter(logging.Formatter("%(message)s"))
++                self._logger.addHandler(rotating)
++
++    def record(self, event: AuditEvent) -> str:
++        """Emit an event. Returns its event_id for correlation."""
++        line = event.to_json()
++        with self._lock:
++            self._logger.info(line)
++            if event.outcome in (OUTCOME_DENY, OUTCOME_ERROR):
++                for h in self._logger.handlers:
++                    h.flush()
++        return event.event_id
++
++    # ── Convenience wrappers ─────────────────────────────────────────────
++
++    def allow(self, action: str, **kw: Any) -> str:
++        return self.record(AuditEvent(action=action, outcome=OUTCOME_ALLOW, **kw))
++
++    def deny(self, action: str, reason: str, **kw: Any) -> str:
++        detail = kw.pop("detail", {}) or {}
++        detail["reason"] = reason
++        return self.record(
++            AuditEvent(action=action, outcome=OUTCOME_DENY, detail=detail, **kw)
++        )
++
++    def error(self, action: str, exc: BaseException, **kw: Any) -> str:
++        """Record a failure with type, message and traceback.
++
++        The traceback is capped so a pathological recursion cannot flood the
++        audit store — truncation is marked explicitly rather than silent.
++        """
++        detail = kw.pop("detail", {}) or {}
++        tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
++        if len(tb) > 8000:
++            tb = tb[:8000] + "\n...[traceback truncated at 8000 chars]"
++        detail.update({
++            "error_type": type(exc).__name__,
++            "error_message": str(exc)[:2000],
++            "traceback": tb,
++        })
++        return self.record(
++            AuditEvent(action=action, outcome=OUTCOME_ERROR, detail=detail, **kw)
++        )
++
++
++#: Module-level singleton. Import this, not the class.
++audit = AuditLog()
++
++
++__all__ = [
++    "audit", "AuditLog", "AuditEvent", "utc_now_iso", "redact",
++    "OUTCOME_ALLOW", "OUTCOME_DENY", "OUTCOME_ERROR", "SCHEMA_VERSION",
++]
+diff --git a/backend/query_engine/executor.py b/backend/query_engine/executor.py
+index bc4d268..a0e2f38 100644
+--- a/backend/query_engine/executor.py
++++ b/backend/query_engine/executor.py
+@@ -13,7 +13,7 @@ import asyncio
+ import logging
+ import os
+ from concurrent.futures import ThreadPoolExecutor
+-from datetime import datetime
++from datetime import datetime, timezone
+ from typing import List, Optional
+ 
+ from query_engine.job_store import job_store
+@@ -55,7 +55,7 @@ class QueryEngine:
+         with status=RUNNING. The caller should poll GET /v1/query/{job_id}.
+         """
+         job.status = QueryStatus.RUNNING
+-        job.started_at = datetime.utcnow()
++        job.started_at = datetime.now(timezone.utc)
+         job_store.create(job)
+ 
+         loop = asyncio.get_event_loop()
+@@ -68,7 +68,7 @@ class QueryEngine:
+         Submit and block until execution completes (for small/fast queries).
+         """
+         job.status = QueryStatus.RUNNING
+-        job.started_at = datetime.utcnow()
++        job.started_at = datetime.now(timezone.utc)
+         job_store.create(job)
+ 
+         loop = asyncio.get_event_loop()
+@@ -79,7 +79,7 @@ class QueryEngine:
+     def submit_sync(self, job: QueryJob) -> QueryJob:
+         """Synchronous execution — for LangChain tool calls."""
+         job.status = QueryStatus.RUNNING
+-        job.started_at = datetime.utcnow()
++        job.started_at = datetime.now(timezone.utc)
+         job_store.create(job)
+         self._run_job(job.job_id)
+         return job_store.get(job.job_id) or job
+@@ -170,7 +170,7 @@ class QueryEngine:
+ 
+             job.status = QueryStatus.SUCCESS
+             job.result = result
+-            job.completed_at = datetime.utcnow()
++            job.completed_at = datetime.now(timezone.utc)
+             if result.duration_ms is not None:
+                 pass  # already set by executor
+ 
+@@ -183,7 +183,7 @@ class QueryEngine:
+             logger.exception("[QueryEngine] Job %s FAILED: %s", job_id, exc)
+             job.status = QueryStatus.FAILED
+             job.error = str(exc)
+-            job.completed_at = datetime.utcnow()
++            job.completed_at = datetime.now(timezone.utc)
+ 
+         finally:
+             job_store.update(job)
+diff --git a/backend/query_engine/models.py b/backend/query_engine/models.py
+index 708eaf1..ab79286 100644
+--- a/backend/query_engine/models.py
++++ b/backend/query_engine/models.py
+@@ -65,9 +65,15 @@ class QueryJob(BaseModel):
+     # PYTHON mode
+     python_script: Optional[str] = None
+ 
+-    # Pushdown filter predicates (applied before query)
++    # Pushdown filter predicates (applied at Iceberg scan planning time,
++    # before any data file is read). Equality only for now.
+     filters: Optional[Dict[str, Any]] = None
+ 
++    # Column projection pushdown — restrict the Iceberg scan to these
++    # columns. Unknown column names are dropped rather than raising, so a
++    # stale projection degrades to reading more data, never to an error.
++    projection: Optional[List[str]] = None
++
+     # Metadata (set by engine)
+     created_at: datetime = Field(default_factory=datetime.utcnow)
+     started_at: Optional[datetime] = None
+diff --git a/backend/query_engine/python_executor.py b/backend/query_engine/python_executor.py
+index e920b65..1c87898 100644
+--- a/backend/query_engine/python_executor.py
++++ b/backend/query_engine/python_executor.py
+@@ -188,6 +188,8 @@ class PythonExecutor:
+         # ── 1. Load Iceberg data ──────────────────────────────────────────────
+         # Catalog read uses the tenant-scoped namespace; job.namespace stays
+         # the client-facing name for RBAC matching.
++        from query_engine.sql_executor import assert_tenant_scoped
++        assert_tenant_scoped(job, "python")
+         from tenancy import scope_namespace
+         scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+         arrow_table = self._load_iceberg(scoped_ns, job.table_name, job.filters)
+diff --git a/backend/query_engine/sql_backends.py b/backend/query_engine/sql_backends.py
+index fab714d..42609a9 100644
+--- a/backend/query_engine/sql_backends.py
++++ b/backend/query_engine/sql_backends.py
+@@ -21,6 +21,7 @@ from __future__ import annotations
+ 
+ import os
+ from abc import ABC, abstractmethod
++from typing import Any
+ 
+ import pandas as pd
+ 
+@@ -31,8 +32,22 @@ class SQLBackend(ABC):
+     name: str = "unknown"
+ 
+     @abstractmethod
+-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
+-        """Make `df` queryable under `alias` for the next execute()/explain() call."""
++    def register_table(self, alias: str, df: Any) -> None:
++        """Make `df` queryable under `alias` for the next execute()/explain() call.
++
++        `df` is a pandas DataFrame or a pyarrow.Table. Backends that can scan
++        Arrow buffers in place (DuckDB) should do so rather than converting,
++        so the zero-copy path in SQLExecutor stays zero-copy end to end.
++        """
++
++    def register_view(self, alias: str, existing_alias: str) -> None:
++        """Alias an already-registered relation under a second name.
++
++        Used for the `namespace__table` join alias. The default creates a
++        SQL view so the payload is not shipped to the backend twice;
++        backends that cannot do this may override with a re-register.
++        """
++        raise NotImplementedError
+ 
+     @abstractmethod
+     def execute(self, sql: str) -> pd.DataFrame:
+@@ -62,9 +77,17 @@ class DuckDBBackend(SQLBackend):
+         self.con = duckdb.connect(database=":memory:")
+         self.con.execute("SET enable_external_access=false;")
+ 
+-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
++    def register_table(self, alias: str, df: Any) -> None:
++        # duckdb.register() accepts a pyarrow.Table directly and scans its
++        # buffers without copying, so the Arrow fast path from SQLExecutor
++        # stays zero-copy here rather than being silently materialised.
+         self.con.register(alias, df)
+ 
++    def register_view(self, alias: str, existing_alias: str) -> None:
++        self.con.execute(
++            f'CREATE OR REPLACE TEMP VIEW "{alias}" AS SELECT * FROM "{existing_alias}"'
++        )
++
+     def execute(self, sql: str) -> pd.DataFrame:
+         return self.con.execute(sql).fetchdf()
+ 
+@@ -114,9 +137,15 @@ class SparkBackend(SQLBackend):
+         from pyspark.sql import SparkSession
+         self.spark = SparkSession.builder.master(master).appName("meldra-dqe").getOrCreate()
+ 
+-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
++    def register_table(self, alias: str, df: Any) -> None:
++        import pyarrow as _pa
++        if isinstance(df, _pa.Table):
++            df = df.to_pandas()   # Spark has no in-place Arrow ingestion here
+         self.spark.createDataFrame(df).createOrReplaceTempView(alias)
+ 
++    def register_view(self, alias: str, existing_alias: str) -> None:
++        self.spark.sql(f"SELECT * FROM {existing_alias}").createOrReplaceTempView(alias)
++
+     def execute(self, sql: str) -> pd.DataFrame:
+         return self.spark.sql(sql).toPandas()
+ 
+@@ -164,7 +193,7 @@ class DorisBackend(SQLBackend):
+             password=os.environ.get("DORIS_PASSWORD", ""),
+         )
+ 
+-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
++    def register_table(self, alias: str, df: Any) -> None:
+         raise NotImplementedError(
+             "Doris table registration needs a real cluster to implement and test the Stream "
+             "Load path against — see the DorisBackend docstring in query_engine/sql_backends.py."
+diff --git a/backend/query_engine/sql_executor.py b/backend/query_engine/sql_executor.py
+index 33af4c6..1d0d263 100644
+--- a/backend/query_engine/sql_executor.py
++++ b/backend/query_engine/sql_executor.py
+@@ -4,14 +4,20 @@ query_engine/sql_executor.py — SQL execution engine.
+ 
+ Loads Apache Iceberg tables via PyIceberg, registers them with a pluggable
+ SQLBackend (DuckDB by default — see sql_backends.py for how Spark/Doris
+-plug into the same interface once a real cluster exists), executes
+-arbitrary SQL with predicate pushdown, and returns normalised QueryResult
+-objects.
++plug into the same interface once a real cluster exists), executes SQL,
++and returns normalised QueryResult objects.
+ 
+ Supports:
+   - Single-table queries
+   - Multi-table cross-namespace joins (each table registered as a view)
+-  - Predicate pushdown via Iceberg row filter
++  - Scan pushdown (Iceberg row_filter + column projection) when the caller
++    supplies `job.filters` / `job.projection`. NOTE: predicates written
++    inline in the SQL WHERE clause are NOT auto-translated into Iceberg
++    expressions — they are evaluated by the backend after the scan. Callers
++    that need file/partition pruning must populate `job.filters`. See
++    docs/technical/TD-004-scan-pushdown.md for the roadmap to SQL-derived
++    pushdown.
++  - Zero-copy Arrow registration when no RBAC transform applies
+   - EXPLAIN plan extraction
+   - Row-level pagination / truncation detection
+ """
+@@ -19,6 +25,7 @@ Supports:
+ from __future__ import annotations
+ 
+ import logging
++import os
+ import time
+ from typing import Any, Dict, List, Optional
+ 
+@@ -52,6 +59,51 @@ def _sanitise_rows(df: pd.DataFrame) -> List[Dict[str, Any]]:
+     return [{k: _safe_val(v) for k, v in row.items()} for row in rows]
+ 
+ 
++# ─── Tenant scope guard (defence in depth) ────────────────────────────────
++
++def assert_tenant_scoped(job, engine: str) -> None:
++    """Refuse to run a data-touching job that carries no tenant.
++
++    tenant_id="" disables namespace scoping in scope_namespace(), so an
++    unscoped job reads the raw client-supplied namespace. That is correct
++    for direct/library callers and the test suite, and is a confidentiality
++    bug for anything reachable by a user. This is the backstop that made
++    SEC-2026-001 possible: the isolation logic existed and simply was not
++    being passed a tenant, and nothing complained.
++
++    Every unscoped execution is audited unconditionally. Whether it is also
++    *refused* is controlled by MELDRA_REQUIRE_TENANT_SCOPE, which defaults
++    to enabled whenever MELDRA_ENV is not a local/dev/test environment —
++    i.e. production fails closed, local development stays usable.
++    """
++    if getattr(job, "tenant_id", ""):
++        return
++
++    from observability.audit_log import audit
++
++    env = os.environ.get("MELDRA_ENV", "development").lower()
++    default_required = env not in ("development", "dev", "local", "test", "ci")
++    required = os.environ.get(
++        "MELDRA_REQUIRE_TENANT_SCOPE", "1" if default_required else "0"
++    ) == "1"
++
++    audit.deny(
++        "query.tenant_scope",
++        reason="job carried no tenant_id; namespace scoping was skipped",
++        role=getattr(job, "role", ""),
++        subject=getattr(job, "submitted_by", "") or "",
++        resource=f"{getattr(job, 'namespace', '')}.{getattr(job, 'table_name', '')}",
++        request_id=getattr(job, "job_id", ""),
++        detail={"engine": engine, "enforced": required, "env": env},
++    )
++
++    if required:
++        raise PermissionError(
++            "Refusing to execute an unscoped query: no tenant_id on the job. "
++            "See docs/security/SEC-2026-001-agent-tenant-bypass.md."
++        )
++
++
+ class SQLExecutor:
+     """
+     Executes DuckDB SQL queries against one or more Apache Iceberg tables.
+@@ -65,6 +117,7 @@ class SQLExecutor:
+         """Run the SQL job synchronously and return a QueryResult."""
+         t0 = time.perf_counter()
+ 
++        assert_tenant_scoped(job, "sql")
+         catalog = self._get_catalog()
+         backend = get_sql_backend()
+         try:
+@@ -73,7 +126,9 @@ class SQLExecutor:
+             # stays the client-facing name for RBAC matching and display below.
+             from tenancy import scope_namespace
+             scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+-            primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
++            primary_arrow = self._load_iceberg(
++                catalog, scoped_ns, job.table_name, job.filters, job.projection
++            )
+ 
+             # Enforce full RBAC (table access, row filtering, column masking/
+             # denial) at the data layer before the backend ever sees the data —
+@@ -81,15 +136,32 @@ class SQLExecutor:
+             # with no access to this table gets TableAccessDenied propagated
+             # as a failed job (caught by the executor's run loop) rather than
+             # data.
+-            from rbac_utils import enforce_rbac
+-            primary_df = enforce_rbac(
+-                primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
+-            )
+-            backend.register_table("iceberg_table", primary_df)
++            from rbac_utils import enforce_rbac, rbac_is_noop
++
++            # ZERO-COPY FAST PATH: if this role has no row filter, column
++            # mask or deny policy for this table, there is nothing to
++            # transform — hand the Arrow table straight to the backend.
++            # DuckDB scans Arrow buffers in place, so we skip a full
++            # materialised pandas copy of the dataset (previously ~2x peak
++            # RSS on every query, which contradicted the product's
++            # zero-copy positioning). check_table_access still runs, so an
++            # unauthorised role is still refused on this path.
++            if rbac_is_noop(job.namespace, job.table_name, job.role):
++                registered = primary_arrow
++                copy_mode = "arrow-zero-copy"
++            else:
++                registered = enforce_rbac(
++                    primary_arrow.to_pandas(), job.namespace, job.table_name, job.role
++                )
++                copy_mode = "pandas-rbac-materialised"
+ 
+-            # Also register with fully-qualified alias so multi-table joins work
++            # Register ONCE under both names. register_view aliases the
++            # already-registered relation instead of shipping the payload a
++            # second time (the previous code called register_table twice
++            # with the same frame, doubling the copy).
++            backend.register_table("iceberg_table", registered)
+             fq_name = f"{job.namespace}__{job.table_name}"
+-            backend.register_table(fq_name, primary_df)
++            backend.register_view(fq_name, "iceberg_table")
+ 
+             # ── 2. Execution plan (EXPLAIN) ─────────────────────────────────────
+             explain_text = backend.explain(job.sql)
+@@ -97,7 +169,8 @@ class SQLExecutor:
+             plan_note = (
+                 f"[DQE/SQL] Engine: {engine_label} | "
+                 f"Table: {job.namespace}.{job.table_name} | "
+-                f"Source rows scanned: {len(primary_arrow)}\n\n"
++                f"Source rows scanned: {len(primary_arrow)} | "
++                f"Materialisation: {copy_mode}\n\n"
+                 f"{explain_text}"
+             )
+ 
+@@ -120,6 +193,25 @@ class SQLExecutor:
+                 job.job_id, backend.name, total_rows, truncated, duration_ms,
+             )
+ 
++            from observability.audit_log import audit
++            audit.allow(
++                "query.execute",
++                tenant_id=job.tenant_id,
++                role=job.role,
++                subject=job.submitted_by or "",
++                resource=f"{job.namespace}.{job.table_name}",
++                request_id=job.job_id,
++                detail={
++                    "mode": "sql",
++                    "engine": backend.name,
++                    "materialisation": copy_mode,
++                    "source_rows_scanned": len(primary_arrow),
++                    "rows_returned": len(rows),
++                    "truncated": truncated,
++                    "duration_ms": duration_ms,
++                },
++            )
++
+             return QueryResult(
+                 columns=columns,
+                 rows=rows,
+@@ -139,7 +231,9 @@ class SQLExecutor:
+             from tenancy import scope_namespace
+             catalog = self._get_catalog()
+             scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
+-            primary_arrow = self._load_iceberg(catalog, scoped_ns, job.table_name, job.filters)
++            primary_arrow = self._load_iceberg(
++                catalog, scoped_ns, job.table_name, job.filters, job.projection
++            )
+             backend.register_table("iceberg_table", primary_arrow.to_pandas())
+             return backend.explain(job.sql)
+         except Exception as exc:
+@@ -164,31 +258,48 @@ class SQLExecutor:
+         namespace: str,
+         table_name: str,
+         filters: Optional[Dict[str, Any]],
++        projection: Optional[List[str]] = None,
+     ) -> pa.Table:
+-        """Load an Iceberg table, optionally applying column equality filters."""
++        """Load an Iceberg table with row-filter and column-projection pushdown.
++
++        Both are applied at scan planning time, so Iceberg can prune whole
++        manifests / data files before any bytes are read. A failure in either
++        degrades to a full scan rather than to wrong results, and is logged
++        at WARNING with the reason.
++        """
+         identifier = (namespace, table_name)
+         try:
+             table = catalog.load_table(identifier)
+         except Exception as exc:
+             raise ValueError(f"Iceberg table '{namespace}.{table_name}' not found: {exc}") from exc
+ 
+-        scan = table.scan()
++        scan_kwargs: Dict[str, Any] = {}
+ 
+-        # Pushdown equality filters using PyIceberg expressions
++        # ── Row filter pushdown (partition + file pruning) ──────────────
+         if filters:
+             try:
+-                from pyiceberg.expressions import (
+-                    EqualTo, And
+-                )
++                from pyiceberg.expressions import EqualTo, And
+                 expr = None
+                 for col, val in filters.items():
+                     eq = EqualTo(col, val)
+                     expr = eq if expr is None else And(expr, eq)
+                 if expr is not None:
+-                    scan = table.scan(row_filter=expr)
++                    scan_kwargs["row_filter"] = expr
+             except Exception as fe:
+                 logger.warning(
+-                    "[SQLExecutor] Predicate pushdown failed (%s); falling back to full scan", fe
++                    "[SQLExecutor] Row-filter pushdown failed (%s); falling back to full scan", fe
++                )
++
++        # ── Column projection pushdown (avoids reading unused columns) ──
++        if projection:
++            try:
++                available = {f.name for f in table.schema().fields}
++                selected = [c for c in projection if c in available]
++                if selected:
++                    scan_kwargs["selected_fields"] = tuple(selected)
++            except Exception as pe:
++                logger.warning(
++                    "[SQLExecutor] Projection pushdown failed (%s); reading all columns", pe
+                 )
+ 
+-        return scan.to_arrow()
++        return table.scan(**scan_kwargs).to_arrow()
+diff --git a/backend/rbac_utils.py b/backend/rbac_utils.py
+index cb6255c..0d109dd 100644
+--- a/backend/rbac_utils.py
++++ b/backend/rbac_utils.py
+@@ -231,3 +231,40 @@ def enforce_rbac(
+     df = apply_row_filters(df, namespace, table_name, role)
+     df = apply_rbac_to_dataframe(df, namespace, table_name, role)
+     return df
++
++
++# ─── Fast-path probe (zero-copy support) ──────────────────────────────────
++
++def rbac_is_noop(namespace: str, table_name: str, role: str) -> bool:
++    """True when enforcing RBAC on this table for this role would not change
++    a single cell — no row filter, no column mask, no column denial.
++
++    Callers use this to decide whether they can hand an Arrow table straight
++    to the query backend instead of materialising a masked pandas copy.
++
++    SAFETY CONTRACT — this function is allowed to return False when it is
++    unsure, but must NEVER return True when a policy exists:
++
++      * check_table_access() is still invoked here, so an unauthorised role
++        raises TableAccessDenied on the fast path exactly as on the slow one.
++      * Any error reaching the policy store returns False (fail closed), so
++        a database blip degrades performance, never confidentiality.
++    """
++    check_table_access(namespace, table_name, role)
++
++    try:
++        for pol in get_role_policies(role):
++            if pol["column_name"] == TABLE_DENY_SENTINEL:
++                continue  # table-level grants/denies handled above
++            if pol["namespace"] in (namespace, "*") and pol["table_name"] in (table_name, "*"):
++                return False  # a mask or column deny applies
++
++        for flt in get_row_filters(role):
++            if flt["namespace"] in (namespace, "*") and flt["table_name"] in (table_name, "*"):
++                return False  # a row filter applies
++    except TableAccessDenied:
++        raise
++    except Exception:
++        return False  # fail closed: unknown policy state -> take the slow path
++
++    return True
+diff --git a/backend/tests/test_dqe_regression.py b/backend/tests/test_dqe_regression.py
+index 5321d46..49cf3bc 100644
+--- a/backend/tests/test_dqe_regression.py
++++ b/backend/tests/test_dqe_regression.py
+@@ -274,13 +274,13 @@ def _test_client_regression():
+ 
+ def _make_admin_jwt() -> dict:
+     try:
+-        from datetime import datetime, timedelta
++        from datetime import datetime, timedelta, timezone
+         from jose import jwt as jose_jwt
+         secret = os.environ.get("JWT_SECRET_KEY", "test-secret-key-for-testing-only-32chars")
+         token = jose_jwt.encode(
+             {"sub": "dqe-regression-user", "email": "dqe@meldra.ai",
+              "tier": "trial", "role": "Admin", "type": "access",
+-             "exp": datetime.utcnow() + timedelta(minutes=30)},
++             "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
+             secret, algorithm="HS256",
+         )
+         return {"Authorization": f"Bearer {token}"}
+diff --git a/backend/tests/test_query_engine.py b/backend/tests/test_query_engine.py
+index 3d88160..4191754 100644
+--- a/backend/tests/test_query_engine.py
++++ b/backend/tests/test_query_engine.py
+@@ -19,7 +19,7 @@ import os
+ import sys
+ import time
+ import uuid
+-from datetime import datetime, timedelta
++from datetime import datetime, timedelta, timezone
+ from typing import Any, Dict, List
+ from unittest.mock import MagicMock, patch
+ 
+@@ -638,7 +638,7 @@ def _auth_headers() -> Dict[str, str]:
+                 "tier": "trial",
+                 "role": "Admin",
+                 "type": "access",
+-                "exp": datetime.utcnow() + timedelta(minutes=30),
++                "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+             },
+             secret,
+             algorithm="HS256",
+diff --git a/backend/tests/test_sec_2026_regressions.py b/backend/tests/test_sec_2026_regressions.py
+new file mode 100644
+index 0000000..446377c
+--- /dev/null
++++ b/backend/tests/test_sec_2026_regressions.py
+@@ -0,0 +1,238 @@
++# Copyright (c) 2026 Meldra AI Ltd. All rights reserved.
++"""
++tests/test_sec_2026_regressions.py
++
++Regression tests that pin the fixes for:
++
++  SEC-2026-001  Agent DQE tools built QueryJob without tenant_id/role,
++                bypassing namespace scoping and evaluating RBAC against a
++                hardcoded "Business Analyst" role.
++  SEC-2026-002  POST /v1/query/explain built a data-touching QueryJob
++                without tenant_id/role.
++  PERF-2026-003 SQLExecutor materialised a full pandas copy on every query
++                and registered it twice, contradicting the zero-copy
++                positioning.
++
++These deliberately avoid Postgres so they run in CI without a database —
++the policy store is stubbed. If one of these fails, a confidentiality
++control has regressed; do not skip it.
++"""
++
++from __future__ import annotations
++
++import ast
++import os
++import pathlib
++
++import pytest
++
++BACKEND = pathlib.Path(__file__).resolve().parent.parent
++
++
++# ─── SEC-2026-001 ─────────────────────────────────────────────────────────
++
++def _queryjob_calls(path: pathlib.Path):
++    """Yield every ast.Call constructing a QueryJob in `path`."""
++    tree = ast.parse(path.read_text(encoding="utf-8"))
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "QueryJob":
++            yield node
++
++
++@pytest.mark.parametrize("module", ["tools.py", "api/main.py"])
++def test_every_queryjob_carries_tenant_and_role(module):
++    """No QueryJob may be constructed without an explicit tenant_id and role.
++
++    QueryJob defaults tenant_id="" (scoping disabled) and role="Business
++    Analyst" (wrong mask). Relying on those defaults is what caused
++    SEC-2026-001; this test makes the omission a build failure rather than
++    something a reviewer has to spot by eye.
++    """
++    path = BACKEND / module
++    calls = list(_queryjob_calls(path))
++    assert calls, f"expected at least one QueryJob construction in {module}"
++
++    offenders = []
++    for node in calls:
++        kwargs = {kw.arg for kw in node.keywords if kw.arg}
++        missing = {"tenant_id", "role"} - kwargs
++        if missing:
++            offenders.append((node.lineno, sorted(missing)))
++
++    assert not offenders, (
++        f"{module}: QueryJob constructed without tenant/role at "
++        + "; ".join(f"line {ln} missing {m}" for ln, m in offenders)
++    )
++
++
++def test_agent_tools_read_context_vars():
++    """The agent tools must source tenant/role from the request ContextVars,
++    not from LLM-supplied arguments — the model must not be able to name a
++    tenant it does not belong to."""
++    src = (BACKEND / "tools.py").read_text(encoding="utf-8")
++    assert "def _job_context()" in src
++    assert "current_tenant_id.get()" in src
++    assert "current_user_role.get()" in src
++
++
++# ─── Tenant scope guard ───────────────────────────────────────────────────
++
++def test_unscoped_job_is_refused_when_enforcement_on(monkeypatch):
++    from query_engine.sql_executor import assert_tenant_scoped
++    from query_engine.models import QueryJob, QueryMode
++
++    monkeypatch.setenv("MELDRA_REQUIRE_TENANT_SCOPE", "1")
++    job = QueryJob(mode=QueryMode.SQL, namespace="gold", table_name="ami", sql="SELECT 1")
++    assert job.tenant_id == ""
++
++    with pytest.raises(PermissionError, match="unscoped"):
++        assert_tenant_scoped(job, "sql")
++
++
++def test_production_env_defaults_to_fail_closed(monkeypatch):
++    """An operator who never sets MELDRA_REQUIRE_TENANT_SCOPE must still get
++    enforcement in production. Secure by default, not secure by config."""
++    from query_engine.sql_executor import assert_tenant_scoped
++    from query_engine.models import QueryJob, QueryMode
++
++    monkeypatch.delenv("MELDRA_REQUIRE_TENANT_SCOPE", raising=False)
++    monkeypatch.setenv("MELDRA_ENV", "production")
++    job = QueryJob(mode=QueryMode.SQL, namespace="gold", table_name="ami", sql="SELECT 1")
++
++    with pytest.raises(PermissionError):
++        assert_tenant_scoped(job, "sql")
++
++
++def test_scoped_job_passes_guard(monkeypatch):
++    from query_engine.sql_executor import assert_tenant_scoped
++    from query_engine.models import QueryJob, QueryMode
++
++    monkeypatch.setenv("MELDRA_ENV", "production")
++    job = QueryJob(
++        mode=QueryMode.SQL, namespace="gold", table_name="ami",
++        sql="SELECT 1", tenant_id="t_abc123", role="Data Engineer",
++    )
++    assert_tenant_scoped(job, "sql")  # must not raise
++
++
++# ─── PERF-2026-003 — zero-copy fast path ──────────────────────────────────
++
++def test_rbac_noop_probe_fails_closed(monkeypatch):
++    """If the policy store is unreachable, rbac_is_noop must return False so
++    the caller takes the masked slow path. Never fail open."""
++    import rbac_utils
++
++    monkeypatch.setattr(rbac_utils, "check_table_access", lambda *a, **k: None)
++    monkeypatch.setattr(
++        rbac_utils, "get_role_policies",
++        lambda role: (_ for _ in ()).throw(RuntimeError("db down")),
++    )
++    assert rbac_utils.rbac_is_noop("gold", "ami", "Admin") is False
++
++
++def test_rbac_noop_probe_detects_column_policy(monkeypatch):
++    import rbac_utils
++
++    monkeypatch.setattr(rbac_utils, "check_table_access", lambda *a, **k: None)
++    monkeypatch.setattr(rbac_utils, "get_role_policies", lambda role: [
++        {"namespace": "gold", "table_name": "ami", "column_name": "mpan",
++         "action": "mask", "masking_pattern": "XXX"},
++    ])
++    monkeypatch.setattr(rbac_utils, "get_row_filters", lambda role: [])
++    assert rbac_utils.rbac_is_noop("gold", "ami", "Business Analyst") is False
++
++
++def test_rbac_noop_probe_detects_row_filter(monkeypatch):
++    import rbac_utils
++
++    monkeypatch.setattr(rbac_utils, "check_table_access", lambda *a, **k: None)
++    monkeypatch.setattr(rbac_utils, "get_role_policies", lambda role: [])
++    monkeypatch.setattr(rbac_utils, "get_row_filters", lambda role: [
++        {"namespace": "*", "table_name": "*",
++         "filter_expression": "region = 'NW'", "description": "regional scope"},
++    ])
++    assert rbac_utils.rbac_is_noop("gold", "ami", "Consultant") is False
++
++
++def test_rbac_noop_probe_true_when_no_policies(monkeypatch):
++    import rbac_utils
++
++    monkeypatch.setattr(rbac_utils, "check_table_access", lambda *a, **k: None)
++    monkeypatch.setattr(rbac_utils, "get_role_policies", lambda role: [])
++    monkeypatch.setattr(rbac_utils, "get_row_filters", lambda role: [])
++    assert rbac_utils.rbac_is_noop("gold", "ami", "Admin") is True
++
++
++def test_duckdb_registers_arrow_without_copy():
++    """DuckDB must scan a pyarrow.Table in place. If this ever regresses to
++    a pandas conversion, the zero-copy claim in the product docs is false."""
++    import pyarrow as pa
++    from query_engine.sql_backends import DuckDBBackend
++
++    tbl = pa.table({"mpan": ["a", "b", "c"], "kwh": [1.0, 2.0, 3.0]})
++    backend = DuckDBBackend()
++    try:
++        backend.register_table("iceberg_table", tbl)
++        backend.register_view("gold__ami", "iceberg_table")
++        out = backend.execute("SELECT SUM(kwh) AS total FROM gold__ami")
++        assert float(out.iloc[0]["total"]) == 6.0
++    finally:
++        backend.close()
++
++
++def test_sql_executor_registers_payload_once():
++    """register_table must be called once for the data; the join alias goes
++    through register_view. Two register_table calls = two copies."""
++    src = (BACKEND / "query_engine" / "sql_executor.py").read_text(encoding="utf-8")
++    body = src.split("def execute(self, job: QueryJob)")[1].split("def explain")[0]
++    assert body.count("backend.register_table(") == 1, \
++        "payload registered more than once — the second copy is the bug"
++    assert "backend.register_view(" in body
++
++
++# ─── Audit log ────────────────────────────────────────────────────────────
++
++def test_audit_record_is_json_with_utc_timestamp():
++    import json
++    from observability.audit_log import AuditEvent
++
++    rec = json.loads(AuditEvent(action="query.execute", outcome="allow").to_json())
++    assert rec["timestamp"].endswith("Z")
++    assert rec["schema_version"]
++    # ISO-8601 with millisecond precision, parseable without a custom rule
++    from datetime import datetime
++    datetime.strptime(rec["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ")
++
++
++def test_audit_redacts_secrets():
++    import json
++    from observability.audit_log import AuditEvent
++
++    rec = json.loads(
++        AuditEvent(
++            action="auth.login", outcome="deny",
++            detail={"password": "hunter2", "api_key": "sk-ant-xyz", "rows": 5},
++        ).to_json()
++    )
++    assert rec["detail"]["password"] == "***REDACTED***"
++    assert rec["detail"]["api_key"] == "***REDACTED***"
++    assert rec["detail"]["rows"] == 5
++
++
++# ─── Honest reporting (findings 5) ────────────────────────────────────────
++
++def test_expire_snapshots_does_not_claim_unearned_success():
++    """The old implementation returned a success string containing 'Expired'
++    while its body was `pass`. Reporting work that did not happen is a
++    compliance defect, not just a bug."""
++    src = (BACKEND / "meldra" / "catalog.py").read_text(encoding="utf-8")
++    body = src.split("def expire_snapshots(")[1].split("\n    def ")[0]
++    assert "expire.commit()" in body, "expire_snapshots must actually commit"
++    assert "meldra.retention.min_days" in body, "retention guard missing"
++
++
++def test_optimize_table_has_memory_ceiling():
++    src = (BACKEND / "meldra" / "catalog.py").read_text(encoding="utf-8")
++    assert "COMPACTION_ROW_CEILING" in src
++    body = src.split("def optimize_table(")[1].split("\n    def ")[0]
++    assert "raise ValueError" in body
+diff --git a/backend/tools.py b/backend/tools.py
+index fb39234..fa8ba8a 100644
+--- a/backend/tools.py
++++ b/backend/tools.py
+@@ -40,6 +40,18 @@ def _scoped_ns(namespace: str) -> str:
+     tenant_id = current_tenant_id.get()
+     return scope_namespace(tenant_id, namespace) if tenant_id else namespace
+ 
++def _job_context() -> tuple:
++    """Return (tenant_id, role) for the current agent request.
++
++    SECURITY: every QueryJob built inside an Agent tool MUST carry these.
++    QueryJob defaults to tenant_id="" (which disables namespace scoping in
++    SQLExecutor/PythonExecutor) and role="Business Analyst" (which applies
++    the wrong RBAC mask). Omitting them lets the Agent read unscoped
++    namespaces and evaluate column policies against a role the caller does
++    not hold. See docs/security/SEC-2026-001-agent-tenant-bypass.md.
++    """
++    return current_tenant_id.get(), current_user_role.get()
++
+ def get_pyiceberg_type(type_str: str):
+     type_str = type_str.lower()
+     if type_str == "string":
+@@ -376,12 +388,15 @@ def distributed_sql_query(namespace: str, table_name: str, sql: str, limit: int
+     try:
+         from query_engine.models import QueryJob, QueryMode
+         engine = _dqe()
++        _tenant, _role = _job_context()
+         job = QueryJob(
+             mode=QueryMode.SQL,
+             namespace=namespace,
+             table_name=table_name,
+             sql=sql,
+             limit=limit,
++            tenant_id=_tenant,
++            role=_role,
+         )
+         completed = engine.submit_sync(job)
+         if completed.status.value == "failed":
+@@ -437,6 +452,7 @@ def distributed_graph_query(
+                 parsed_filters = json.loads(filters)
+             except Exception:
+                 pass
++        _tenant, _role = _job_context()
+         job = QueryJob(
+             mode=QueryMode.GRAPH,
+             graph_name=graph_name,
+@@ -444,6 +460,8 @@ def distributed_graph_query(
+             algorithm=algorithm,
+             filters=parsed_filters,
+             limit=500,
++            tenant_id=_tenant,
++            role=_role,
+         )
+         completed = engine.submit_sync(job)
+         if completed.status.value == "failed":
+@@ -492,12 +510,15 @@ def distributed_python_extract(namespace: str, table_name: str, python_script: s
+     try:
+         from query_engine.models import QueryJob, QueryMode
+         engine = _dqe()
++        _tenant, _role = _job_context()
+         job = QueryJob(
+             mode=QueryMode.PYTHON,
+             namespace=namespace,
+             table_name=table_name,
+             python_script=python_script,
+             limit=limit,
++            tenant_id=_tenant,
++            role=_role,
+         )
+         completed = engine.submit_sync(job)
+         if completed.status.value == "failed":
+@@ -550,6 +571,7 @@ def multi_engine_query(queries_json: str) -> str:
+         if len(specs) > 10:
+             return "❌ Maximum 10 queries per multi_engine_query call."
+ 
++        _tenant, _role = _job_context()
+         jobs = []
+         for spec in specs:
+             job = QueryJob(
+@@ -563,6 +585,8 @@ def multi_engine_query(queries_json: str) -> str:
+                 python_script=spec.get("python_script"),
+                 filters=spec.get("filters"),
+                 limit=spec.get("limit", 200),
++                tenant_id=_tenant,
++                role=_role,
+             )
+             jobs.append(job)
+ 
+diff --git a/cmd.exe b/cmd.exe
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/docs/README.md b/docs/README.md
+new file mode 100644
+index 0000000..2165b31
+--- /dev/null
++++ b/docs/README.md
+@@ -0,0 +1,97 @@
++# Meldra Grid Data Platform — Documentation
++
++**Baseline issued:** 2026-09-05T14:15:00Z · **Version:** 1.0
++
++Governed Apache Iceberg lakehouse, catalog and analytical query platform
++for regulated utility operators — electricity, gas, oil and water.
++
++---
++
++## Start here
++
++| If you are… | Read |
++|---|---|
++| An architect evaluating the platform | [ARC-001 Architecture Overview](architecture/01-architecture-overview.md) |
++| A CISO or assessor | [ARC-004 Security Architecture](architecture/04-security-architecture.md), then [security/](security/) |
++| A data architect | [ARC-003 Data Architecture](architecture/03-data-architecture.md) |
++| Commercial or exec | [BC-001 Business Case](business/BC-001-business-case.md) |
++| A developer joining the codebase | [ARC-001 §5](architecture/01-architecture-overview.md), [FUNC-001](functional/FUNC-001-functional-specification.md), [OPS-001](operations/OPS-001-logging-and-error-handling.md) |
++| Asking "what's missing?" | [ARC-006 Gap Analysis](architecture/06-gap-analysis.md) |
++
++---
++
++## Index
++
++### Architecture (TOGAF ADM)
++
++| ID | Document | Phase |
++|---|---|---|
++| ARC-001 | [Architecture Overview](architecture/01-architecture-overview.md) | A, C |
++| ARC-002 | [Business Architecture](architecture/02-business-architecture.md) | A, B |
++| ARC-003 | [Data Architecture](architecture/03-data-architecture.md) | C |
++| ARC-004 | [Security Architecture](architecture/04-security-architecture.md) | Cross-cutting |
++| ARC-006 | [Gap Analysis and Roadmap](architecture/06-gap-analysis.md) | E, F |
++
++### Functional and technical
++
++| ID | Document |
++|---|---|
++| FUNC-001 | [Functional Specification](functional/FUNC-001-functional-specification.md) |
++| TD-003 | [Zero-copy execution path](technical/TD-003-zero-copy-execution.md) |
++| TD-004 | [Scan pushdown: state and roadmap](technical/TD-004-scan-pushdown.md) |
++
++### Security records
++
++| ID | Record | Severity | Status |
++|---|---|---|---|
++| SEC-2026-001 | [Agent tenant/RBAC bypass](security/SEC-2026-001-agent-tenant-bypass.md) | High | Remediated |
++| SEC-2026-002 | [`/query/explain` scope gap](security/SEC-2026-002-explain-endpoint-scope.md) | Medium | Remediated |
++
++### Decisions
++
++| ID | Decision |
++|---|---|
++| ADR-0001 | [Apache Iceberg as the table format](adr/ADR-0001-iceberg-table-format.md) |
++| ADR-0002 | [Namespace-prefix tenant isolation](adr/ADR-0002-tenant-isolation.md) |
++| ADR-0003 | [The LLM boundary: models interpret, engines compute](adr/ADR-0003-llm-boundary.md) |
++
++### Operations
++
++| ID | Document |
++|---|---|
++| OPS-001 | [Logging, audit and error handling standard](operations/OPS-001-logging-and-error-handling.md) |
++| BC-001 | [Business Case and Analysis](business/BC-001-business-case.md) |
++
++---
++
++## Documentation conventions
++
++**Status labels are used consistently and mean what they say:**
++● implemented · ◐ partial · ○ planned.
++
++**Capabilities are never described as delivered when they are planned.**
++Where the code and the intent differ, the gap is recorded in
++[ARC-006](architecture/06-gap-analysis.md) rather than smoothed over. This
++is architecture principle P7, and it exists because these documents will be
++read during procurement and assurance, where an inflated claim discovered
++by an evaluator discredits every other claim alongside it.
++
++**All timestamps are UTC ISO-8601** with an explicit `Z`.
++
++**Every document carries an ID, version and issue timestamp**, and a
++document-control table recording changes.
++
++---
++
++## The two things a new reader should know
++
++1. **The strongest part of this platform is the Policy Enforcement Point.**
++   RBAC is applied to the data before it reaches any query engine, so
++   column aliasing, subqueries and `SELECT *` cannot recover a masked
++   value. That is a stronger guarantee than SQL rewriting and is worth
++   understanding before evaluating anything else.
++
++2. **The largest open gap is inference egress ([GAP-01](architecture/06-gap-analysis.md)).**
++   Agent reasoning currently calls an external endpoint. For an operator
++   inside NIS scope or a DCC-connected party, that is normally a blocking
++   control failure. It is the single highest-value item on the roadmap.
+diff --git a/docs/adr/ADR-0001-iceberg-table-format.md b/docs/adr/ADR-0001-iceberg-table-format.md
+new file mode 100644
+index 0000000..cc46a74
+--- /dev/null
++++ b/docs/adr/ADR-0001-iceberg-table-format.md
+@@ -0,0 +1,51 @@
++# ADR-0001 — Apache Iceberg as the table format
++
++**Status:** Accepted · **Date:** 2026-09-05 · **Deciders:** Architecture
++
++## Context
++
++Grid and metering data is high-volume, long-retention and subject to
++schema change over decades. The platform needs ACID commits, time travel,
++schema evolution, and freedom from vendor lock-in across a 20–40 year asset
++lifecycle.
++
++## Options
++
++| Option | Assessment |
++|---|---|
++| **Apache Iceberg** | Hidden partitioning; broad multi-engine support (Spark, Trino, Dremio, DuckDB, Snowflake, BigQuery); snapshot isolation; mature Python client |
++| Delta Lake | Strong, but engine ecosystem is Databricks-centred |
++| Apache Hudi | Good upserts; smaller ecosystem, more operational complexity |
++| Raw Parquet + Hive | No ACID, no schema evolution, no time travel |
++| Cloud warehouse | Proprietary storage; cost scales badly at this volume; exit is expensive |
++
++## Decision
++
++Apache Iceberg on object storage, accessed via PyIceberg, catalogued in
++AWS Glue or an Iceberg REST catalog.
++
++## Rationale
++
++**Hidden partitioning** is the decisive feature for this user base. Analysts
++write `WHERE reading_ts > '2026-09-01'` and get pruning without knowing a
++partition column exists. In a utility, the people who ask the best questions
++are rarely the people fluent in partition layouts.
++
++**Snapshot isolation** gives the reproducible as-of query that settlement
++disputes and regulatory responses require. "What did the data say on 14
++March" must be answerable identically in September.
++
++**Multi-engine reach** satisfies principle P3. A DNO can read its own data
++with Spark or Trino tomorrow without Meldra in the path, which is what makes
++the platform procurable rather than a lock-in risk.
++
++## Consequences
++
++**Positive:** open exit path; storage/compute separation; time travel is
++free rather than engineered.
++
++**Negative:** small-file management is now the operator's problem
++(see GAP-10); PyIceberg lags the Java implementation on some features;
++snapshot growth needs governed expiry (ARC-003 §5).
++
++**Neutral:** commits to object storage as the substrate.
+diff --git a/docs/adr/ADR-0002-tenant-isolation.md b/docs/adr/ADR-0002-tenant-isolation.md
+new file mode 100644
+index 0000000..9110e1e
+--- /dev/null
++++ b/docs/adr/ADR-0002-tenant-isolation.md
+@@ -0,0 +1,57 @@
++# ADR-0002 — Namespace-prefix tenant isolation with context-bound binding
++
++**Status:** Accepted · **Date:** 2026-09-05 · **Supersedes:** implicit prior model
++**Related:** SEC-2026-001
++
++## Context
++
++Multi-tenant SaaS over a shared Iceberg catalog. A tenant must never see,
++list, reference or guess its way into another tenant's data.
++
++## Options
++
++| Option | Assessment |
++|---|---|
++| Catalog per tenant | Strongest isolation; heavy operationally; expensive at low tenant sizes |
++| **Namespace prefixing in a shared catalog** | Good isolation; simple; cheap; needs disciplined enforcement |
++| Row-level tenant column | Weakest; one missing predicate leaks everything |
++
++## Decision
++
++Shared catalog with silent namespace prefixing (`t_<tenant>__<namespace>`),
++translated at the API boundary. `tenant_id` derives **only** from the JWT
++`sub` claim.
++
++Reinforced by three mechanisms after SEC-2026-001:
++
++1. **Context binding** — agent tools read tenant and role from ContextVars
++   set server-side, never from LLM-visible tool arguments.
++2. **Fail-closed guard** — `assert_tenant_scoped()` refuses unscoped
++   data-touching jobs; enforced by default outside dev/test.
++3. **CI enforcement** — an AST test fails the build if any `QueryJob` is
++   constructed without explicit `tenant_id` and `role`.
++
++## Rationale
++
++The original design was correct. It failed because correctness depended on
++every caller remembering to pass a parameter, and one path did not — the
++one the agent's system prompt told the model to prefer.
++
++This is the substance of principle **P2**: a tenant boundary enforced by
++convention is not a boundary. The three mechanisms above move enforcement
++from "a reviewer notices" to "the build fails and the executor refuses."
++
++Context binding also has a security property beyond tidiness: because the
++model never sees tenant as a tool parameter, a prompt-injected instruction
++cannot cause it to name a tenant it does not belong to. The agent is
++structurally unable to cross tenants rather than instructed not to.
++
++## Consequences
++
++**Positive:** cheap; boundary is testable; agent is injection-resistant on
++this axis.
++
++**Negative:** one account = one tenant, so teams and organisations need a
++model extension; graph access via Apache AGE is not yet covered (GAP-02);
++`MELDRA_REQUIRE_TENANT_SCOPE=0` can still disable enforcement, mitigated by
++unconditional auditing.
+diff --git a/docs/adr/ADR-0003-llm-boundary.md b/docs/adr/ADR-0003-llm-boundary.md
+new file mode 100644
+index 0000000..97c5ec1
+--- /dev/null
++++ b/docs/adr/ADR-0003-llm-boundary.md
+@@ -0,0 +1,54 @@
++# ADR-0003 — The LLM boundary: models interpret, engines compute
++
++**Status:** Accepted · **Date:** 2026-09-05 · **Deciders:** Architecture
++**Related:** Principle P4
++
++## Context
++
++The platform's differentiator is natural-language access to grid data. It
++is also used for settlement, billing and regulatory reporting, where a
++wrong number is a regulatory event rather than a bad user experience.
++
++## Decision
++
++**The language model may generate queries. It may never generate values.**
++
++| Model may | Model may not |
++|---|---|
++| Interpret intent | Compute an aggregate |
++| Emit SQL, Cypher, or a transform script | State a figure not returned by an engine |
++| Explain a returned result | Estimate, fill, or infer a missing value |
++| Suggest a table or column | Decide authorisation |
++
++Every number reaching a user is produced by DuckDB, Iceberg or NetworkX and
++is reproducible by re-running the emitted query against the recorded
++snapshot.
++
++## Rationale
++
++Language models are excellent at translating a domain question into a
++query, and structurally unsuited to arithmetic over billions of rows. The
++failure mode is the problem: a wrong query usually errors, while a
++hallucinated figure looks exactly like a right one. In a settlement
++context, the second is undetectable until a reconciliation fails months
++later.
++
++This also makes the platform defensible under audit. "Here is the SQL, here
++is the snapshot ID, re-run it" is an answer a regulator accepts. "The AI
++said so" is not.
++
++## Consequences
++
++**Positive:** results are reproducible and auditable; hallucination cannot
++reach a settlement figure; the boundary is easy to explain to a compliance
++audience and is a genuine differentiator against tools that let the model
++answer directly.
++
++**Negative:** forecasting and imputation are out of scope for the agent
++path; the agent is only as good as the SQL it emits, so schema quality and
++column naming become product concerns.
++
++**Implementation obligations:**
++- The UI must show the emitted query alongside the result.
++- Query results must return their Iceberg snapshot ID (GAP-08).
++- The agent system prompt must never invite the model to compute.
+diff --git a/docs/architecture/01-architecture-overview.md b/docs/architecture/01-architecture-overview.md
+new file mode 100644
+index 0000000..4444387
+--- /dev/null
++++ b/docs/architecture/01-architecture-overview.md
+@@ -0,0 +1,229 @@
++# Meldra Grid Data Platform — Architecture Overview
++
++**Document ID:** ARC-001
++**Version:** 1.0
++**Issued:** 2026-09-05T13:30:00Z
++**Status:** Baseline
++**Framework:** TOGAF 10 ADM, Phases A–D
++**Classification:** Internal
++
++---
++
++## 1. Purpose and scope
++
++This document is the Architecture Definition baseline for the Meldra Grid
++Data Platform: an Apache Iceberg lakehouse, catalog and analytical query
++layer intended for regulated utility operators — electricity distribution
++and transmission, gas networks, oil and gas midstream, water, and metering
++service providers.
++
++It covers Business, Data, Application and Technology architecture, and
++records where the current implementation is **compliant**, **partial**, or
++**not yet built**. That distinction is deliberate and is maintained
++throughout: an architecture document that describes intent as though it
++were state is worse than no document, because it will be relied on during
++procurement and assurance.
++
++**In scope:** the lakehouse, catalog, RBAC and tenancy model, query
++engine, agentic interface, audit trail.
++
++**Out of scope of this baseline:** the Energy Trust Protocol (ETP) itself,
++which is a distinct edge/transport-layer product with its own
++specification. ETP's *integration contract* with this platform is defined
++in §7; ETP's internal design is not described here.
++
++---
++
++## 2. TOGAF ADM mapping
++
++| ADM Phase | Artefact | Location | Status |
++|---|---|---|---|
++| **A** — Architecture Vision | Vision, drivers, stakeholder map | [02-business-architecture.md](02-business-architecture.md) §1–3 | Baseline |
++| **B** — Business Architecture | Value streams, capability model, business services | [02-business-architecture.md](02-business-architecture.md) | Baseline |
++| **C** — Data Architecture | Medallion model, catalog, lineage, retention | [03-data-architecture.md](03-data-architecture.md) | Baseline |
++| **C** — Application Architecture | Component and interface model | This doc §5 | Baseline |
++| **D** — Technology Architecture | Runtime, deployment, platform services | Not yet issued | ○ Planned |
++| — | Security Architecture (cross-cutting) | [04-security-architecture.md](04-security-architecture.md) | Baseline |
++| **E** — Opportunities and Solutions | Gap analysis and work packages | [06-gap-analysis.md](06-gap-analysis.md) | Baseline |
++| **F** — Migration Planning | Roadmap and sequencing | [06-gap-analysis.md](06-gap-analysis.md) §4 | Draft |
++| **G** — Implementation Governance | Architecture principles, ADRs, compliance gates | [../adr/](../adr/) | ◐ ADRs issued; governance doc planned |
++| **H** — Change Management | Change process, architecture review | Not yet issued | ○ Planned |
++
++Phases F and H are marked Draft because they require operator input we do
++not have. They are listed rather than omitted so the gap is visible.
++
++---
++
++## 3. Architecture principles
++
++These are the decision rules. Where a design choice in this repository
++conflicts with one, that conflict is recorded as a gap in
++[06-gap-analysis.md](06-gap-analysis.md) rather than quietly tolerated.
++
++| # | Principle | Rationale | Implication |
++|---|---|---|---|
++| **P1** | **Fail closed.** Any component that cannot determine authorisation refuses the request. | A grid platform's failure mode must be unavailability, never disclosure. | `rbac_is_noop()` returns `False` on policy-store error; `assert_tenant_scoped()` defaults to enforced in production. |
++| **P2** | **Isolation is structural, not procedural.** A tenant boundary that depends on a caller remembering to pass a parameter is not a boundary. | SEC-2026-001 was exactly this failure. | Context-bound tenant binding; AST test enforcing it in CI. |
++| **P3** | **Open table formats, no lock-in.** Iceberg on object storage; no proprietary storage layer. | Utilities run 20–40 year asset lifecycles and will outlive any vendor. | Data remains readable by Spark, Trino, Dremio, Snowflake, DuckDB without Meldra. |
++| **P4** | **Determinism where money and safety live.** Settlement, billing and protection calculations are computed by the query engine, never generated by a language model. | A hallucinated settlement figure is a regulatory event. | The agent emits SQL; Iceberg and DuckDB compute the numbers. See [ADR-0003](../adr/ADR-0003-llm-boundary.md). |
++| **P5** | **Every decision is auditable.** Read, deny and error events are recorded with UTC timestamps and actor identity. | NIS Reg. 10; NCSC CAF C1; SEC obligations. | `observability/audit_log.py`, JSON-lines, append-only. |
++| **P6** | **Data minimisation at the boundary.** Nothing leaves the trust boundary that does not need to. | UK GDPR Art. 5(1)(c); consumption data reveals occupancy. | Inference egress is the platform's largest open gap — see §6 and [GAP-01](06-gap-analysis.md). |
++| **P7** | **Claims must be true.** No function reports success for work it did not do; no document describes intent as state. | `expire_snapshots()` previously returned "Expired older snapshots…" from a body containing `pass`. | Honest docstrings; gap register; status labels on every capability. |
++
++---
++
++## 4. Architecture Vision (ADM Phase A)
++
++**Vision statement.** A utility operator can ask a question of decades of
++metering, SCADA and asset data in plain language, get an answer that is
++provably derived from immutable, lineage-tracked records, and hand the
++audit trail to a regulator without further work.
++
++**The problem being solved.** Grid data is high-volume, high-cardinality
++and long-retention. A single DNO with 3 million smart meters at half-hourly
++granularity generates roughly **52.6 billion readings per year**
++(3e6 × 48 × 365). Retention obligations are measured in years. Traditional
++warehouses price this out; raw object storage makes it unqueryable;
++Hadoop-era lakes make it ungoverned. Iceberg's manifest-based pruning,
++schema evolution and snapshot isolation are the correct primitives, but
++they are not a product on their own.
++
++**What Meldra adds:** governed multi-tenancy, role-aware data-layer
++masking, a natural-language interface bounded to deterministic execution,
++and an audit trail designed for the regulator rather than for the operator.
++
++---
++
++## 5. Application Architecture (ADM Phase C)
++
++### 5.1 Component model
++
++```
++┌──────────────────────────────────────────────────────────────────┐
++│ PRESENTATION                                                      │
++│  Vite/TypeScript SPA  ·  Streamlit console  ·  MCP stdio server   │
++└────────────────────────────┬─────────────────────────────────────┘
++                             │ HTTPS + JWT
++┌────────────────────────────▼─────────────────────────────────────┐
++│ API — FastAPI (backend/api/main.py)                               │
++│  OIDC · MFA · JWT issue/verify · rate limiting · endpoint RBAC    │
++└────────────────────────────┬─────────────────────────────────────┘
++                             │ tenant_id + role bound from JWT
++        ┌────────────────────┼────────────────────┐
++        ▼                    ▼                    ▼
++┌───────────────┐  ┌──────────────────┐  ┌──────────────────┐
++│ AGENT         │  │ QUERY ENGINE     │  │ CATALOG SERVICE  │
++│ LangChain +   │  │ SQL / Graph /    │  │ MeldraCatalog    │
++│ Claude Sonnet │─▶│ Python executors │  │ namespaces,      │
++│ 10 tools      │  │ job store        │  │ schema evolution │
++│ ContextVar    │  │ tenant guard     │  │ maintenance      │
++│ tenant bind   │  └────────┬─────────┘  └────────┬─────────┘
++└───────────────┘           │                     │
++                            ▼                     │
++        ┌───────────────────────────────┐         │
++        │ POLICY ENFORCEMENT POINT      │         │
++        │ rbac_utils.enforce_rbac()     │         │
++        │  1. table/namespace access    │         │
++        │  2. row-level filtering       │         │
++        │  3. column mask / denial      │         │
++        │ rbac_is_noop() → zero-copy    │         │
++        └───────────────┬───────────────┘         │
++                        ▼                          ▼
++        ┌──────────────────────────────────────────────────┐
++        │ DATA — Apache Iceberg on S3 · Glue/REST catalog   │
++        │ Apache AGE (graph) · PostgreSQL (auth + policy)   │
++        └──────────────────────────────────────────────────┘
++                        │
++        ┌───────────────▼──────────────────────────────────┐
++        │ OBSERVABILITY — audit_log (JSON-lines, UTC)       │
++        │ traffic_bus (live events) · error records        │
++        └──────────────────────────────────────────────────┘
++```
++
++### 5.2 The Policy Enforcement Point
++
++The single most important structural property of this architecture: **RBAC
++is applied to the data, before it reaches any execution engine.**
++
++`enforce_rbac()` masks, filters and denies at the DataFrame/Arrow layer.
++Only then is the relation registered with DuckDB. This means column
++aliasing, subquery wrapping, `SELECT *`, CTEs and view tricks cannot
++recover a masked value — the value is not present in the registered
++relation. Compare the common alternative of rewriting the user's SQL to add
++predicates, which is defeated by any sufficiently creative query.
++
++The zero-copy fast path added in PERF-2026-003 preserves this property:
++`rbac_is_noop()` still calls `check_table_access()`, and returns `False`
++whenever *any* policy applies or the policy store is unreachable. The fast
++path is taken only when enforcement would provably be a no-op.
++
++### 5.3 Interfaces
++
++| ID | Interface | Protocol | Auth | Notes |
++|---|---|---|---|---|
++| IF-01 | REST API | HTTPS/JSON | JWT (OIDC + MFA) | Primary integration surface |
++| IF-02 | Chat / agent | HTTPS | JWT → ContextVar | Tenant bound server-side |
++| IF-03 | MCP server | stdio | Process-local | `backend/mcp_server.py` |
++| IF-04 | Arrow Flight | gRPC | **Not yet secured** | `arrow_flight_server.py` — see [GAP-04](06-gap-analysis.md) |
++| IF-05 | Kafka ingest | Kafka | Broker-level | `kafka_consumer.py`; telemetry ingest |
++| IF-06 | Iceberg catalog | Glue / REST | IAM | Direct engine access (Spark, Trino) |
++| IF-07 | Model inference | HTTPS | API key | **Egress boundary — see §6** |
++
++---
++
++## 6. The critical open item: inference egress
++
++Principle P6 is not currently met. Agent reasoning calls an external
++inference endpoint (`api.anthropic.com`). For an operator inside NIS
++Regulations scope, or a DCC-connected party under the Smart Energy Code,
++sending metering or operational telemetry to a third-party endpoint is
++generally a blocking control failure regardless of contractual terms.
++
++This is the difference between a platform that demos well and one that can
++be deployed. It is tracked as [GAP-01](06-gap-analysis.md) with three
++viable resolutions (in-region managed inference, private VPC deployment,
++or a redaction gateway ahead of IF-07). It should be resolved before any
++regulated pilot, not during one.
++
++---
++
++## 7. ETP integration contract
++
++The Energy Trust Protocol operates at the meter and transport edge. This
++platform operates at rest and at query time. They are complementary layers
++with a defined seam, and conflating them weakens both.
++
++| Concern | Owner | Why |
++|---|---|---|
++| Reading integrity at origin | ETP | Block-native structure, tamper-evidence at the meter |
++| Attacker deception and profiling | ETP | Phantom Grid |
++| Attack-surface rotation | ETP | Moving Target Defence |
++| Anomaly detection on the wire | ETP | AI Sentinel |
++| **Verified reading → durable record** | **Seam** | ETP block hash is written as an Iceberg column |
++| Retention, time travel, replay | This platform | Iceberg snapshots and manifests |
++| Query-time authorisation | This platform | Policy Enforcement Point |
++| Audit trail for the regulator | This platform | `audit_log` + Iceberg snapshot history |
++
++**Contract requirement.** Ingest must persist the ETP block hash and
++verification status as first-class columns
++(`etp_block_hash`, `etp_verified_at`, `etp_sentinel_score`) so that any
++row returned by a query can be traced back to a verified reading. Without
++this, ETP's tamper-evidence stops at the lakehouse boundary and the
++end-to-end trust claim cannot be substantiated. Not yet implemented —
++[GAP-07](06-gap-analysis.md).
++
++**What this platform must not claim.** Zero-copy analytics do not provide
++tamper-evidence, and the ephemeral session model does not provide an audit
++trail. Those are ETP's and Iceberg's jobs respectively. Marketing that
++merges the three will not survive a technical due-diligence review.
++
++---
++
++## 8. Document control
++
++| Version | Date | Change | Author |
++|---|---|---|---|
++| 1.0 | 2026-09-05T13:30:00Z | Baseline issue following SEC-2026-001/002 remediation | Architecture |
++
++**Review cycle:** quarterly, or on any change to the Policy Enforcement
++Point, the tenancy model, or the inference egress boundary.
+diff --git a/docs/architecture/02-business-architecture.md b/docs/architecture/02-business-architecture.md
+new file mode 100644
+index 0000000..5238c90
+--- /dev/null
++++ b/docs/architecture/02-business-architecture.md
+@@ -0,0 +1,177 @@
++# Business Architecture — Utility & Energy Sector
++
++**Document ID:** ARC-002
++**Version:** 1.0
++**Issued:** 2026-09-05T13:35:00Z
++**TOGAF ADM:** Phase A (Vision) and Phase B (Business Architecture)
++**Status:** Baseline
++
++---
++
++## 1. Business drivers
++
++| # | Driver | Evidence / pressure | Platform response |
++|---|---|---|---|
++| D1 | Metering data volume growth | Half-hourly settlement across national meter estates; billions of readings per year per operator | Iceberg manifest pruning, partition + column projection pushdown |
++| D2 | Regulatory retention | Multi-year audit windows under sector rules and UK GDPR accountability | Iceberg snapshot history; retention-guarded expiry |
++| D3 | Cyber obligations on essential services | NIS Regulations 2018; NCSC Cyber Assessment Framework | Data-layer RBAC, tenant isolation, structured audit trail |
++| D4 | Consumer privacy | Consumption data reveals occupancy and behaviour — special-category-adjacent | Column masking, row filtering, data minimisation at egress |
++| D5 | Net-zero and DER complexity | EV charging, heat pumps, rooftop solar, storage, flexibility markets | Graph analytics over network topology; multi-source joins |
++| D6 | Asset lifecycle vs vendor lifecycle | Grid assets run 20–40 years; vendors do not | Open table format; no proprietary storage lock-in |
++| D7 | Analyst scarcity | Domain experts outnumber SQL-fluent staff | Natural-language interface bounded to deterministic execution |
++
++---
++
++## 2. Stakeholder map
++
++| Stakeholder | Primary concern | What they need from the platform | Architecture view they read |
++|---|---|---|---|
++| **CIO / CDO** | Cost, lock-in, strategic fit | Open formats, credible roadmap, TCO | ARC-001, BC-001 |
++| **Head of Data / Chief Data Architect** | Model quality, governance, lineage | Medallion structure, schema evolution, catalog | ARC-003 |
++| **CISO** | Breach exposure, assurance evidence | Isolation proof, audit trail, egress control | ARC-004, SEC records |
++| **Data Protection Officer** | Lawful basis, minimisation, subject rights | Masking policy, retention, egress boundary | ARC-004 §5 |
++| **Regulatory / Compliance lead** | Auditability, settlement defensibility | Immutable history, deterministic computation | ARC-003 §5, ADR-0003 |
++| **Grid / Network Operations** | Answers during an event, at speed | Sub-minute query on recent data; anomaly views | FUNC-001 |
++| **Settlement / Revenue** | Correctness, reconciliation | Deterministic SQL, time travel, replay | ADR-0003 |
++| **Field Engineering** | Asset history, failure patterns | Asset joins, graph traversal | FUNC-001 |
++| **Procurement** | Vendor viability, exit plan | Data portability, standards conformance | ARC-001 §3 P3 |
++
++**Note on sequencing.** The CISO and DPO are the stakeholders who can stop
++a deployment outright, and they are the ones whose concerns the platform
++currently serves least well (inference egress, GAP-01). Sales sequencing
++that reaches them late is sales sequencing that fails late and expensively.
++
++---
++
++## 3. Business capability model
++
++Legend: ● built · ◐ partial · ○ not built
++
++| Capability | Sub-capability | Status | Implementation |
++|---|---|---|---|
++| **Data acquisition** | Batch file ingest | ● | `ingest_csv_to_iceberg` |
++| | Streaming telemetry | ◐ | `kafka_consumer.py` — no schema registry, no DLQ |
++| | SCADA / historian connect | ○ | No OPC-UA or PI adapter |
++| | ETP verified-block ingest | ○ | GAP-07 |
++| **Data governance** | Catalog & namespaces | ● | `MeldraCatalog` |
++| | Schema evolution | ● | Iceberg `update_schema` |
++| | Multi-tenant isolation | ● | `tenancy.py` + context binding |
++| | Column masking / row filter | ● | `rbac_utils` PEP |
++| | Lineage | ◐ | `lineage_graph.py` — table-level only, not column-level |
++| | Data quality rules | ◐ | `meldra/validator.py` — not enforced at ingest |
++| | Retention policy enforcement | ◐ | Property-based guard added; no automated lifecycle |
++| **Analytics** | SQL analytics | ● | DuckDB over Iceberg |
++| | Graph / topology analytics | ● | Apache AGE + NetworkX |
++| | Python transforms | ● | AST-sandboxed executor |
++| | Natural-language query | ● | LangChain agent |
++| | Time travel / replay | ● | Iceberg snapshots |
++| | Forecasting / ML | ○ | Not in scope of this baseline |
++| **Assurance** | Structured audit log | ● | `observability/audit_log.py` |
++| | Tamper-evident audit store | ○ | Log is append-only by convention, not cryptographically |
++| | Access review reporting | ○ | No periodic entitlement report |
++| | Data residency control | ○ | **GAP-01** |
++| **Operations** | Table maintenance | ◐ | Bounded compaction; distributed rewrite not wired |
++| | Observability / metrics | ◐ | `traffic_bus`; no SLO instrumentation |
++| | DR / backup | ○ | Not documented |
++
++Honest read: **governance and analytics are genuinely strong; assurance
++and operations are where a utility procurement process will find gaps.**
++That is a normal profile for a product at this stage, and it is fixable —
++but it should not be presented as complete.
++
++---
++
++## 4. Value streams
++
++### VS-1 — Settlement query (Revenue)
++
++```
++Meter reading  →  ETP verification  →  Bronze ingest  →  Silver conform
++   →  Gold aggregate  →  Analyst question  →  Deterministic SQL
++   →  Result + snapshot ID  →  Regulator-defensible answer
++```
++
++The critical property is the **snapshot ID returned with the result**. It
++lets anyone re-run the identical query months later against the identical
++data and get the identical number. Without it, "the figure we submitted in
++March" is unreproducible, which is a settlement dispute waiting to happen.
++
++### VS-2 — Grid event investigation (Operations)
++
++```
++Anomaly detected  →  Analyst asks in natural language  →  Agent emits SQL
++   →  Pushdown-pruned scan of recent partitions  →  Topology graph traversal
++   →  Affected feeder / customer set  →  Audited read record
++```
++
++Time-to-answer is the value here; the audit record is the cost of doing it
++on regulated data. Both matter.
++
++### VS-3 — Regulatory response (Compliance)
++
++```
++Regulator request  →  Time-travel to the historical snapshot
++   →  Query as-of that date  →  Audit log evidencing who read what, when
++   →  Response package
++```
++
++---
++
++## 5. Business services and SLOs
++
++| Service | Consumer | Proposed SLO | Instrumented? |
++|---|---|---|---|
++| Query API | Analysts, applications | p95 < 5s (Gold), 99.5% availability | No |
++| Ingest | Upstream systems | < 15 min batch latency | No |
++| Catalog | Data engineering | 99.9% availability | No |
++| Audit trail | CISO, compliance | 100% capture, ≥13-month retention | Partial |
++
++**These SLOs are proposals, not measurements.** Nothing currently
++instruments them. A utility RFP will ask for evidence, not targets —
++closing this is [GAP-06](06-gap-analysis.md).
++
++---
++
++## 6. Segment applicability
++
++| Segment | Fit | Dominant driver | Principal blocker |
++|---|---|---|---|
++| Electricity distribution (DNO/DSO) | **Strong** | AMI volume, flexibility markets | GAP-01 egress |
++| Electricity transmission (TSO) | Strong | SCADA + PMU volume, criticality | GAP-01, higher CAF bar |
++| Smart metering / MSP | **Strongest — lead here** | Settlement, DCC obligations | GAP-01, GAP-07 (ETP seam) |
++| Gas networks | Good | Asset integrity, leak analytics | Sensor adapters (○) |
++| Oil & gas midstream | Good | Pipeline telemetry, predictive maintenance | Historian adapters (○) |
++| Water | Moderate | Leakage, quality compliance | Lower budget density |
++| Renewables / storage operators | Moderate | Asset performance, curtailment | Smaller data estates |
++
++**Recommended entry point: smart metering / MSP.** It is where the data
++volume argument is most obviously true, where the ETP story is native
++rather than adapted, and where the buyer already has settlement pain that
++a lakehouse demonstrably solves.
++
++---
++
++## 7. Business case summary
++
++Full workings in [../business/BC-001-business-case.md](../business/BC-001-business-case.md).
++
++**Cost position.** Iceberg on object storage with query-time compute
++separates storage from compute. For an estate at half-hourly granularity,
++compressed Parquet in the low tens of terabytes per year is object-storage
++priced, against warehouse pricing that charges for the same bytes at a
++large multiple. The saving is real, but it is a *storage* saving; do not
++model it as a total-cost saving without modelling compute.
++
++**Risk position.** The commercial risk is not competitive, it is
++assurance. The platform will be evaluated by a CISO and a DPO before it is
++evaluated by a data team. GAP-01 is therefore the highest-value item on
++the roadmap by a wide margin — it converts the platform from
++"interesting" to "procurable."
++
++---
++
++## 8. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:35:00Z | Baseline issue |
+diff --git a/docs/architecture/03-data-architecture.md b/docs/architecture/03-data-architecture.md
+new file mode 100644
+index 0000000..c8f19b0
+--- /dev/null
++++ b/docs/architecture/03-data-architecture.md
+@@ -0,0 +1,178 @@
++# Data Architecture — Lakehouse, Catalog and Retention
++
++**Document ID:** ARC-003 · **Version:** 1.0 · **Issued:** 2026-09-05T13:40:00Z
++**TOGAF ADM:** Phase C (Data Architecture) · **Status:** Baseline
++
++---
++
++## 1. Storage foundation
++
++| Layer | Technology | Role |
++|---|---|---|
++| Object store | S3 (or Azure ADLS / GCS) | Immutable Parquet data files |
++| Table format | **Apache Iceberg** | Manifests, snapshots, schema evolution, ACID |
++| Catalog | AWS Glue or Iceberg REST | Namespace → table resolution |
++| Query | DuckDB (default), Spark / Doris (pluggable) | Vectorised execution |
++| Graph | Apache AGE on PostgreSQL | Network topology, lineage, asset relationships |
++| Control plane | PostgreSQL | Identity, roles, RBAC policies, row filters |
++
++**Why Iceberg and not Delta or Hudi.** Recorded in
++[ADR-0001](../adr/ADR-0001-iceberg-table-format.md). Summary: hidden
++partitioning removes the partition-column trap that catches domain analysts;
++snapshot isolation gives the reproducible as-of query that settlement
++disputes require; and the format is genuinely multi-engine, which satisfies
++principle P3 (asset lifecycles outlive vendors).
++
++---
++
++## 2. Medallion model
++
++| Layer | Namespace convention | Content | Write pattern | Typical retention |
++|---|---|---|---|---|
++| **Bronze** | `<tenant>__bronze` | Raw as-received, nothing dropped | Append-only | Full regulatory window |
++| **Silver** | `<tenant>__silver` | Conformed, typed, deduplicated, validated | Append + merge | Full regulatory window |
++| **Gold** | `<tenant>__gold` | Aggregates, settlement-ready marts | Overwrite by partition | Per business need |
++
++Layer is recorded in Iceberg table properties (`layer`) and surfaced by
++`MeldraCatalog.get_table_details()`.
++
++**Bronze is never edited.** If a reading is wrong, Silver corrects it and
++records why. Editing Bronze destroys the evidence that the correction was
++needed — which is the record a regulator actually asks for.
++
++---
++
++## 3. Partitioning for grid-scale data
++
++The dominant access patterns are *recent time range* and *specific
++region/feeder*. Partition accordingly:
++
++| Table class | Recommended partition spec | Reasoning |
++|---|---|---|
++| AMI half-hourly readings | `days(reading_ts)`, `bucket(16, mpan)` | Time-bounded queries prune to days; bucketing spreads write skew across a large meter estate |
++| SCADA / PMU telemetry | `hours(event_ts)`, `identity(substation_id)` | Sub-hour incident investigation; substation is the natural operational unit |
++| Asset master | `identity(asset_class)` | Small, low-cardinality, joined not scanned |
++| Settlement aggregates | `days(settlement_date)` | Reprocessed by settlement day |
++
++Iceberg's **hidden partitioning** means analysts write
++`WHERE reading_ts > '2026-09-01'` and pruning happens automatically — they
++do not need to know a partition column exists. This is the single largest
++usability advantage over Hive-style layouts for a non-specialist user base,
++and it is worth stating explicitly in demos.
++
++### Volume model — one 3-million-meter estate
++
++| Metric | Value |
++|---|---|
++| Meters | 3,000,000 |
++| Readings/meter/day (half-hourly) | 48 |
++| Readings/day | 144,000,000 |
++| **Readings/year** | **52,560,000,000** |
++| Compressed Parquet @ ~12 bytes/reading | ~630 GB/year |
++| With Silver + Gold derivatives | ~1.5–2 TB/year |
++
++At object-storage pricing this is a rounding error; the cost is entirely in
++compute and in the discipline of pruning. Which is why §4 matters.
++
++---
++
++## 4. Scan pushdown
++
++Two pushdowns are implemented in `SQLExecutor._load_iceberg()`:
++
++| Pushdown | Mechanism | Populated by |
++|---|---|---|
++| Row filter | PyIceberg `EqualTo`/`And` → `scan(row_filter=…)` | `job.filters` |
++| Column projection | `scan(selected_fields=…)` | `job.projection` |
++
++Both prune at **scan planning** time, so whole manifests and data files are
++skipped before any byte is read.
++
++> **Known limitation, stated plainly.** Predicates written inline in the SQL
++> `WHERE` clause are **not** auto-translated into Iceberg expressions. They
++> are evaluated by DuckDB *after* the scan. A caller that needs file-level
++> pruning must populate `job.filters` explicitly. SQL-derived pushdown
++> requires a SQL parser (sqlglot) and is tracked in
++> [TD-004](../technical/TD-004-scan-pushdown.md).
++>
++> This limitation was previously contradicted by the module docstring, which
++> claimed predicate pushdown unconditionally. The docstring has been
++> corrected. On a 52-billion-row table the difference between planned and
++> unplanned pruning is the difference between a query and an outage.
++
++---
++
++## 5. Time travel, lineage and retention
++
++**Time travel.** Every commit creates a snapshot.
++`MeldraCatalog.run_time_travel_scan(namespace, table, snapshot_id)` reads
++the table as it stood. This is what makes VS-3 (regulatory response)
++possible: the regulator's question is always "what did you know on date X",
++and the answer must be reproducible.
++
++**Recommendation not yet implemented:** return the snapshot ID alongside
++every query result, so an answer is self-describing and re-runnable. Small
++change, disproportionate assurance value. Tracked as GAP-08.
++
++**Lineage.** `lineage_graph.py` tracks table-to-table relationships.
++Column-level lineage is not implemented; for settlement defensibility
++("which source column produced this figure") it will be needed.
++
++**Retention.** `expire_snapshots()` now:
++
++1. refuses if fewer snapshots exist than `retain_last` (default 10);
++2. **hard-blocks** on any table carrying the `meldra.retention.min_days`
++   property, raising `PermissionError` rather than silently expiring;
++3. commits a real expiry and reports the actual count.
++
++The previous implementation returned *"Expired older snapshots … to free S3
++storage space"* from a function body containing `pass`. For a platform whose
++value proposition is auditability, a maintenance operation that reports
++unearned success is a compliance defect, not a cosmetic bug. It is now
++covered by a regression test.
++
++**Set `meldra.retention.min_days` on every regulated table at creation
++time.** It is the only thing standing between a well-meaning storage
++cleanup and the destruction of an audit window.
++
++---
++
++## 6. Data classification and masking
++
++| Class | Examples | Default treatment |
++|---|---|---|
++| **Restricted** | MPAN/MPRN, customer name/address, meter serial | Masked for all roles except explicit grant |
++| **Sensitive** | Half-hourly consumption (occupancy-revealing) | Row-filtered by region/role; aggregate access preferred |
++| **Internal** | Asset IDs, feeder topology, network model | Role-gated |
++| **Open** | Aggregated regional statistics | Broad read |
++
++Enforced by `rbac_utils.enforce_rbac()` **at the data layer, before engine
++registration**. Column aliasing, subqueries, CTEs and `SELECT *` cannot
++recover a masked value, because the value is absent from the relation the
++engine ever sees. This is a stronger guarantee than SQL rewriting and is
++worth making explicitly in a CISO conversation.
++
++---
++
++## 7. ETP integration columns (required, not built)
++
++To carry ETP's tamper-evidence into the lakehouse, ingest must persist:
++
++| Column | Type | Meaning |
++|---|---|---|
++| `etp_block_hash` | string | Block hash from the ETP-verified reading |
++| `etp_verified_at` | timestamp | When verification occurred |
++| `etp_sentinel_score` | double | AI Sentinel anomaly score at ingest |
++| `etp_chain_ref` | string | Anchor reference for external verification |
++
++Without these, the end-to-end trust claim breaks at the ingest boundary:
++ETP can prove a reading was untampered on the wire, and Iceberg can prove
++a row was untampered at rest, but nothing joins the two. Tracked as GAP-07.
++
++---
++
++## 8. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:40:00Z | Baseline issue; pushdown limitation stated; retention guard documented |
+diff --git a/docs/architecture/04-security-architecture.md b/docs/architecture/04-security-architecture.md
+new file mode 100644
+index 0000000..182bb50
+--- /dev/null
++++ b/docs/architecture/04-security-architecture.md
+@@ -0,0 +1,178 @@
++# Security Architecture
++
++**Document ID:** ARC-004 · **Version:** 1.0 · **Issued:** 2026-09-05T13:45:00Z
++**TOGAF ADM:** Cross-cutting (Phases B–D) · **Status:** Baseline
++**Classification:** Internal
++
++---
++
++## 1. Threat model summary
++
++| # | Threat | Vector | Control | Status |
++|---|---|---|---|---|
++| T1 | Cross-tenant data read | Unscoped namespace lookup | Context-bound tenant + fail-closed guard | ● Remediated (SEC-2026-001) |
++| T2 | Privilege confusion | Role defaulted rather than bound | Role bound from JWT; AST test in CI | ● Remediated |
++| T3 | Masked-column recovery | SQL aliasing, subqueries, CTEs | Data-layer PEP before engine registration | ● |
++| T4 | Prompt injection steering the agent | Malicious content in queried data or user turn | Tenant/role from ContextVars, never tool arguments | ● Structural |
++| T5 | Sandbox escape via Python transform | `exec` of user script | AST pre-scan + restricted builtins + timeout | ● |
++| T6 | Data exfiltration via inference egress | Telemetry sent to external endpoint | **None** | ○ **GAP-01** |
++| T7 | Audit tampering | Log mutation | Append-only by convention only | ◐ Not cryptographic |
++| T8 | Unauthenticated Arrow Flight access | gRPC endpoint | **None** | ○ GAP-04 |
++| T9 | Credential compromise | Password/token theft | OIDC + MFA + bcrypt + rate limiting | ● |
++| T10 | Retention destruction | Careless snapshot expiry | `meldra.retention.min_days` hard block | ● |
++
++---
++
++## 2. Defence in depth
++
++```
++ 1. Network            TLS; private networking (deployment-dependent)
++ 2. Identity           OIDC · MFA (mfa_service.py) · bcrypt · JWT
++ 3. Endpoint RBAC      roles.py capability sets, enforced server-side
++ 4. Tenant isolation   tenancy.py prefixing + assert_tenant_scoped guard
++ 5. Data-layer RBAC    enforce_rbac: table access → row filter → column mask
++ 6. Execution sandbox  AST scan, restricted builtins, timeouts,
++                       DuckDB enable_external_access=false
++ 7. Audit              observability/audit_log.py, UTC, append-only
++```
++
++Layers 4 and 5 are the ones that carry the confidentiality guarantee. Layer
++3 protects endpoints; it does not protect data, and should never be
++presented as if it does.
++
++---
++
++## 3. Tenant isolation model
++
++One registered account = one tenant. `tenant_id` is the JWT `sub` claim and
++is **never** read from a request body.
++
++- `scope_namespace()` prefixes every client-supplied namespace:
++  `default` → `t_<tenant>__default`.
++- `unscope_namespace()` returns `None` for a namespace not belonging to the
++  caller — the isolation boundary. A foreign namespace is never revealed,
++  not even by name.
++- `assert_tenant_scoped()` refuses any data-touching job carrying no
++  tenant. Defaults to **enforced** whenever `MELDRA_ENV` is not
++  development/local/test/ci, so production is secure without configuration.
++
++Every unscoped execution is audited whether or not it is refused, so the
++condition is detectable in an environment where enforcement has been
++disabled.
++
++**Known residual:** graph queries reach Apache AGE by graph name rather
++than by Iceberg namespace and are not covered by this guard. Tracked as
++SEC-2026-001 action A-2.
++
++---
++
++## 4. Authorisation model
++
++Eight personas (`roles.py`), evaluated at two levels.
++
++| Role | Endpoint capability | Data-layer default |
++|---|---|---|
++| Admin | Full | Unmasked |
++| Data Engineer | Ingest, query, Python transforms | Bronze/Silver RW, Gold R |
++| Data Architect | Schema and namespace lifecycle | Structural, not row data |
++| Business Analyst | Query Gold | PII masked |
++| **Consultant** | Query | **Deny-by-default on every namespace** until an Admin grants one |
++| CIO / COO / Viewer | Dashboards only — no ad-hoc query | Aggregates only |
++
++The Consultant persona is the most security-relevant design decision in the
++model: external and time-boxed users start with access to nothing, and
++access is granted explicitly. This is the right default for a utility
++engaging contractors, and it was precisely the persona most affected by
++SEC-2026-001, since the hardcoded `"Business Analyst"` fallback bypassed
++the deny-by-default posture entirely.
++
++---
++
++## 5. Regulatory mapping
++
++| Obligation | Requirement | Control | Status |
++|---|---|---|---|
++| **UK GDPR Art. 5(1)(f)** | Integrity and confidentiality | Layers 4–5 | ● |
++| **UK GDPR Art. 5(1)(c)** | Data minimisation | Column masking ●; egress minimisation ○ | ◐ |
++| **UK GDPR Art. 30** | Records of processing | Audit log | ◐ Feeds it; not a RoPA |
++| **UK GDPR Art. 32** | Security of processing | Full stack | ● |
++| **UK GDPR Art. 33** | 72-hour breach notification | Audit trail supports assessment | ◐ |
++| **NIS Regulations 2018 Reg. 10** | Security duty for OES | Layers 1–7 | ◐ Egress open |
++| **NCSC CAF B2** | Identity and access control | RBAC + MFA + tenancy | ● |
++| **NCSC CAF C1** | Security monitoring | Structured audit; no SIEM integration yet | ◐ |
++| **NCSC CAF C2** | Proactive discovery | Not implemented | ○ |
++| **IEC 62443-3-3** | System security requirements | Partial (SR 1.x, 2.x) | ◐ |
++| **Smart Energy Code / DCC** | Data access and residency | **Blocked by GAP-01** | ○ |
++| **ISO 27001 A.9 / A.12** | Access control, logging | Covered | ◐ Needs formal ISMS |
++
++Nothing here is claimed as certified. These are control mappings for a
++readiness assessment, not evidence of assessment.
++
++---
++
++## 6. The egress boundary — GAP-01
++
++Agent reasoning currently calls an external inference endpoint. For a
++DCC-connected party or an operator inside NIS scope this is normally a
++blocking finding, regardless of contractual data-handling terms, because
++the control question is *where the data goes*, not *what the vendor
++promises to do with it*.
++
++Three resolutions, in order of deployment realism:
++
++1. **In-region managed inference** — AWS Bedrock (eu-west-2) or Azure with
++   UK data residency. Fastest path; satisfies residency, not "never leaves
++   our estate".
++2. **Redaction gateway ahead of IF-07** — strip MPAN, names, addresses and
++   precise geolocation before any inference call; send schema and
++   aggregates, never raw rows. Strong minimisation posture, and worth
++   building regardless of option 1 or 3.
++3. **Self-hosted inference in the operator's VPC** — satisfies the
++   strictest reading. Highest operational cost.
++
++**Recommendation:** build option 2 unconditionally — it is good practice
++under Art. 5(1)(c) whatever the endpoint — and offer options 1 and 3 as
++deployment tiers.
++
++---
++
++## 7. Audit trail
++
++`observability/audit_log.py`. JSON-lines, one object per event, UTC
++ISO-8601 to millisecond precision with explicit `Z`. Every record carries
++`event_id`, `action`, `outcome`, `tenant_id`, `role`, `subject`,
++`resource`, `request_id`, `timestamp`, `schema_version`, `host`, `service`,
++`env`.
++
++Design rules enforced in code:
++
++- **No data values.** Column names yes, cell contents never — an audit log
++  containing the PII it audits is a second breach surface.
++- **Secrets redacted** on every payload via `redact()`.
++- **Deny and error records flush synchronously.** Losing an allow record is
++  tolerable; losing a deny record is not.
++- **Append-only.** No update or delete path exists in the module.
++
++**Residual (T7):** append-only is a property of this module, not of the
++storage. A tamper-evident store — object-lock, WORM, or hash-chained
++records — is required before the audit trail can be presented as
++independently trustworthy. Tracked as GAP-05.
++
++---
++
++## 8. Secure development
++
++- Secrets are not committed; `.gitignore` excludes `.env*` except the
++  example. Verified by scan on 2026-09-05.
++- Security regressions are pinned by test, not by review attention:
++  `backend/tests/test_sec_2026_regressions.py`.
++- Security findings are recorded as numbered, dated documents under
++  `docs/security/` with impact, root cause, remediation and residual risk.
++
++---
++
++## 9. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:45:00Z | Baseline issue following SEC-2026-001/002 |
+diff --git a/docs/architecture/06-gap-analysis.md b/docs/architecture/06-gap-analysis.md
+new file mode 100644
+index 0000000..253b37e
+--- /dev/null
++++ b/docs/architecture/06-gap-analysis.md
+@@ -0,0 +1,99 @@
++# Gap Analysis and Roadmap
++
++**Document ID:** ARC-006 · **Version:** 1.0 · **Issued:** 2026-09-05T13:50:00Z
++**TOGAF ADM:** Phase E (Opportunities and Solutions), Phase F (Migration Planning)
++**Status:** Baseline
++
++---
++
++## 1. How to read this
++
++This is the register of the distance between what the platform is and what
++a regulated utility deployment requires. It is deliberately unflattering.
++A gap register that reads well is not being used.
++
++Severity: **Blocker** = prevents regulated deployment · **High** = will be
++raised in assurance · **Medium** = operational debt · **Low** = polish.
++
++---
++
++## 2. Gap register
++
++| ID | Gap | Severity | Evidence | Resolution | Effort |
++|---|---|---|---|---|---|
++| **GAP-01** | **Inference egress has no residency or minimisation control** | **Blocker** | Agent calls external endpoint with query context | Redaction gateway + in-region or in-VPC inference | 3–6 weeks |
++| GAP-02 | Graph path not covered by tenant scope guard | High | `graph_executor.py` addresses AGE by graph name | Extend `assert_tenant_scoped` to graph mode | 3 days |
++| GAP-03 | Role-less JWT falls back to Business Analyst | High | `user.get("role", "Business Analyst")` | Reject with 403 | 1 day |
++| GAP-04 | Arrow Flight server unauthenticated | High | `arrow_flight_server.py` has no auth layer | mTLS + JWT, or disable in production builds | 1 week |
++| GAP-05 | Audit store not tamper-evident | High | Append-only by convention only | Object-lock / WORM sink, or hash-chained records | 2 weeks |
++| GAP-06 | No SLO instrumentation | High | SLOs are proposals; nothing measures them | OpenTelemetry + dashboards | 2 weeks |
++| **GAP-07** | **ETP verification not carried into the lakehouse** | **High** | No `etp_block_hash` columns; trust claim breaks at ingest | Add ETP columns + verification-on-ingest | 2–3 weeks |
++| GAP-08 | Query results do not return their snapshot ID | Medium | Answers are not self-describing or re-runnable | Return `snapshot_id` in `QueryResult` | 2 days |
++| GAP-09 | SQL `WHERE` predicates are not pushed to Iceberg | Medium | `job.filters` must be populated manually | sqlglot-derived pushdown ([TD-004](../technical/TD-004-scan-pushdown.md)) | 1–2 weeks |
++| GAP-10 | Distributed compaction not wired | Medium | In-process rewrite capped at 5M rows | Spark `rewrite_data_files` job | 1 week |
++| GAP-11 | Column-level lineage absent | Medium | Table-level only | Extend `lineage_graph.py` | 2 weeks |
++| GAP-12 | Data quality rules not enforced at ingest | Medium | `validator.py` exists but is not on the write path | Wire into ingest, quarantine failures | 1 week |
++| GAP-13 | Streaming ingest lacks schema registry and DLQ | Medium | `kafka_consumer.py` | Add registry + dead-letter topic | 1 week |
++| GAP-14 | No SCADA/historian adapters | Medium | Blocks gas/oil segments | OPC-UA, PI connectors | 4+ weeks |
++| GAP-15 | No DR/backup documentation | Medium | Not documented | Runbook + tested restore | 1 week |
++| GAP-16 | No periodic entitlement review report | Low | CAF B2 expects it | Scheduled report | 3 days |
++| GAP-17 | `test_query_engine.py` requires live Postgres | Low | 37 tests fail without a DB | Testcontainers in CI | 3 days |
++| GAP-18 | BOM in `kafka_consumer.py` | Low | U+FEFF; breaks strict parsers | Re-save UTF-8 without BOM | 10 min |
++
++---
++
++## 3. Resolved in this cycle (2026-09-05)
++
++| ID | Item | Where |
++|---|---|---|
++| SEC-2026-001 | Agent DQE tools bypassed tenant scoping and role binding | [security/](../security/SEC-2026-001-agent-tenant-bypass.md) |
++| SEC-2026-002 | `/v1/query/explain` built an unscoped data-touching job | [security/](../security/SEC-2026-002-explain-endpoint-scope.md) |
++| PERF-2026-003 | Full pandas copy + double registration on every query | [TD-003](../technical/TD-003-zero-copy-execution.md) |
++| DOC-2026-004 | Docstring claimed unconditional predicate pushdown | ARC-003 §4 |
++| OPS-2026-005 | `expire_snapshots()` reported success from a `pass` body | ARC-003 §5 |
++| OPS-2026-006 | `optimize_table()` had no memory ceiling | ARC-003 §5 |
++| HYG-2026-007 | Deprecated `datetime.utcnow()` across 7 modules | — |
++| HYG-2026-008 | Junk files (`cmd.exe`, `I`) committed at repo root | — |
++
++---
++
++## 4. Sequencing
++
++**Phase 1 — Make it deployable (0–6 weeks).** GAP-01, GAP-02, GAP-03,
++GAP-04, GAP-05.
++
++Everything here is a control an assurance reviewer will ask about directly.
++GAP-01 is the one that decides whether a regulated pilot is possible at
++all; the others are the ones that decide whether it survives review.
++
++**Phase 2 — Make it provable (6–12 weeks).** GAP-06, GAP-07, GAP-08,
++GAP-09, GAP-10.
++
++This is where the ETP seam gets built and where the "answer plus snapshot
++ID plus audit record" story becomes demonstrable end to end. It is also
++where the performance claims become true rather than directional.
++
++**Phase 3 — Make it broad (12–24 weeks).** GAP-11 through GAP-18.
++
++Segment expansion into gas, oil and water depends on GAP-14; the remainder
++is governance and operational maturity.
++
++---
++
++## 5. The one-paragraph version
++
++The lakehouse, catalog, tenancy model and policy enforcement point are
++genuinely well built — the isolation logic was correct before this cycle
++and simply was not wired into one path. What is missing is not
++architecture, it is **assurance**: egress control, tamper-evident audit,
++measured SLOs, and the ETP-to-Iceberg trust seam. Those four items are what
++stand between a strong demo and a signed utility contract, and none of them
++is a rewrite.
++
++---
++
++## 6. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:50:00Z | Baseline issue |
+diff --git a/docs/business/BC-001-business-case.md b/docs/business/BC-001-business-case.md
+new file mode 100644
+index 0000000..b2f3b48
+--- /dev/null
++++ b/docs/business/BC-001-business-case.md
+@@ -0,0 +1,156 @@
++# BC-001 — Business Case and Analysis
++
++**Document ID:** BC-001 · **Version:** 1.0 · **Issued:** 2026-09-05T14:10:00Z
++**Status:** Baseline · **Audience:** Exec, commercial, investors
++
++---
++
++## 1. Problem statement
++
++A distribution network operator with 3 million smart meters generates
++approximately **52.6 billion readings per year** at half-hourly
++granularity. Retention obligations run to years. Three existing approaches
++each fail differently:
++
++| Approach | Failure mode |
++|---|---|
++| Cloud data warehouse | Cost scales with volume; proprietary storage; expensive exit |
++| Raw object storage | Cheap and unqueryable; no ACID, schema evolution or time travel |
++| Hadoop-era data lake | Ungoverned; no fine-grained access control; operationally heavy |
++
++Meanwhile the people with the best questions — network planners, settlement
++analysts, field engineering leads — are frequently not SQL-fluent, so
++questions queue behind a small data team.
++
++---
++
++## 2. Proposition
++
++An Apache Iceberg lakehouse with governed multi-tenancy, role-aware
++data-layer masking, and a natural-language interface **bounded to
++deterministic execution** — the model writes the query, the engine computes
++the number, and the snapshot ID makes the answer reproducible.
++
++The bounded-execution property (ADR-0003) is the commercial differentiator,
++not the natural-language interface itself. Anyone can bolt an LLM onto a
++warehouse. What a utility cannot buy easily is a natural-language system
++whose every answer is re-runnable, attributable and defensible in front of
++a regulator.
++
++---
++
++## 3. Cost model
++
++### Storage
++
++| Item | Value |
++|---|---|
++| Readings/year (3M meters, half-hourly) | 52.56 billion |
++| Compressed Parquet @ ~12 bytes/reading | ~630 GB/year |
++| With Silver + Gold derivatives | ~1.5–2 TB/year |
++| 7-year retained estate | ~10–14 TB |
++| Object storage @ ~£0.02/GB/month | **~£200–350/month** |
++
++At warehouse storage pricing the same estate is typically an order of
++magnitude more, before compute.
++
++> **Do not present this as total cost saving.** It is a *storage* saving.
++> Compute is the larger line item in practice and depends entirely on query
++> discipline — which is why scan pushdown (GAP-09) is a commercial issue,
++> not just a technical one. An unpruned scan of a 52-billion-row table
++> converts the cost advantage into a cost incident.
++
++### Compute
++
++Separated from storage. DuckDB serves single-node analytics without a
++cluster; Spark or Doris plug into the same `SQLBackend` interface when
++scale requires. Costs scale with query volume, not with retained bytes.
++
++---
++
++## 4. Benefits
++
++| Benefit | Mechanism | Measurable as |
++|---|---|---|
++| Storage cost reduction | Object storage + open format | £/TB/month vs incumbent |
++| Faster time-to-answer | Natural language + pushdown | Median analyst request turnaround |
++| Reduced data-team queue | Self-service for non-SQL users | Tickets deflected |
++| Audit response cost | Time travel + audit trail | Hours per regulatory request |
++| Settlement defensibility | Deterministic execution + snapshot IDs | Disputes resolved without re-derivation |
++| Exit optionality | Multi-engine open format | Migration cost at contract end |
++
++**Honest note:** the first two are demonstrable today. The last four depend
++on GAP-08 (snapshot IDs), GAP-05 (tamper-evident audit) and GAP-06
++(instrumentation). Claim them as roadmap, not as delivered.
++
++---
++
++## 5. Market segmentation
++
++| Segment | Fit | Entry driver | Blocker |
++|---|---|---|---|
++| **Smart metering / MSP** | **Strongest** | Settlement volume, DCC obligations | GAP-01, GAP-07 |
++| Electricity distribution (DNO/DSO) | Strong | AMI volume, flexibility markets | GAP-01 |
++| Transmission (TSO) | Strong | SCADA/PMU volume, criticality | GAP-01, higher CAF bar |
++| Gas networks | Good | Asset integrity, leak analytics | GAP-14 adapters |
++| Oil & gas midstream | Good | Pipeline telemetry, predictive maintenance | GAP-14 |
++| Water | Moderate | Leakage, quality compliance | Budget density |
++| Renewables / storage | Moderate | Asset performance, curtailment | Smaller estates |
++
++**Recommended entry: smart metering / MSP.** The volume argument is most
++obviously true there, the ETP story is native rather than adapted, and the
++buyer already has settlement pain a lakehouse demonstrably relieves.
++
++---
++
++## 6. Competitive position
++
++| Competitor class | Their strength | Meldra's angle |
++|---|---|---|
++| Cloud warehouses (Snowflake, BigQuery) | Maturity, ecosystem | Open format, no storage lock-in, sector-specific governance |
++| Databricks | Scale, ML depth | Lower operational burden; Iceberg neutrality; utility-specific RBAC |
++| Utility point solutions (MDMS vendors) | Domain fit | General-purpose analytics; not locked to metering |
++| DIY Iceberg + Trino | Full control | Governance, tenancy, audit and NL interface out of the box |
++
++The defensible position is **the governance layer, not the lakehouse**.
++Iceberg is a commodity. Tenant isolation, data-layer masking, an audit
++trail designed for a regulator, and bounded LLM execution are not.
++
++---
++
++## 7. Commercial risk register
++
++| Risk | Likelihood | Impact | Mitigation |
++|---|---|---|---|
++| **Inference egress blocks procurement** | **High** | **Critical** | GAP-01 — highest-priority item on the roadmap |
++| Assurance gaps surface late in a sales cycle | High | High | Lead with CISO/DPO, not with the data team |
++| Over-claiming ("zero-copy", "predicate pushdown") damages credibility | Medium | High | Corrected in code and docs; hold the line in marketing |
++| Long utility sales cycles exhaust runway | High | High | Target MSPs and consultancies for shorter cycles |
++| Iceberg commoditised by hyperscalers | Medium | Medium | Compete on governance, not on format |
++| Key-person concentration | High | High | Documentation baseline (this set) is the first mitigation |
++
++The first and third are the ones within immediate control. The third in
++particular is cheap to fix and expensive to get wrong: a data architect who
++finds one inflated claim will discount every other claim in the deck.
++
++---
++
++## 8. Recommendation
++
++1. **Close GAP-01 before any regulated pilot.** It is the difference between
++   a platform that demos and one that deploys.
++2. **Lead commercially with governance and auditability**, not with AI.
++   The buyer committee that says no is CISO and DPO; the natural-language
++   interface is what makes the analyst say yes *after* they clear it.
++3. **Enter via smart metering / MSP**, where the ETP seam is native.
++4. **Keep the claims true.** The corrections made in this cycle —
++   pushdown, zero-copy, snapshot expiry — cost nothing and remove the most
++   likely reason for a technical evaluator to disqualify the product.
++
++---
++
++## 9. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T14:10:00Z | Baseline issue |
+diff --git a/docs/functional/FUNC-001-functional-specification.md b/docs/functional/FUNC-001-functional-specification.md
+new file mode 100644
+index 0000000..bc60eb7
+--- /dev/null
++++ b/docs/functional/FUNC-001-functional-specification.md
+@@ -0,0 +1,167 @@
++# FUNC-001 — Functional Specification
++
++**Document ID:** FUNC-001 · **Version:** 1.0 · **Issued:** 2026-09-05T14:05:00Z
++**Status:** Baseline · **Audience:** Product, engineering, QA, pre-sales
++
++Legend: ● implemented · ◐ partial · ○ planned
++
++---
++
++## 1. Actors
++
++| Actor | Description |
++|---|---|
++| Grid analyst | Domain expert, limited SQL. Primary agent user. |
++| Data engineer | Builds pipelines, ingests, transforms. |
++| Data architect | Owns schema and namespace standards. |
++| Consultant | External, time-boxed, deny-by-default. |
++| Executive (CIO/COO/Viewer) | Dashboards only. |
++| Administrator | Roles, policies, tenants. |
++| Upstream system | Batch or streaming data source. |
++
++---
++
++## 2. Functional requirements
++
++### FR-1 Data ingestion
++
++| ID | Requirement | Status | Implementation |
++|---|---|---|---|
++| FR-1.1 | Ingest CSV into an Iceberg table with schema casting | ● | `ingest_csv_to_iceberg` |
++| FR-1.2 | Create tables with explicit typed schemas | ● | `create_iceberg_table` |
++| FR-1.3 | Consume streaming telemetry from Kafka | ◐ | `kafka_consumer.py` — no schema registry or DLQ (GAP-13) |
++| FR-1.4 | Validate on ingest and quarantine failures | ○ | `validator.py` exists, not wired (GAP-12) |
++| FR-1.5 | Verify and persist ETP block hashes at ingest | ○ | GAP-07 |
++| FR-1.6 | Ingest from SCADA/historian (OPC-UA, PI) | ○ | GAP-14 |
++
++### FR-2 Catalog and governance
++
++| ID | Requirement | Status |
++|---|---|---|
++| FR-2.1 | Create, list, delete namespaces (tenant-scoped) | ● |
++| FR-2.2 | List tables, inspect schema, properties, snapshot history | ● |
++| FR-2.3 | Evolve schema (add / drop / rename column) | ● |
++| FR-2.4 | Tag tables with medallion layer | ● |
++| FR-2.5 | Compact small files, with a memory ceiling | ◐ Capped at 5M rows (GAP-10) |
++| FR-2.6 | Expire snapshots, blocked on retention-governed tables | ● |
++| FR-2.7 | Table-level lineage | ◐ Column-level absent (GAP-11) |
++
++### FR-3 Query
++
++| ID | Requirement | Status | Notes |
++|---|---|---|---|
++| FR-3.1 | Execute SQL against Iceberg via DuckDB | ● | |
++| FR-3.2 | Cross-namespace joins | ● | Registered as `namespace__table` |
++| FR-3.3 | Row-filter pushdown at scan planning | ● | Via `job.filters` |
++| FR-3.4 | Column-projection pushdown | ● | Via `job.projection` |
++| FR-3.5 | Derive pushdown from the SQL `WHERE` clause | ○ | **GAP-09** — see [TD-004](../technical/TD-004-scan-pushdown.md) |
++| FR-3.6 | Return an EXPLAIN plan | ● | Includes materialisation mode |
++| FR-3.7 | Graph algorithms (pagerank, centrality, components, cycles, shortest path, community) | ● | |
++| FR-3.8 | Cypher against Apache AGE | ● | |
++| FR-3.9 | Sandboxed Python transforms | ● | AST-guarded |
++| FR-3.10 | Multi-engine fan-out (max 10) | ● | |
++| FR-3.11 | Time-travel query by snapshot ID | ● | |
++| FR-3.12 | Return the snapshot ID with every result | ○ | **GAP-08** |
++| FR-3.13 | Truncation signalling and pagination | ● | |
++
++### FR-4 Natural-language interface
++
++| ID | Requirement | Status |
++|---|---|---|
++| FR-4.1 | Answer domain questions by emitting and running queries | ● |
++| FR-4.2 | Maintain conversational context | ● |
++| FR-4.3 | Bind tenant and role from server context, never from model arguments | ● |
++| FR-4.4 | Never compute values directly (ADR-0003) | ● Prompt-enforced |
++| FR-4.5 | Display the emitted query alongside the result | ◐ Backend emits; UI surfacing to confirm |
++| FR-4.6 | Emit per-tool traffic events for observability | ● `traffic_bus` |
++
++### FR-5 Security and access
++
++| ID | Requirement | Status |
++|---|---|---|
++| FR-5.1 | OIDC authentication | ● |
++| FR-5.2 | Multi-factor authentication | ● |
++| FR-5.3 | JWT session management | ● |
++| FR-5.4 | Eight-persona RBAC with capability sets | ● |
++| FR-5.5 | Deny-by-default Consultant persona | ● |
++| FR-5.6 | Data-layer column masking and denial | ● |
++| FR-5.7 | Data-layer row filtering | ● |
++| FR-5.8 | Tenant isolation via namespace prefixing | ● |
++| FR-5.9 | Refuse unscoped data-touching jobs | ● |
++| FR-5.10 | Rate limiting on auth endpoints | ● |
++| FR-5.11 | Control inference egress / data residency | ○ **GAP-01 — blocker** |
++
++### FR-6 Audit and observability
++
++| ID | Requirement | Status |
++|---|---|---|
++| FR-6.1 | Structured JSON audit records, UTC ISO-8601 | ● |
++| FR-6.2 | Record allow, deny and error outcomes | ● |
++| FR-6.3 | Redact secrets from every record | ● |
++| FR-6.4 | Correlate records by request ID | ● |
++| FR-6.5 | Live traffic events | ● |
++| FR-6.6 | Tamper-evident audit storage | ○ GAP-05 |
++| FR-6.7 | SLO instrumentation | ○ GAP-06 |
++| FR-6.8 | Periodic entitlement review report | ○ GAP-16 |
++
++---
++
++## 3. Key user journeys
++
++### UJ-1 Grid analyst investigates a feeder anomaly
++
++1. Analyst asks in natural language.
++2. Agent binds tenant and role from context; selects `distributed_sql_query`.
++3. Executor asserts tenant scope, loads the Iceberg scan, applies RBAC (or
++   takes the zero-copy path if no policy applies), runs the SQL.
++4. Result returns with an EXPLAIN plan and materialisation mode.
++5. `query.execute` allow record is written with tenant, role, subject,
++   resource, rows scanned and duration.
++6. Analyst follows up with a topology traversal over Apache AGE.
++
++### UJ-2 Regulatory as-of response
++
++1. Compliance identifies the date in question.
++2. `run_time_travel_scan` reads the table at that snapshot.
++3. The same query is run against the historical snapshot.
++4. Audit records for the original period evidence who read what and when.
++
++### UJ-3 External consultant onboarding
++
++1. Admin creates the account with the Consultant role — access to nothing.
++2. Admin grants an explicit allow on one namespace.
++3. Consultant queries only that namespace; every other attempt produces a
++   `rbac.check` deny record.
++
++---
++
++## 4. Non-functional requirements
++
++| ID | Requirement | Target | Measured? |
++|---|---|---|---|
++| NFR-1 | Query latency, Gold layer | p95 < 5s | No (GAP-06) |
++| NFR-2 | API availability | 99.5% | No |
++| NFR-3 | Concurrent query capacity | 50 | Locust harness exists, no published result |
++| NFR-4 | Audit capture completeness | 100% | Partial |
++| NFR-5 | Peak memory per query | < 2× scanned bytes | Improved by TD-003, not benchmarked |
++| NFR-6 | Ingest latency, batch | < 15 min | No |
++| NFR-7 | Retention | ≥ regulatory window | Guard implemented |
++
++**All NFR targets are proposals, not measurements.** A utility RFP asks for
++evidence. Producing it is GAP-06 and should precede any formal bid.
++
++---
++
++## 5. Out of scope for this baseline
++
++Forecasting and ML modelling; billing execution; SCADA control actions
++(read-only platform); the ETP protocol internals; real-time sub-second
++streaming analytics.
++
++---
++
++## 6. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T14:05:00Z | Baseline issue |
+diff --git a/docs/operations/OPS-001-logging-and-error-handling.md b/docs/operations/OPS-001-logging-and-error-handling.md
+new file mode 100644
+index 0000000..857c78b
+--- /dev/null
++++ b/docs/operations/OPS-001-logging-and-error-handling.md
+@@ -0,0 +1,143 @@
++# OPS-001 — Logging, audit and error handling standard
++
++**Document ID:** OPS-001 · **Version:** 1.0 · **Issued:** 2026-09-05T14:00:00Z
++**Component:** `backend/observability/audit_log.py` · **Status:** Baseline
++
++---
++
++## 1. Why a standard rather than a logger
++
++Under NIS Regulations Reg. 10, NCSC CAF objective C1, and the DCC Smart
++Energy Code security obligations, a platform touching grid or metering data
++must be able to answer, months after the fact:
++
++> On 14 March at 02:11 UTC, who read which table, under which role, from
++> which tenant, and what did the platform decide?
++
++`logger.info("query ran")` cannot answer that. Neither can a log with local
++timestamps, or one where the format changes between modules. This standard
++exists so the answer is reconstructable without heroics.
++
++---
++
++## 2. Record format
++
++One JSON object per line. Every record carries:
++
++| Field | Type | Notes |
++|---|---|---|
++| `timestamp` | string | **UTC ISO-8601, millisecond precision, explicit `Z`** |
++| `event_id` | uuid | Unique per record |
++| `request_id` | string | Correlates all records from one HTTP request |
++| `action` | string | Dotted verb: `query.execute`, `rbac.check`, `auth.login`, `snapshot.expire` |
++| `outcome` | enum | `allow` \| `deny` \| `error` |
++| `tenant_id` | string | `""` means unscoped — itself alert-worthy on a data path |
++| `role` | string | Role the decision was evaluated against |
++| `subject` | string | JWT `sub`, not an email |
++| `resource` | string | `namespace.table`, graph name, or endpoint |
++| `detail` | object | Non-sensitive structured context |
++| `schema_version` | string | Currently `1.0` |
++| `host` / `service` / `env` | string | Deployment context |
++
++Local time in an audit trail is a finding at assessment. Always UTC,
++always with the `Z`.
++
++Example:
++
++```json
++{"action":"query.execute","detail":{"duration_ms":88,"engine":"duckdb","materialisation":"arrow-zero-copy","rows_returned":1420,"source_rows_scanned":8400000},"env":"production","event_id":"0bf017df-…","host":"api-7","outcome":"allow","request_id":"…","resource":"gold.ami_readings","role":"Data Engineer","schema_version":"1.0","service":"meldra-api","subject":"u-9931","tenant_id":"t_a1b2c3","timestamp":"2026-09-05T02:11:04.318Z"}
++```
++
++---
++
++## 3. Rules
++
++1. **Append-only.** No update or delete path exists in the module.
++2. **Never log data values.** Column *names* yes; cell contents never. An
++   audit log containing the PII it audits is a second breach surface.
++3. **Never log secrets.** `redact()` runs on every payload and replaces
++   password, token, key, authorization, MFA and session fields.
++4. **Deny and error records flush synchronously.** Losing an allow record
++   is tolerable; losing a deny record is not.
++5. **Truncate unbounded content explicitly.** Tracebacks cap at 8,000
++   characters with a visible marker — never silently.
++
++---
++
++## 4. Usage
++
++```python
++from observability.audit_log import audit
++
++audit.allow("query.execute", tenant_id=t, role=r, subject=u,
++            resource=f"{ns}.{tbl}", request_id=job_id,
++            detail={"mode": "sql", "rows_returned": 1420})
++
++audit.deny("rbac.check", reason="no grant for namespace",
++           tenant_id=t, role=r, resource=f"{ns}.{tbl}")
++
++try:
++    ...
++except Exception as exc:
++    audit.error("query.execute", exc, tenant_id=t, role=r)
++    raise
++```
++
++### Error handling convention
++
++- **Audit, then re-raise.** Never swallow. The old
++  `except Exception: pass` pattern is what allowed `expire_snapshots()` to
++  report success for work it did not do.
++- **Refuse rather than guess.** If a precondition cannot be established
++  (`optimize_table` cannot plan the scan), raise with the reason. Do not
++  proceed hopefully.
++- **Never report unearned success.** A return string claiming an action
++  occurred must be unreachable unless it did.
++
++---
++
++## 5. Configuration
++
++| Variable | Default | Purpose |
++|---|---|---|
++| `MELDRA_AUDIT_LOG_PATH` | unset | Rotating file sink; stdout always mirrors |
++| `MELDRA_AUDIT_MAX_BYTES` | 52428800 | Rotation size |
++| `MELDRA_AUDIT_BACKUPS` | 20 | Retained rotations |
++| `MELDRA_ENV` | `development` | Also drives tenant-guard enforcement |
++| `MELDRA_SERVICE_NAME` | `meldra-api` | Service tag |
++| `MELDRA_REQUIRE_TENANT_SCOPE` | on unless env is dev/local/test/ci | Fail-closed tenant guard |
++
++---
++
++## 6. Retention and shipping
++
++| Requirement | Target | Status |
++|---|---|---|
++| Central log store (SIEM) | Splunk / Elastic / CloudWatch | Not wired — GAP-06 |
++| Retention | ≥13 months | Deployment-dependent |
++| Tamper-evidence | Object-lock / WORM / hash chain | **Not implemented — GAP-05** |
++
++The last row is the honest limitation: records are append-only *by
++convention within this module*, not by storage guarantee. Until GAP-05 is
++closed, the audit trail should not be described to an assessor as
++tamper-evident.
++
++---
++
++## 7. Alerting
++
++| Condition | Severity |
++|---|---|
++| `query.tenant_scope` deny in production | **Critical** — an unscoped job reached an executor |
++| `rbac.check` deny rate spike for one subject | High — possible enumeration |
++| `outcome=error` rate above baseline | Medium |
++| `snapshot.expire` on a retention-governed table | **Critical** |
++| Audit write failure | **Critical** |
++
++---
++
++## 8. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T14:00:00Z | Baseline issue |
+diff --git a/docs/security/SEC-2026-001-agent-tenant-bypass.md b/docs/security/SEC-2026-001-agent-tenant-bypass.md
+new file mode 100644
+index 0000000..8eee7fd
+--- /dev/null
++++ b/docs/security/SEC-2026-001-agent-tenant-bypass.md
+@@ -0,0 +1,157 @@
++# SEC-2026-001 — Agent DQE tools bypassed tenant scoping and RBAC role binding
++
++| Field | Value |
++|---|---|
++| **Record ID** | SEC-2026-001 |
++| **Severity** | High |
++| **Status** | Remediated — awaiting verification in staging |
++| **Raised** | 2026-09-05T13:12:00Z |
++| **Remediated** | 2026-09-05T13:19:00Z |
++| **Affected components** | `backend/tools.py`, `backend/query_engine/sql_executor.py`, `backend/query_engine/python_executor.py` |
++| **CWE** | CWE-863 Incorrect Authorization; CWE-1220 Insufficient Granularity of Access Control |
++| **Regulatory relevance** | UK GDPR Art. 5(1)(f), Art. 32; NIS Regulations 2018 Reg. 10; NCSC CAF Objective B2 (Identity and Access Control) |
++| **Regression test** | `backend/tests/test_sec_2026_regressions.py` |
++
++---
++
++## 1. Summary
++
++All four `QueryJob` constructions inside the LangChain agent's Distributed
++Query Engine tools omitted the `tenant_id` and `role` fields. Both have
++permissive defaults in `query_engine/models.py`:
++
++```python
++role: str = "Business Analyst"
++tenant_id: str = ""
++```
++
++`tenant_id = ""` causes `SQLExecutor` and `PythonExecutor` to skip
++`tenancy.scope_namespace()` entirely and query the catalog using the raw,
++client-supplied namespace string. `role = "Business Analyst"` causes
++`rbac_utils.enforce_rbac()` to evaluate column masking and row filters
++against a role the caller may not hold.
++
++## 2. Why this mattered more than it looks
++
++The tenant isolation mechanism in `tenancy.py` was correctly designed and
++correctly implemented. It simply was never passed a tenant on this path,
++and nothing in the system objected. The `query_iceberg_data` tool *did*
++pass tenant and role correctly — so the codebase contained a safe path and
++an unsafe path to the same data.
++
++The system prompt in `agent.py` then actively steered traffic to the unsafe
++one:
++
++> "Distributed Query Engine (DQE) — **Prefer these** for complex or
++> large-scale queries… Use this **instead of** `query_iceberg_data`."
++
++The chat agent is the primary product surface. In practice the default
++route to customer data was the route with no tenant scoping.
++
++## 3. Impact assessment
++
++**Confidentiality — namespace scoping.** Namespaces created through the
++tenant-aware API are prefixed (`t_<tenant>__default`), so an unscoped
++lookup for `"default"` usually misses. The exposure is therefore limited
++to **unprefixed namespaces**: anything created by `catalog_setup.py`,
++`ingest_climate.py`, `generate_large_dataset.py`, or by any operator or
++test predating the tenancy work. Those namespaces were readable by any
++authenticated tenant through the chat interface. We have not established
++which unprefixed namespaces exist in each deployed environment — see
++Action A-4.
++
++**Confidentiality — RBAC role binding.** This is unconditional and does not
++depend on legacy namespaces. Every DQE query from the agent evaluated
++column masking against `"Business Analyst"` regardless of the caller's real
++role. Two consequences, in opposite directions:
++
++- A **Consultant** (deny-by-default per `roles.py`) was evaluated as a
++  Business Analyst, so the deny-by-default posture did not apply on this
++  path. This is the material finding.
++- An **Admin** was over-masked, receiving redacted values they were
++  entitled to see. Not a breach, but it means query results returned to
++  privileged users were silently wrong.
++
++**Integrity / availability.** No impact. The path is read-only.
++
++**Audit.** Before this remediation there was no record distinguishing a
++scoped from an unscoped execution, so retrospective determination of what
++was actually read is limited to whatever application logs exist. This gap
++is itself the reason `observability/audit_log.py` was introduced.
++
++## 4. Root cause
++
++Pydantic field defaults were used to express *security* state. A default of
++`""` for `tenant_id` makes "no tenant" a silently valid, permissive value,
++and a default of `"Business Analyst"` makes "no role stated" resolve to a
++role with real data access. Nothing at the boundary distinguished "this
++caller is a library/test with no tenant" from "this caller is a user whose
++tenant we forgot to pass."
++
++The contributing factor is that the safe and unsafe paths were written at
++different times, and the newer, faster path was documented as preferred
++without a security review of its context propagation.
++
++## 5. Remediation
++
++**R-1 — Bind tenant and role from request context, not from arguments.**
++`backend/tools.py` now exposes `_job_context()`, which reads the
++`current_tenant_id` and `current_user_role` ContextVars set by the
++`/v1/chat` handler, and every DQE tool passes both into `QueryJob`.
++
++The ContextVar source matters: the LLM never sees these values as tool
++parameters, so a prompt-injected instruction cannot cause the model to
++name a tenant it does not belong to. The agent is structurally unable to
++cross tenants, not merely instructed not to.
++
++**R-2 — Fail-closed tenant guard at the executor boundary.**
++`assert_tenant_scoped()` in `sql_executor.py` is invoked by both the SQL
++and Python executors. Any job arriving without a tenant is audited
++unconditionally; whether it is also refused is governed by
++`MELDRA_REQUIRE_TENANT_SCOPE`, which **defaults to enabled** whenever
++`MELDRA_ENV` is not `development`/`local`/`test`/`ci`. Production is secure
++without configuration; local development and the existing test suite remain
++usable.
++
++**R-3 — Make omission a build failure.**
++`test_every_queryjob_carries_tenant_and_role` walks the AST of `tools.py`
++and `api/main.py` and fails if any `QueryJob(...)` lacks explicit
++`tenant_id` and `role` keywords. A future contributor reintroducing this
++defect gets a red CI run, not a reviewer's good luck.
++
++**R-4 — Audit every execution.** Allow, deny and error records now carry
++tenant, role, subject, resource and a UTC ISO-8601 timestamp
++(`observability/audit_log.py`).
++
++## 6. Residual risk
++
++- `MELDRA_REQUIRE_TENANT_SCOPE=0` in a production environment re-opens the
++  gap. Mitigated by the default and by the audit record; not prevented.
++- The guard covers SQL and Python executors. `graph_executor.py` reaches
++  Apache AGE by graph name rather than by Iceberg namespace and needs its
++  own scoping review — tracked as A-2 below.
++- The `role` fallback in `api/main.py` is still
++  `user.get("role", "Business Analyst")`. If a JWT is ever issued without a
++  role claim, that fallback grants Business Analyst access. It should
++  become a hard rejection — tracked as A-3.
++
++## 7. Actions
++
++| ID | Action | Owner | Due |
++|---|---|---|---|
++| A-1 | Deploy remediation to staging; verify with two tenants and a Consultant account | Eng | Next release |
++| A-2 | Scope review of `graph_executor.py` / Apache AGE graph naming | Eng | +2 weeks |
++| A-3 | Replace the `"Business Analyst"` role fallback with a 403 on a role-less JWT | Eng | +2 weeks |
++| A-4 | Inventory unprefixed namespaces in every deployed environment; migrate or delete | Ops | +1 week |
++| A-5 | Ship audit records to the central log store with ≥13-month retention | Ops | +1 month |
++| A-6 | Determine whether any real customer data sat in an unprefixed namespace; if yes, run the UK GDPR Art. 33 72-hour assessment | DPO | +1 week |
++
++> **A-6 is the one that carries a legal clock.** Remediating the code does
++> not discharge a notification obligation if customer personal data was
++> reachable. That assessment needs a decision from the data controller, not
++> from engineering.
++
++---
++
++*Related: [SEC-2026-002](SEC-2026-002-explain-endpoint-scope.md) ·
++[Security Architecture](../architecture/04-security-architecture.md)*
+diff --git a/docs/security/SEC-2026-002-explain-endpoint-scope.md b/docs/security/SEC-2026-002-explain-endpoint-scope.md
+new file mode 100644
+index 0000000..095016e
+--- /dev/null
++++ b/docs/security/SEC-2026-002-explain-endpoint-scope.md
+@@ -0,0 +1,54 @@
++# SEC-2026-002 — `/v1/query/explain` constructed a data-touching job without tenant or role
++
++| Field | Value |
++|---|---|
++| **Record ID** | SEC-2026-002 |
++| **Severity** | Medium |
++| **Status** | Remediated |
++| **Raised** | 2026-09-05T13:14:00Z |
++| **Remediated** | 2026-09-05T13:18:00Z |
++| **Affected component** | `backend/api/main.py` — `dqe_explain` |
++| **CWE** | CWE-863 Incorrect Authorization |
++| **Regression test** | `test_every_queryjob_carries_tenant_and_role[api/main.py]` |
++
++## Summary
++
++`POST /v1/query/explain` is documented as a dry run:
++
++> "Does not consume compute resources."
++
++That is not what it does. `SQLExecutor.explain()` calls `_load_iceberg()`
++and then `register_table()` — it loads the real Iceberg table into memory
++and registers it with the backend before returning an EXPLAIN plan. The
++`QueryJob` it built passed neither `tenant_id` nor `role`, while the two
++neighbouring endpoints (`/v1/query`, `/v1/query/multi`) passed both.
++
++## Impact
++
++Same class as SEC-2026-001 and the same exposure surface: an unscoped
++catalog lookup, and RBAC evaluated against the default role. Lower severity
++because the endpoint returns only a plan, not rows. But an EXPLAIN plan is
++not information-free — it discloses table existence, row counts, and
++column names, which is enough to enumerate a namespace.
++
++The docstring claim also had an operational cost: an operator reading it
++would reasonably size and rate-limit this endpoint as cheap, when it is as
++expensive as a full scan.
++
++## Remediation
++
++- `role` and `tenant_id` are now populated from the authenticated JWT via
++  `get_current_tenant_id(user)`, matching the sibling endpoints.
++- Covered by the AST regression test, which asserts across *all* `QueryJob`
++  constructions in `api/main.py`, so a future endpoint cannot repeat it.
++
++## Follow-up
++
++`SQLExecutor.explain()` should use scan planning metadata rather than
++materialising the table, so the endpoint becomes as cheap as its docstring
++claims. Tracked in [TD-004](../technical/TD-004-scan-pushdown.md); until
++then the docstring has been left accurate rather than aspirational.
++
++---
++
++*Related: [SEC-2026-001](SEC-2026-001-agent-tenant-bypass.md)*
+diff --git a/docs/technical/TD-003-zero-copy-execution.md b/docs/technical/TD-003-zero-copy-execution.md
+new file mode 100644
+index 0000000..6b5721f
+--- /dev/null
++++ b/docs/technical/TD-003-zero-copy-execution.md
+@@ -0,0 +1,132 @@
++# TD-003 — Zero-copy execution path
++
++**Document ID:** TD-003 · **Version:** 1.0 · **Issued:** 2026-09-05T13:55:00Z
++**Component:** `backend/query_engine/sql_executor.py`, `sql_backends.py`, `rbac_utils.py`
++**Related finding:** PERF-2026-003
++
++---
++
++## 1. What was wrong
++
++Every SQL query executed this sequence:
++
++```python
++primary_arrow = self._load_iceberg(...)                    # Arrow table
++primary_df = enforce_rbac(primary_arrow.to_pandas(), ...)  # full copy #1
++backend.register_table("iceberg_table", primary_df)        # copy #2
++backend.register_table(fq_name, primary_df)                # copy #3
++```
++
++Three materialisations of the same dataset per query, unconditionally —
++including when the caller's role had no masking policy at all, so the
++transform was a no-op that still paid for itself in full.
++
++For a product positioned on **zero-copy**, the hot path did the opposite.
++On a multi-gigabyte grid table this is the difference between a query and
++an OOM kill.
++
++---
++
++## 2. What it does now
++
++```python
++if rbac_is_noop(job.namespace, job.table_name, job.role):
++    registered = primary_arrow          # zero-copy: DuckDB scans buffers in place
++    copy_mode = "arrow-zero-copy"
++else:
++    registered = enforce_rbac(primary_arrow.to_pandas(), ...)
++    copy_mode = "pandas-rbac-materialised"
++
++backend.register_table("iceberg_table", registered)
++backend.register_view(fq_name, "iceberg_table")   # alias, not a second copy
++```
++
++Two changes:
++
++1. **Arrow fast path.** `duckdb.register()` accepts a `pyarrow.Table` and
++   scans its buffers without copying. When no RBAC transform applies, the
++   pandas materialisation is skipped entirely.
++2. **Single registration.** The join alias is now a SQL view over the
++   already-registered relation instead of a second shipment of the payload.
++
++`copy_mode` is surfaced in the EXPLAIN plan text and in the audit record,
++so which path a query took is observable rather than assumed.
++
++---
++
++## 3. The safety contract
++
++The fast path is only safe if `rbac_is_noop()` can never return `True` when
++a policy exists. Three properties enforce that:
++
++| Property | Implementation |
++|---|---|
++| Table access is still checked on the fast path | `rbac_is_noop()` calls `check_table_access()` before anything else; an unauthorised role raises `TableAccessDenied` identically on both paths |
++| Any applicable policy forces the slow path | Column policies and row filters matching the namespace/table (including `*` wildcards) return `False` |
++| **Unknown policy state fails closed** | Any exception reaching the policy store returns `False` — a database blip degrades performance, never confidentiality |
++
++That last row is the important one, and it is the direct application of
++architecture principle **P1 (fail closed)**. The tempting implementation —
++"if we can't find a policy, there probably isn't one" — is how masking
++controls silently stop working during an unrelated outage.
++
++Pinned by `test_rbac_noop_probe_fails_closed` and three sibling tests.
++
++---
++
++## 4. Also added: projection pushdown
++
++`_load_iceberg()` now accepts `projection` and passes it as
++`scan(selected_fields=…)`, so unreferenced columns are never read from
++object storage. Unknown column names are dropped rather than raising, so a
++stale projection degrades to reading more data — never to an error.
++
++For wide grid tables (AMI records with 30+ columns where a query touches
++three) this is a larger practical saving than the Arrow fast path.
++
++---
++
++## 5. What is still not zero-copy
++
++Stated plainly, because the marketing term invites over-claiming:
++
++- **When any masking or row filter applies**, the pandas materialisation
++  still happens. An Arrow-native RBAC implementation using `pyarrow.compute`
++  would remove it. Not attempted here — it would change tested behaviour of
++  a confidentiality control, which is not a change to make in the same pass
++  as a security fix.
++- **`execute()` returns `fetchdf()`**, a pandas result. Fine for result-set
++  sizes; would matter for large extracts.
++- **Spark and Doris backends** convert Arrow to pandas on registration.
++  Documented in the backend, not hidden.
++
++**Recommended external wording:** "zero-copy scan path" or
++"zero-materialisation query execution" — accurate, and defensible when a
++data architect reads the code. Avoid unqualified "zero-copy architecture";
++it is a claim about the whole system that the whole system does not yet
++support.
++
++---
++
++## 6. Verification
++
++| Test | Asserts |
++|---|---|
++| `test_duckdb_registers_arrow_without_copy` | DuckDB queries a `pyarrow.Table` in place; view aliasing works |
++| `test_sql_executor_registers_payload_once` | Exactly one `register_table` in `execute()` |
++| `test_rbac_noop_probe_fails_closed` | Policy-store error → slow path |
++| `test_rbac_noop_probe_detects_column_policy` | Mask policy → slow path |
++| `test_rbac_noop_probe_detects_row_filter` | Row filter → slow path |
++| `test_rbac_noop_probe_true_when_no_policies` | Clean case → fast path |
++
++Not yet measured: actual memory and latency deltas on a realistic grid
++table. The change is structurally sound but the benefit is currently
++reasoned, not benchmarked. Benchmarking is part of GAP-06.
++
++---
++
++## 7. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:55:00Z | Baseline issue |
+diff --git a/docs/technical/TD-004-scan-pushdown.md b/docs/technical/TD-004-scan-pushdown.md
+new file mode 100644
+index 0000000..8cdd9f1
+--- /dev/null
++++ b/docs/technical/TD-004-scan-pushdown.md
+@@ -0,0 +1,115 @@
++# TD-004 — Scan pushdown: current state and roadmap
++
++**Document ID:** TD-004 · **Version:** 1.0 · **Issued:** 2026-09-05T13:58:00Z
++**Component:** `backend/query_engine/sql_executor.py::_load_iceberg`
++**Related:** GAP-09, ARC-003 §4
++
++---
++
++## 1. Current state
++
++| Pushdown | Implemented | Driven by |
++|---|---|---|
++| Row filter (equality, ANDed) | Yes | `job.filters` dict |
++| Column projection | Yes | `job.projection` list |
++| **SQL `WHERE` → Iceberg expression** | **No** | — |
++| Range/IN/OR predicates | No | — |
++| Aggregate pushdown | No | — |
++
++A query such as:
++
++```sql
++SELECT mpan, SUM(kwh) FROM iceberg_table
++WHERE reading_ts >= '2026-09-01' AND region = 'NW'
++GROUP BY mpan
++```
++
++reads **the entire table** into Arrow, then lets DuckDB apply the
++predicates. Iceberg prunes nothing, because nothing told it to.
++
++On a 52-billion-row AMI table that is not a slow query; it is an incident.
++
++---
++
++## 2. Why the previous documentation was wrong
++
++The module docstring claimed *"executes arbitrary SQL with predicate
++pushdown"*. The pushdown code exists but is only reached when `job.filters`
++is populated, and no caller populated it — `distributed_sql_query` did not
++pass it at all.
++
++The docstring has been corrected to state the limitation explicitly. This
++matters beyond tidiness: an operator sizing a cluster from that docstring
++would size for pruned scans and get full ones.
++
++---
++
++## 3. Roadmap
++
++### Step 1 — Parse and translate (1–2 weeks)
++
++Add `sqlglot`. Parse the submitted SQL, walk the `WHERE` tree, and
++translate the safely-translatable subset into PyIceberg expressions:
++
++| SQL | PyIceberg |
++|---|---|
++| `col = literal` | `EqualTo` |
++| `col > / >= / < / <=` | `GreaterThan`, `GreaterThanOrEqual`, `LessThan`, `LessThanOrEqual` |
++| `col IN (…)` | `In` |
++| `col IS NULL` | `IsNull` |
++| `A AND B` | `And` |
++| `A OR B` | `Or` |
++
++**Translation must be conservative.** Anything not confidently
++translatable — function calls, casts, correlated subqueries, non-literal
++comparisons — is left for the engine. A pushdown that changes results is
++far worse than no pushdown; the failure mode must be "read more data",
++never "return different rows".
++
++### Step 2 — Derive projection from the SELECT list (3 days)
++
++Extract referenced columns from the projection, `WHERE`, `GROUP BY`,
++`ORDER BY` and `HAVING` clauses; pass as `selected_fields`. Fall back to
++all columns on `SELECT *` or on any parse failure.
++
++### Step 3 — Make it verifiable (1 week)
++
++Surface in the EXPLAIN plan:
++
++```
++[DQE/SQL] Engine: duckdb 1.1.3 | Table: gold.ami_readings
++  Files pruned: 1,204 / 1,340
++  Rows scanned: 8,400,000 / 52,560,000,000
++  Pushed predicates: reading_ts >= '2026-09-01', region = 'NW'
++  Projection: mpan, kwh, reading_ts
++  Materialisation: arrow-zero-copy
++```
++
++This is what an analyst needs to see to trust that the platform is pruning,
++and what an architect will ask for in evaluation. It is also the honest
++alternative to asserting pushdown in a docstring.
++
++### Step 4 — Interaction with RBAC row filters
++
++Role-based row filters can themselves be pushed to the scan when they are
++simple column predicates, which would prune files *and* reduce the masking
++work. This must be designed carefully: pushing a filter changes what the
++engine sees, and the security property must remain "the value is absent",
++not "the value is filtered later". Design review required before
++implementation.
++
++---
++
++## 4. Interim guidance
++
++Until Step 1 ships, callers that know their access pattern should populate
++`job.filters` and `job.projection` directly. `/v1/query` accepts both.
++Documented in [FUNC-001](../functional/FUNC-001-functional-specification.md).
++
++---
++
++## 5. Document control
++
++| Version | Date | Change |
++|---|---|---|
++| 1.0 | 2026-09-05T13:58:00Z | Baseline issue |
+-- 
+2.43.0
+

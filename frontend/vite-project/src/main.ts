@@ -606,47 +606,47 @@ interface Lesson {
 const lessonsList: Lesson[] = [
   {
     num: "01",
-    title: "Ingesting SAP ERP Financial Ledgers",
-    icon: "fa-file-invoice-dollar",
+    title: "Ingesting Smart Meter AMI Telemetry",
+    icon: "fa-bolt",
     level: "Beginner",
     concept: `
-      <p>Enterprise ERP databases (like SAP or Oracle) generate massive tables such as <strong>BSEG</strong> (Accounting Document Segment) and <strong>BKPF</strong> (Accounting Document Header).</p>
-      <p>meldra.ai allows data teams to ingest these legacy relational tables directly into partitioned, high-performance S3 Apache Iceberg formats. This bypasses expensive continuous Spark clusters while retaining transactional consistency (ACID).</p>
+      <p>Smart meter head-end systems generate massive interval telemetry tables containing <strong>MPAN</strong>, <strong>reading_kwh</strong>, and <strong>voltage_v</strong> readings.</p>
+      <p>meldra.ai allows utility data teams to ingest these high-volume telemetry feeds directly into partitioned, high-performance S3 Apache Iceberg formats with ETP cryptographic verification columns.</p>
     `,
-    tryPrompt: "Show the first 5 records of the financial ledger table default.sap_bseg"
+    tryPrompt: "Show the first 5 records of default.bronze_ami_readings"
   },
   {
     num: "02",
-    title: "General Ledger Transaction Path Reconciliation",
+    title: "Feeder & Substation Voltage Reconciliation",
     icon: "fa-scale-balanced",
     level: "Intermediate",
     concept: `
-      <p>Reconciling entries across multiple accounts is a classic enterprise accounting challenge. meldra.ai syncs Iceberg ledger transactions directly into your relational graph layer.</p>
-      <p>By mapping accounts to graph nodes and transaction flows to edges, you can run path-finding queries to detect double-entry mismatches, circular payment loops, or audit anomalies instantly.</p>
+      <p>Correlating voltage anomalies across feeder circuits is a classic grid operational challenge. meldra.ai syncs Iceberg telemetry directly into your relational graph layer.</p>
+      <p>By mapping substations, feeders, and meters to graph nodes, you can run path-finding queries to locate the common upstream transformer during voltage excursions.</p>
     `,
-    tryPrompt: "Find all transaction loop paths in the default.sap_bseg table"
+    tryPrompt: "Find all voltage excursion paths in default.bronze_ami_readings"
   },
   {
     num: "03",
-    title: "Supply Chain & Order-to-Cash Lineage",
-    icon: "fa-truck-ramp-box",
+    title: "Grid Operations & Outage Telemetry Lineage",
+    icon: "fa-charging-station",
     level: "Intermediate",
     concept: `
-      <p>Tracking purchase orders, inventory movements, shipping logs, and customer invoicing is notoriously difficult across fragmented ERP systems.</p>
-      <p>Using meldra.ai's unified S3 Iceberg datasets, you can query supply chain snapshots across historical times, mapping ordering status straight to delivery times to find inventory bottlenecks.</p>
+      <p>Tracking feeder status, voltage spikes, and customer outage reports across smart grid estates is crucial for DNO reliability.</p>
+      <p>Using meldra.ai's unified S3 Iceberg datasets, you can query telemetry snapshots across historical time windows to pinpoint grid reliability bottlenecks.</p>
     `,
-    tryPrompt: "Track supply chain order lifecycle paths for order id 8502"
+    tryPrompt: "Track feeder outage lifecycle paths for feeder F-4471"
   },
   {
     num: "04",
-    title: "Schema Evolution in Enterprise ERP Data Lakes",
+    title: "Schema Evolution in Smart Grid Data Lakes",
     icon: "fa-sliders",
     level: "Advanced",
     concept: `
-      <p>Legacy ERP configurations frequently undergo database migrations (e.g. adding columns for tax changes, reordering fields, or modifying segment codes).</p>
-      <p>meldra.ai leverages Apache Iceberg's metadata-driven architecture to perform schema modifications (Add, Drop, Rename) as instant zero-copy metadata updates. Older Parquet data is read dynamically without requiring costly table migrations.</p>
+      <p>Smart grid device standards evolve over 20-year asset lifetimes (e.g. adding Post-Quantum cryptographic suite IDs or new sensor fields).</p>
+      <p>meldra.ai leverages Apache Iceberg's metadata-driven architecture to perform schema modifications (Add, Drop, Rename) as instant zero-copy metadata updates without rewriting historical telemetry.</p>
     `,
-    tryPrompt: "Show schema history and table evolution stats for default.sap_bseg"
+    tryPrompt: "Show schema history and table evolution stats for default.bronze_ami_readings"
   }
 ];
 
@@ -2778,8 +2778,8 @@ const videoLibrary: VideoEntry[] = [
     ]
   },
   {
-    title: 'Build Your First Pipeline: SAP → Iceberg → AI',
-    desc: 'Step-by-step: ingest a SAP ERP financial table into S3 Iceberg, build a knowledge graph, and run AI-powered SQL queries in under 10 minutes.',
+    title: 'Build Your First Pipeline: Smart Meter → Iceberg → AI',
+    desc: 'Step-by-step: ingest smart meter telemetry into S3 Iceberg, build a grid topology graph, and run AI-powered SQL queries in under 10 minutes.',
     ytId: '91q8-W7z-bY',
     tags: [
       { label: 'Hands-On',        cls: 'vmt-green'  },
@@ -2805,14 +2805,14 @@ const trainingSimulations: Record<number, Slide[]> = {
         <div style="display:flex; flex-direction:column; gap:0.75rem; width:100%; align-items:center; box-sizing:border-box;">
           <div style="display:flex; gap:1rem; align-items:center;">
             <div style="background:#1e293b; border:1px solid #3b82f6; padding:0.6rem; border-radius:8px; text-align:center;">
-              <i class="fa-solid fa-database" style="color:#3b82f6; font-size:1.2rem;"></i>
-              <div style="font-size:0.6rem; color:#fff; font-weight:700; margin-top:0.25rem;">SAP / ERP DB</div>
+              <i class="fa-solid fa-bolt" style="color:#3b82f6; font-size:1.2rem;"></i>
+              <div style="font-size:0.6rem; color:#fff; font-weight:700; margin-top:0.25rem;">Smart Meter / HES</div>
             </div>
             <i class="fa-solid fa-arrow-right-long" style="color:#64748b; font-size:1rem;"></i>
             <div style="background:#14532d; border:1px solid #22c55e; padding:0.6rem; border-radius:8px; text-align:center; position:relative; box-shadow:0 0 12px rgba(34,197,94,0.25);">
               <i class="fa-solid fa-cloud" style="color:#22c55e; font-size:1.2rem;"></i>
               <div style="font-size:0.6rem; color:#fff; font-weight:700; margin-top:0.25rem;">AWS S3 (Iceberg)</div>
-              <span class="badge badge-green" style="position:absolute; top:-0.4rem; right:-0.4rem; font-size:0.45rem; padding:0.15rem 0.35rem;">Secure Pointers</span>
+              <span class="badge badge-green" style="position:absolute; top:-0.4rem; right:-0.4rem; font-size:0.45rem; padding:0.15rem 0.35rem;">ETP Verified</span>
             </div>
           </div>
           <div style="font-size:0.65rem; color:#94a3b8; text-align:center; max-width:220px; line-height:1.4;">
@@ -2833,10 +2833,10 @@ const trainingSimulations: Record<number, Slide[]> = {
         <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; box-sizing:border-box;">
           <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:0.6rem; font-family:monospace; font-size:0.65rem; color:#a7f3d0; text-align:left; line-height:1.4;">
             <span style="color:#64748b;">-- Pushdown Filters to S3</span><br>
-            <span style="color:#f472b6;">SELECT</span> company_code, <span style="color:#f472b6;">SUM</span>(amount)<br>
-            <span style="color:#f472b6;">FROM</span> s3.finance_ledger<br>
-            <span style="color:#f472b6;">WHERE</span> year = 2025<br>
-            <span style="color:#f472b6;">GROUP BY</span> company_code;
+            <span style="color:#f472b6;">SELECT</span> feeder_id, <span style="color:#f472b6;">SUM</span>(reading_kwh)<br>
+            <span style="color:#f472b6;">FROM</span> s3.bronze_ami_readings<br>
+            <span style="color:#f472b6;">WHERE</span> reading_ts &gt;= '2026-03-01'<br>
+            <span style="color:#f472b6;">GROUP BY</span> feeder_id;
           </div>
           <div style="background:rgba(22,163,74,0.1); border:1px solid rgba(22,163,74,0.3); border-radius:6px; padding:0.4rem; font-size:0.65rem; color:#86efac; text-align:center; font-weight:700;">
             ⚡ DuckDB scanned 12.4M rows in 0.08s
@@ -2855,11 +2855,11 @@ const trainingSimulations: Record<number, Slide[]> = {
         <div style="display:flex; flex-direction:column; gap:0.6rem; width:100%; text-align:left; box-sizing:border-box;">
           <div style="border-left:2px solid #a855f7; padding-left:0.5rem; font-size:0.65rem;">
             <strong style="color:#a855f7; display:block; font-weight:700;">1. USER ASKED:</strong>
-            <span style="color:#e2e8f0;">"Show SAP ledger matches"</span>
+            <span style="color:#e2e8f0;">"Show Feeder Voltage Excursions"</span>
           </div>
           <div style="border-left:2px solid #3b82f6; padding-left:0.5rem; font-size:0.65rem;">
             <strong style="color:#3b82f6; display:block; font-weight:700;">2. CONTEXT ROUTER:</strong>
-            <span style="color:#cbd5e1;">Maps SAP BSEG graph path</span>
+            <span style="color:#cbd5e1;">Maps Feeder Topology graph path</span>
           </div>
           <div style="border-left:2px solid #22c55e; padding-left:0.5rem; font-size:0.65rem;">
             <strong style="color:#22c55e; display:block; font-weight:700;">3. EXECUTION:</strong>
@@ -2900,7 +2900,7 @@ const trainingSimulations: Record<number, Slide[]> = {
     },
     {
       title: "Data Replication Security Risk",
-      subtitle: "Problem 2: GDPR & HIPAA Compliance",
+      subtitle: "Problem 2: GDPR & Privacy Compliance",
       graphicHtml: `
         <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; font-size:0.65rem; color:#cbd5e1; text-align:left; box-sizing:border-box;">
           <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:0.4rem; border-radius:6px;">
@@ -2914,7 +2914,7 @@ const trainingSimulations: Record<number, Slide[]> = {
         </div>
       `,
       contentHtml: `
-        <p style="margin:0 0 0.5rem 0;">Copying general ledger records or customer databases across analytical environments violates strict data sovereignty rules (GDPR, HIPAA, SOC2).</p>
+        <p style="margin:0 0 0.5rem 0;">Copying smart meter interval telemetry or customer databases across analytical environments violates strict data sovereignty rules.</p>
         <p style="margin:0;">Because duplicate copies are difficult to track, trace, and audit, each copy represents a massive liability risk. With meldra.ai, **no data replication takes place**. Pointers to S3 parquet blocks remain strictly under your own AWS IAM policies, with every action logged in our **Audit Trail**.</p>
       `
     },
@@ -2966,9 +2966,9 @@ const trainingSimulations: Record<number, Slide[]> = {
       graphicHtml: `
         <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; font-size:0.65rem; color:#cbd5e1; box-sizing:border-box;">
           <div style="background:#0f172a; border:1px solid #1e293b; border-radius:6px; padding:0.5rem; text-align:left; font-family:monospace; font-size:0.6rem; line-height:1.4;">
-            <span style="color:#f472b6;">CREATE TABLE</span> default.sap_bseg (<br>
-            &nbsp;&nbsp;belnr <span style="color:#38bdf8;">VARCHAR</span>,<br>
-            &nbsp;&nbsp;dmbtr <span style="color:#38bdf8;">DECIMAL</span>(15,2)<br>
+            <span style="color:#f472b6;">CREATE TABLE</span> default.bronze_ami_readings (<br>
+            &nbsp;&nbsp;mpan <span style="color:#38bdf8;">VARCHAR</span>,<br>
+            &nbsp;&nbsp;reading_kwh <span style="color:#38bdf8;">DECIMAL</span>(12,3)<br>
             ) <span style="color:#f472b6;">USING</span> ICEBERG;
           </div>
           <div style="font-size:0.6rem; color:#94a3b8; text-align:center;">
@@ -2977,7 +2977,7 @@ const trainingSimulations: Record<number, Slide[]> = {
         </div>
       `,
       contentHtml: `
-        <p style="margin:0 0 0.5rem 0;">In the **Ingest** tab, upload a CSV dataset or link your SAP/ERP database source. our catalog sweeps the schema and registers the columns.</p>
+        <p style="margin:0 0 0.5rem 0;">In the **Ingest** tab, upload a CSV dataset or link your Smart Meter/HES feed. Our catalog sweeps the schema and registers the columns.</p>
         <p style="margin:0;">This automatically partitions the data in Apache Iceberg layout on S3, mapping it so it can be queried by external tools instantly.</p>
       `
     },
@@ -2988,15 +2988,15 @@ const trainingSimulations: Record<number, Slide[]> = {
         <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%; text-align:left; font-size:0.65rem; box-sizing:border-box;">
           <div style="background:#1e293b; border:1px solid #a855f7; border-radius:6px; padding:0.4rem 0.6rem; color:#e2e8f0;">
             <i class="fa-solid fa-robot" style="color:#a855f7; margin-right:0.3rem;"></i>
-            <span>"What is the sum of ledger amounts in SAP BSEG by company code?"</span>
+            <span>"What is the sum of kWh consumption in bronze_ami_readings by feeder?"</span>
           </div>
           <div style="background:#0b0f19; border:1px solid #22c55e; border-radius:6px; padding:0.4rem 0.6rem; color:#86efac; font-family:monospace; font-size:0.6rem;">
-            SUM(dmbtr) = $240,500,124.00
+            SUM(reading_kwh) = 1,420,500.12 kWh
           </div>
         </div>
       `,
       contentHtml: `
-        <p style="margin:0 0 0.5rem 0;">Navigate to the **Chat** tab. Enter any natural language question about your tables, such as asking to sum transactional values or find record matches.</p>
+        <p style="margin:0 0 0.5rem 0;">Navigate to the **Chat** tab. Enter any natural language question about your tables, such as asking to sum consumption values or find anomaly matches.</p>
         <p style="margin:0;">The AI agent ground-checks the query against the schema graph, translates it into optimized SQL, executes DuckDB over S3, and renders the result in real-time.</p>
       `
     }
@@ -3748,7 +3748,7 @@ const publicArticles = [
         Building reliable AI agents for enterprise data lakes is not just about using the largest language model. Raw models are blind to the database schemas, access policies, and real-time transaction updates of your active storage systems. Without context grounding, agents hallucinate schemas and produce incorrect SQL.
       </p>
       <p>
-        <strong>meldra.ai</strong> resolves this by implementing a metadata-first context router. Our engine sweeps a PostgreSQL AGE graph catalog mapping database dependencies (such as SAP ledgers and company codes). When a query is asked, the agent immediately binds the exact schemas and issues serverless DuckDB queries over S3 partitions.
+        <strong>meldra.ai</strong> resolves this by implementing a metadata-first context router. Our engine sweeps a PostgreSQL AGE graph catalog mapping database dependencies (such as smart meter MPANs, feeders, and substations). When a query is asked, the agent immediately binds the exact schemas and issues serverless DuckDB queries over S3 partitions.
       </p>
       <div style="background: rgba(34, 197, 94, 0.05); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.2); margin: 1rem 0;">
         <h4 style="color: #22c55e; margin-top: 0; margin-bottom: 0.5rem; font-weight: 700;">Context-Grounded Routing vs RAG</h4>

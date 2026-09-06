@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import bcrypt
 import psycopg2
@@ -241,7 +241,7 @@ def create_user(
         # Calculate 30-day expiration for trial memberships
         expires_at = None
         if tier == "trial":
-            expires_at = datetime.utcnow() + timedelta(days=30)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=30)
             
         cur.execute(
             """
@@ -387,7 +387,7 @@ def store_mfa_token(user_id: str, code: str, purpose: str = "login") -> str:
             "UPDATE auth.mfa_tokens SET used = TRUE WHERE user_id = %s AND purpose = %s AND used = FALSE",
             (user_id, purpose),
         )
-        expires_at = datetime.utcnow() + timedelta(minutes=MFA_OTP_EXPIRE_MINUTES)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=MFA_OTP_EXPIRE_MINUTES)
         cur.execute(
             """
             INSERT INTO auth.mfa_tokens (user_id, token_hash, purpose, expires_at)
@@ -429,7 +429,7 @@ def verify_mfa_token(user_id: str, code: str, purpose: str = "login") -> bool:
         if row["used"]:
             raise ValueError("OTP has already been used.")
 
-        if datetime.utcnow() > row["expires_at"].replace(tzinfo=None):
+        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
             raise ValueError("OTP has expired. Please request a new one.")
 
         if row["attempts"] >= MFA_MAX_ATTEMPTS:
@@ -471,7 +471,7 @@ def can_resend_otp(user_id: str, purpose: str = "login") -> bool:
         row = cur.fetchone()
         if not row:
             return True
-        elapsed = datetime.utcnow() - row["created_at"].replace(tzinfo=None)
+        elapsed = datetime.now(timezone.utc) - row["created_at"].replace(tzinfo=None)
         return elapsed.total_seconds() >= 60
     finally:
         conn.close()
@@ -489,7 +489,7 @@ def create_session(user_id: str) -> str:
     conn = _get_conn()
     try:
         cur = conn.cursor()
-        expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         cur.execute(
             """
             INSERT INTO auth.sessions (user_id, refresh_token_hash, expires_at)
@@ -518,7 +518,7 @@ def validate_refresh_token(raw_token: str) -> Optional[str]:
         row = cur.fetchone()
         if not row:
             return None
-        if datetime.utcnow() > row["expires_at"].replace(tzinfo=None):
+        if datetime.now(timezone.utc) > row["expires_at"].replace(tzinfo=None):
             return None
         cur.execute(
             "UPDATE auth.sessions SET last_used_at = NOW() WHERE refresh_token_hash = %s",

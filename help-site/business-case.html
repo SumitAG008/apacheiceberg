@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Business Case Guide — meldra guide suite</title>
+<title>Business Case Guide — meldra & ETP guide suite</title>
 <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
 
 <header class="sitebar">
   <a class="sitebar-brand" href="/">
-    <span class="name">meldra</span>
+    <span class="name">meldra & ETP</span>
     <span class="suite">Guide Suite</span>
   </a>
   <nav>
@@ -23,8 +23,8 @@
 <main>
   <div class="doc-header" id="pitch">
     <p class="doc-kicker">Part II — Business Case Guide</p>
-    <h1>Is meldra Right for You?</h1>
-    <p class="doc-dek">Who this is for, who it isn't for, real use cases, and an honest pros/cons list — written to help you decide, not to oversell it.</p>
+    <h1>Is ETP &amp; meldra Right for You?</h1>
+    <p class="doc-dek">Who this is for, who it isn't for, real smart grid use cases, and an honest pros/cons list — written to help you decide, not to oversell it.</p>
   </div>
 
   <div class="onpage">
@@ -37,19 +37,19 @@
   </div>
 
   <section>
-    <p class="lead">meldra is an AI agent for your Iceberg lakehouse: tell it what you need — ingest a file, check a number, investigate a relationship — and it calls the right tools to do it. Underneath, your SAP, SuccessFactors, and file data lands once in your own cloud storage as open Apache Iceberg — validated, versioned, and governed — so people across the company can work from the same trustworthy tables without copies, vendor lock-in, or per-query fees from a big-name platform.</p>
+    <p class="lead">meldra is an AI agent for your smart meter Iceberg lakehouse: tell it what you need — verify a settlement figure, check feeder anomalies, investigate topology relationships — and it calls the right tools to do it. Underneath, your smart meter telemetry (AMI) lands once in your cloud storage as open Apache Iceberg — cryptographically verified at the ETP gateway, versioned, and governed — so teams across settlement, grid ops, and compliance work from the same trustworthy tables without vendor lock-in or per-query tax.</p>
   </section>
 
   <section id="fit">
     <h2>Who This Is a Good Fit For</h2>
-    <p>meldra fits best if most of the following are true for you:</p>
+    <p>meldra & ETP fit best if most of the following are true for you:</p>
     <ul>
-      <li>You have data scattered across SAP, SuccessFactors, Salesforce, or plain CSV/Excel exports, with no single place it all lands.</li>
-      <li>You don't have — or don't want to hire — a dedicated data engineering team just to stand up a governed data lake.</li>
-      <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3), not locked inside a vendor's proprietary storage.</li>
-      <li>You need <strong>some</strong> governance — audit trails, column-level masking, contracts that block bad data — but not a full enterprise compliance program on day one.</li>
-      <li>Your team mixes technical people (SQL/Python in Query Lab directly) and non-technical people who'd rather just tell the Agent what they need in plain English.</li>
-      <li>You're cost-sensitive and want to avoid the per-query, per-seat pricing that platforms like Snowflake or Databricks charge at scale.</li>
+      <li>You manage or ingest high-volume smart meter telemetry (AMI), SCADA logs, or feeder readings (millions to billions of rows).</li>
+      <li>You need <strong>provable data provenance</strong> to substantiate settlement figures and tariff calculations to regulators without manual multi-week reconciliations.</li>
+      <li>You want the underlying data in an <strong>open format you own</strong> (Apache Iceberg on your own S3/MinIO), not locked inside a vendor's proprietary storage.</li>
+      <li>You want <strong>active ingestion security</strong> — Moving Target Defense (MTD) rotating routes and deception honeypots to defend endpoints against scanner reconnaissance.</li>
+      <li>Your team mixes technical engineers (SQL/Python in Query Lab directly) and non-technical analysts who query via natural language grounded in catalog metadata.</li>
+      <li>You're cost-sensitive and want to avoid per-query, per-seat pricing that platforms like Snowflake or Databricks charge once you scale usage to 50B+ rows.</li>
     </ul>
   </section>
 
@@ -57,10 +57,9 @@
     <h2>Who This Is NOT a Good Fit For — Yet</h2>
     <p>Being upfront about this protects the relationship long-term.</p>
     <ul>
-      <li>Companies needing <strong>petabyte-scale distributed compute</strong> across thousands of concurrent users.</li>
-      <li>Companies requiring <strong>live, certified integrations</strong> with SAP RFC/BAPI, Snowflake, or automated IAM/fraud systems today — those are currently illustrative demo flows, not working connections.</li>
-      <li>Companies that need <strong>SSO, SOC2/HIPAA-certified compliance, or full multi-tenant isolation</strong> as a signed contractual requirement right now.</li>
-      <li>A buyer looking for a fully non-technical, zero-setup product — someone on the team still needs to be comfortable configuring ingestion and RBAC policies.</li>
+      <li>Companies looking for a direct procurement sale to a legacy utility procurement committee <strong>as a sole vendor</strong> without SI or OEM partners (see BC-002 Segment 1–4 strategy).</li>
+      <li>Companies needing <strong>live legacy SCADA hardware protocols (DNP3, IEC 60870-5-104)</strong> on day one without HES integration — those require custom adapter modules.</li>
+      <li>A buyer looking for a zero-setup consumer product — someone on the team still needs to configure gateway routes, nonces, and Iceberg table properties.</li>
     </ul>
   </section>
 
@@ -68,31 +67,31 @@
     <h2>Real Use Cases</h2>
 
     <div class="usecase">
-      <h4>A. Vendor Master Consolidation <span style="color:var(--ink-soft); font-weight:400;">— Procurement</span></h4>
-      <div class="uc-row"><span class="uc-label">Problem</span>Vendor records duplicated across SAP, legacy ERPs, and portals cause duplicate payments and compliance risk.</div>
-      <div class="uc-row"><span class="uc-label">How meldra helps</span>Load vendor extracts into Bronze, apply a contract requiring <code>vendor_id</code> and a valid tax ID, deduplicate in Silver keeping the latest record, build a Gold "spend by region" table analysts query directly.</div>
-      <div class="uc-row"><span class="uc-label">Good fit if</span>you have vendor data in 2+ systems and no single deduplicated source of truth today.</div>
+      <h4>A. Verified Telemetry Ingestion <span style="color:var(--ink-soft); font-weight:400;">— Smart Metering (UC-01)</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Replay attacks, single-byte tampering, or unverified wire telemetry entering the data lake.</div>
+      <div class="uc-row"><span class="uc-label">How ETP helps</span>Gateways check monotonic nonces before ECDSA verification (&lt;1ms replay rejection), committing verified blocks to <code>bronze_ami_readings</code> with <code>etp_verify_status = VERIFIED</code>.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>you ingest AMI telemetry from millions of edge devices and need wire-to-rest verification guarantees.</div>
     </div>
 
     <div class="usecase">
-      <h4>B. SAP Reporting Offload <span style="color:var(--ink-soft); font-weight:400;">— Finance</span></h4>
-      <div class="uc-row"><span class="uc-label">Problem</span>Heavy reporting queries against live SAP tables slow down the system everyone else uses for transactions.</div>
-      <div class="uc-row"><span class="uc-label">How meldra helps</span>Pull reporting-relevant tables into Iceberg via CSV/OData export, run reports against DuckDB/Query Lab instead of hitting SAP directly, use Time Travel to permanently pin month-end snapshots.</div>
-      <div class="uc-row"><span class="uc-label">Good fit if</span>ad-hoc finance reporting is currently competing with production SAP transactions for compute.</div>
+      <h4>B. Settlement Substantiation &amp; Regulatory Audit <span style="color:var(--ink-soft); font-weight:400;">— Settlement (UC-02)</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Regulators audit submitted billing/settlement figures; manual reconciliation across raw HES logs takes weeks and costs £50k–£200k.</div>
+      <div class="uc-row"><span class="uc-label">How ETP helps</span>Execute settlement queries with captured Iceberg Snapshot IDs; verify partition Merkle roots against anchored RFC 3161 TSA checkpoints in seconds.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>your settlement team spends significant analyst time defending historical billing figures.</div>
     </div>
 
     <div class="usecase">
-      <h4>C. HR Analytics <span style="color:var(--ink-soft); font-weight:400;">— SuccessFactors</span></h4>
-      <div class="uc-row"><span class="uc-label">Problem</span>Attrition/compensation reporting is compiled manually, with raw PII exported into spreadsheets emailed around.</div>
-      <div class="uc-row"><span class="uc-label">How meldra helps</span>Connect the real SuccessFactors OData connector, mask national ID/bank fields for non-HR roles, enforce <code>employee_id</code> uniqueness via contracts.</div>
-      <div class="uc-row"><span class="uc-label">Good fit if</span>you already have SuccessFactors and do this reporting via spreadsheet exports today.</div>
+      <h4>C. Moving Target Defense &amp; Recon Containment <span style="color:var(--ink-soft); font-weight:400;">— Cybersecurity (UC-03)</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Static ingestion URIs attract automated port scanners, DDoS, and credential stuffing. Blocking alerts attackers.</div>
+      <div class="uc-row"><span class="uc-label">How ETP helps</span>Ingress routes rotate continuously based on clock windows; invalid-route probes are silently proxied to Phantom Grid honeypots, returning synthetic responses while logging STIX threat intelligence.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>you operate public-facing ingestion endpoints exposed to scanner traffic.</div>
     </div>
 
     <div class="usecase">
-      <h4>D. Vendor/Transaction Relationship Analysis</h4>
-      <div class="uc-row"><span class="uc-label">Problem</span>Fraud or collusion patterns — shared bank accounts, unusual new-vendor payment velocity — aren't visible in flat tables.</div>
-      <div class="uc-row"><span class="uc-label">How meldra helps</span>The Graph tab visualizes vendor-to-bank-account-to-address relationships from your existing tables.</div>
-      <div class="uc-row"><span class="uc-label">Good fit if</span>you want an exploratory first look now, understanding the query language itself is still basic. <span class="badge roadmap" style="margin-left:0.35rem;">Roadmap</span></div>
+      <h4>D. Grid Event &amp; Feeder Anomaly Investigation <span style="color:var(--ink-soft); font-weight:400;">— Grid Operations (UC-04)</span></h4>
+      <div class="uc-row"><span class="uc-label">Problem</span>Outages or voltage excursions require fast correlation across thousands of meters to identify probable upstream transformer cause.</div>
+      <div class="uc-row"><span class="uc-label">How ETP helps</span>Query half-hourly voltage readings, push down partition filters, and traverse Apache AGE topology graphs (<code>GSP → Substation → Feeder → Meter</code>) to identify the common upstream asset.</div>
+      <div class="uc-row"><span class="uc-label">Good fit if</span>grid ops engineers need fast, spatial, and topological root-cause analysis during outages.</div>
     </div>
   </section>
 
@@ -102,24 +101,19 @@
       <div class="split-col pros">
         <h3>Pros</h3>
         <ul>
-          <li><strong>A real reasoning agent, not a search bar</strong> — the meldra Agent chains tool calls (ingest → query → analyze) to get you an answer, instead of one canned lookup at a time.</li>
-          <li><strong>No storage lock-in</strong> — your data lives in Apache Iceberg on your own S3, readable by any Iceberg-compatible tool.</li>
-          <li><strong>Governance built in, not bolted on</strong> — audit logging, data contracts, and RBAC masking from day one.</li>
-          <li><strong>One platform, two ways in</strong> — SQL/Python in Query Lab for engineers who want direct control, the Agent in plain English for everyone else, both calling the same underlying tools.</li>
-          <li><strong>Time Travel by default</strong> — every write is a recoverable snapshot, not a silent overwrite.</li>
-          <li><strong>Meaningfully cheaper</strong> for teams who don't need Databricks/Snowflake-scale compute.</li>
+          <li><strong>Patented Ingestion MTD &amp; Deception</strong> — active defense at the boundary rather than passive blocking.</li>
+          <li><strong>No storage lock-in</strong> — open Apache Iceberg format on your own S3/MinIO.</li>
+          <li><strong>Built-in Provenance &amp; Governance</strong> — ETP verification status, daily Merkle tree checkpoints, and 7-year retention locks from day one.</li>
+          <li><strong>One platform, two ways in</strong> — SQL/Python in Query Lab for engineers, Chat for analysts, both calling identical bounded tools.</li>
+          <li><strong>Deterministic &amp; Defensible</strong> — snapshot isolation means queries are reproducible months later.</li>
         </ul>
       </div>
       <div class="split-col cons">
         <h3>Cons — say these out loud first</h3>
         <ul>
-          <li><strong>Young product.</strong> Expect rough edges; this is not a decade-mature platform.</li>
-          <li><strong>The Agent doesn't yet enforce the same column masking as Query Lab</strong> in every path — don't rely on it for sensitive columns until that's closed.</li>
-          <li><strong>Single environment today.</strong> Multi-tenant isolation is in progress, best suited to one deployment per customer for now.</li>
-          <li><strong>Some integrations are illustrative</strong> — SAP/Snowflake/Fraud automation demonstrate the intended workflow, not live system connections yet.</li>
-          <li><strong>Graph query language is a simplified subset</strong>, not full Cypher, today.</li>
-          <li><strong>No SSO yet</strong> — access is email/password plus email OTP MFA.</li>
-          <li><strong>Needs one SQL-comfortable person</strong> on the team for full value, even though the Agent lowers that bar for everyday questions.</li>
+          <li><strong>Early-stage product.</strong> Expect active development.</li>
+          <li><strong>Merkle Checkpointing requires filing update</strong> — the filed patent spec describes a linear chain; Merkle trees scale verification but require claim updating within the 12-month priority window.</li>
+          <li><strong>Requires SQL-comfortable engineer on team</strong> for initial catalog and policy setup.</li>
         </ul>
       </div>
     </div>
@@ -129,22 +123,13 @@
     <h2>Decision Checklist</h2>
     <div class="checklist">
       <h3 style="color: var(--live);">Move forward if —</h3>
-      <label><input type="checkbox" /> You have data scattered across 2+ source systems with no unified, governed landing zone.</label>
-      <label><input type="checkbox" /> You want to own your data in an open format rather than a vendor's proprietary store.</label>
-      <label><input type="checkbox" /> You can tolerate early-stage rough edges in exchange for cost and simplicity.</label>
-      <label><input type="checkbox" /> You have at least one person comfortable configuring ingestion/RBAC.</label>
-    </div>
-    <div class="checklist" style="margin-top: 1rem;">
-      <h3 style="color: var(--roadmap);">Wait, or look elsewhere for now, if —</h3>
-      <label><input type="checkbox" /> You have a hard contractual requirement for SSO, certified compliance, or live SAP/Snowflake integration on day one.</label>
-      <label><input type="checkbox" /> You need multiple customer organizations securely isolated on one shared instance today.</label>
-      <label><input type="checkbox" /> You need proven scale at petabyte / thousands-of-concurrent-users level.</label>
+      <label><input type="checkbox" /> You ingest smart meter (AMI) or grid telemetry requiring scalable, verified storage.</label>
+      <label><input type="checkbox" /> You need audit-ready provenance proofs for regulators or settlement counterparties.</label>
+      <label><input type="checkbox" /> You want to own your data in open Apache Iceberg format rather than vendor-locked formats.</label>
+      <label><input type="checkbox" /> You want active Moving Target Defense at your ingestion boundary.</label>
     </div>
   </section>
 
-  <div class="feedback">
-    Reviewing this as a beta tester? Reply with anything confusing, wrong, or missing — this suite is early and meant to be corrected.
-  </div>
 </main>
 
 </body>

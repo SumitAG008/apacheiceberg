@@ -13,7 +13,7 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from query_engine.job_store import job_store
@@ -55,7 +55,7 @@ class QueryEngine:
         with status=RUNNING. The caller should poll GET /v1/query/{job_id}.
         """
         job.status = QueryStatus.RUNNING
-        job.started_at = datetime.utcnow()
+        job.started_at = datetime.now(timezone.utc)
         job_store.create(job)
 
         loop = asyncio.get_event_loop()
@@ -68,7 +68,7 @@ class QueryEngine:
         Submit and block until execution completes (for small/fast queries).
         """
         job.status = QueryStatus.RUNNING
-        job.started_at = datetime.utcnow()
+        job.started_at = datetime.now(timezone.utc)
         job_store.create(job)
 
         loop = asyncio.get_event_loop()
@@ -79,7 +79,7 @@ class QueryEngine:
     def submit_sync(self, job: QueryJob) -> QueryJob:
         """Synchronous execution — for LangChain tool calls."""
         job.status = QueryStatus.RUNNING
-        job.started_at = datetime.utcnow()
+        job.started_at = datetime.now(timezone.utc)
         job_store.create(job)
         self._run_job(job.job_id)
         return job_store.get(job.job_id) or job
@@ -170,7 +170,7 @@ class QueryEngine:
 
             job.status = QueryStatus.SUCCESS
             job.result = result
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             if result.duration_ms is not None:
                 pass  # already set by executor
 
@@ -183,7 +183,7 @@ class QueryEngine:
             logger.exception("[QueryEngine] Job %s FAILED: %s", job_id, exc)
             job.status = QueryStatus.FAILED
             job.error = str(exc)
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
 
         finally:
             job_store.update(job)

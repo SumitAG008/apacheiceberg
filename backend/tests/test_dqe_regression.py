@@ -274,13 +274,13 @@ def _test_client_regression():
 
 def _make_admin_jwt() -> dict:
     try:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from jose import jwt as jose_jwt
         secret = os.environ.get("JWT_SECRET_KEY", "test-secret-key-for-testing-only-32chars")
         token = jose_jwt.encode(
             {"sub": "dqe-regression-user", "email": "dqe@meldra.ai",
              "tier": "trial", "role": "Admin", "type": "access",
-             "exp": datetime.utcnow() + timedelta(minutes=30)},
+             "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             secret, algorithm="HS256",
         )
         return {"Authorization": f"Bearer {token}"}

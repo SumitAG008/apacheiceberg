@@ -628,7 +628,7 @@ def _auth_headers() -> Dict[str, str]:
     """Generate a valid JWT for integration tests."""
     try:
         import os
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         from jose import jwt as jose_jwt
         secret = os.environ.get("JWT_SECRET_KEY", "test-secret-key-for-testing-only-32chars")
         token = jose_jwt.encode(
@@ -638,7 +638,7 @@ def _auth_headers() -> Dict[str, str]:
                 "tier": "trial",
                 "role": "Admin",
                 "type": "access",
-                "exp": datetime.utcnow() + timedelta(minutes=30),
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
             },
             secret,
             algorithm="HS256",

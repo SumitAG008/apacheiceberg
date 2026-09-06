@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Help Guide — meldra guide suite</title>
+<title>Help Guide — meldra & ETP guide suite</title>
 <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
 
 <header class="sitebar">
   <a class="sitebar-brand" href="/">
-    <span class="name">meldra</span>
+    <span class="name">meldra & ETP</span>
     <span class="suite">Guide Suite</span>
   </a>
   <nav>
@@ -23,13 +23,13 @@
 <main>
   <div class="doc-header" id="what">
     <p class="doc-kicker">Part I — Help Guide</p>
-    <h1>Understanding meldra</h1>
-    <p class="doc-dek">What it is, what everything is called, and how the pieces fit together — written for someone using the product, not building it.</p>
+    <h1>Understanding ETP &amp; meldra</h1>
+    <p class="doc-dek">What it is, what everything is called, and how the pieces fit together — written for someone using the platform, not building it.</p>
   </div>
 
   <div class="onpage">
     <span>On this page</span>
-    <a href="#jargon">Speak meldra</a>
+    <a href="#jargon">Speak meldra &amp; ETP</a>
     <a href="#flow">How Data Flows</a>
     <a href="#personas">Who Uses What</a>
     <a href="#status">Live vs. Roadmap</a>
@@ -37,46 +37,45 @@
   </div>
 
   <section>
-    <p class="lead">meldra is an agentic data platform for Apache Iceberg. At its center is an AI agent that reads what you're trying to do — in plain English — and carries it out by calling the same tools a data engineer would use by hand: ingest a file, run a query, check a relationship in the graph, sync data across tables. Underneath, everything it touches lands in your own cloud storage as Apache Iceberg — validated, versioned, never silently overwritten. You own the storage. Nothing the Agent does is a black box — every step it takes is one of a fixed, visible set of tools.</p>
+    <p class="lead">meldra is an agentic data platform for Apache Iceberg smart meter lakehouses. At its center is an AI agent that reads what you're trying to do — in plain English — and carries it out by calling the same tools a data engineer would use by hand: ingest smart meter telemetry, run a query, check grid topology in the graph, or verify ETP cryptographic proofs. Underneath, everything it touches lands in your own cloud storage as Apache Iceberg — verified at the gateway via Moving Target Defense (MTD), versioned, never silently overwritten. You own the storage. Nothing the Agent does is a black box — every step it takes is one of a fixed, visible set of tools.</p>
   </section>
 
   <section id="jargon">
-    <h2>Speak meldra</h2>
+    <h2>Speak meldra &amp; ETP</h2>
     <dl class="glossary">
       <div class="gterm"><dt>Apache Iceberg</dt><dd>The filing format your tables are saved in. A smarter version of a spreadsheet folder that remembers every past version of itself and never silently loses data.</dd></div>
+      <div class="gterm"><dt>ETP (EnergyTrust Protocol)</dt><dd>Patented security layer for smart meter ingestion featuring Moving Target Defense (MTD) routes, deception honeypots, and first-class verification state in Iceberg.</dd></div>
+      <div class="gterm"><dt>MPAN</dt><dd>Meter Point Administration Number — the unique identifier for an electricity smart meter (MPRN for gas).</dd></div>
+      <div class="gterm"><dt>Moving Target Defense (MTD)</dt><dd>Dynamically rotating HTTPS ingress routes derived from time windows and secrets to defeat port scanners.</dd></div>
+      <div class="gterm"><dt>Phantom Grid</dt><dd>An isolated deception honeypot that catches unauthenticated or stale-route probes, returning plausible synthetic data while logging threat intelligence.</dd></div>
       <div class="gterm"><dt>Catalog</dt><dd>The index that knows which tables exist and where their files live — like a card catalog in a library.</dd></div>
-      <div class="gterm"><dt>Warehouse</dt><dd>The actual storage location (an S3 bucket, or a local folder in testing) where your table files physically sit.</dd></div>
-      <div class="gterm"><dt>Namespace</dt><dd>A folder for grouping related tables — e.g. <code>default</code>, <code>finance</code>, <code>hr</code>.</dd></div>
-      <div class="gterm"><dt>Bronze / Silver / Gold</dt><dd>How "clean" data is. Bronze = raw, as loaded. Silver = cleaned and deduplicated. Gold = ready for business reporting.</dd></div>
-      <div class="gterm"><dt>Snapshot / Time Travel</dt><dd>Every change is saved as a snapshot. Time Travel lets you view — or restore — the table exactly as it was earlier, useful for "what did this look like before the bad import."</dd></div>
+      <div class="gterm"><dt>Warehouse</dt><dd>The actual storage location (an S3 bucket or local folder in testing) where your table files physically sit.</dd></div>
+      <div class="gterm"><dt>Namespace</dt><dd>A folder for grouping related tables — e.g. <code>&lt;tenant&gt;__bronze</code>, <code>&lt;tenant&gt;__silver</code>, <code>&lt;tenant&gt;__gold</code>.</dd></div>
+      <div class="gterm"><dt>Bronze / Silver / Gold</dt><dd>How "clean" data is. Bronze = raw telemetry as loaded. Silver = conformed and deduplicated. Gold = ready for settlement reporting.</dd></div>
+      <div class="gterm"><dt>Snapshot / Time Travel</dt><dd>Every change is saved as a snapshot. Time Travel lets you view — or restore — the table exactly as it was earlier, useful for settlement dispute audits.</dd></div>
       <div class="gterm"><dt>Schema Evolution</dt><dd>Adding, removing, or renaming a column without rebuilding the whole table.</dd></div>
       <div class="gterm"><dt>Data Contract</dt><dd>A rule on a table — e.g. "this column can never be empty." Contracts can block bad data from loading at all.</dd></div>
-      <div class="gterm"><dt>Ingestion</dt><dd>Loading data in, from a CSV file or a connected system like SuccessFactors.</dd></div>
-      <div class="gterm"><dt>Append / Overwrite / Upsert</dt><dd>Append adds new rows. Overwrite replaces everything. Upsert updates existing rows and adds new ones, matched on a key column.</dd></div>
-      <div class="gterm"><dt>RBAC</dt><dd>Rules about who can see what. A Business Analyst might see a vendor table with the bank account column blanked out; an Admin sees everything.</dd></div>
-      <div class="gterm"><dt>Column Masking</dt><dd>Redacting a specific column's real values for certain roles, instead of hiding the whole table.</dd></div>
-      <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore graph connections directly against your tables — the same tools the Agent reaches for, just driven by you instead of a plain-English request.</dd></div>
-      <div class="gterm"><dt>DuckDB</dt><dd>The engine that runs your SQL queries fast, without a separate database server.</dd></div>
-      <div class="gterm"><dt>The meldra Agent</dt><dd>An AI agent (built on Claude) with a fixed toolbox: create a table, ingest a CSV, run a SQL query, analyze a graph, sync data to the graph store, query the graph store. Ask it something in plain English — "top 10 vendors by spend in EMEA" — and it decides which tool(s) to call, in what order, runs them, and can use the result of one step to decide the next. That decision loop is what makes it "agentic" rather than a single fixed lookup.</dd></div>
-      <div class="gterm"><dt>Tool-calling</dt><dd>How the Agent actually <em>does</em> things instead of just talking. Each capability is exposed to it as a discrete, named action it can invoke with specific arguments — the same action you'd trigger by hand in Query Lab, just requested in plain English instead of clicked.</dd></div>
-      <div class="gterm"><dt>Agent Loop</dt><dd>The cycle the Agent runs per request: read what you asked → decide whether a tool is needed → call it → look at the result → decide the next step or give you a final answer. Capped at a fixed number of steps, so it can't run away indefinitely.</dd></div>
-      <div class="gterm"><dt>Graph tab</dt><dd>Your data as connections rather than rows — e.g. which vendors share a bank account, useful for spotting fraud rings.</dd></div>
-      <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — including every tool call the Agent makes on your behalf — for compliance and troubleshooting.</dd></div>
+      <div class="gterm"><dt>Ingestion</dt><dd>Loading smart meter telemetry data in, from CSV files or connected Head-End Systems (HES).</dd></div>
+      <div class="gterm"><dt>RBAC &amp; Column Masking</dt><dd>Rules about who can see what. A Settlement Analyst might see telemetry, but customer PII or raw MPANs are masked for unauthorized roles.</dd></div>
+      <div class="gterm"><dt>Query Lab</dt><dd>Where you write SQL, run a Python script, or explore topology graph connections directly against your tables.</dd></div>
+      <div class="gterm"><dt>DuckDB</dt><dd>The engine that runs your SQL queries fast over Iceberg Parquet files, without a separate database server.</dd></div>
+      <div class="gterm"><dt>The meldra Agent</dt><dd>An AI agent with a fixed toolbox: ingest telemetry, run a SQL query, analyze a graph, verify ETP proofs.</dd></div>
+      <div class="gterm"><dt>Audit Log</dt><dd>A record of who did what, when, across the platform — including every tool call the Agent makes on your behalf.</dd></div>
     </dl>
   </section>
 
   <section id="flow" class="wide">
     <h2>How Data Actually Flows</h2>
     <div class="flow">
-      <span class="flow-step">Source (CSV, SuccessFactors)</span>
+      <span class="flow-step">Source (AMI Telemetry, HES)</span>
       <span class="flow-arrow">→</span>
-      <span class="flow-step">Ingest + Data Contracts</span>
+      <span class="flow-step">ETP Gateway (MTD Route &amp; Nonce Check)</span>
       <span class="flow-arrow">→</span>
-      <span class="flow-step bronze">Bronze</span>
+      <span class="flow-step bronze">Bronze (etp_verify_status recorded)</span>
       <span class="flow-arrow">→</span>
-      <span class="flow-step silver">Silver</span>
+      <span class="flow-step silver">Silver (Conformed &amp; Gap Tagged)</span>
       <span class="flow-arrow">→</span>
-      <span class="flow-step gold">Gold</span>
+      <span class="flow-step gold">Gold (Settlement Aggregates)</span>
       <span class="flow-arrow">→</span>
       <span class="flow-step">Query Lab / Agent / Graph</span>
       <span class="flow-arrow">→</span>
@@ -87,10 +86,10 @@
   <section id="personas" class="wide">
     <h2>Who Uses Which Tab</h2>
     <div class="card-grid">
-      <div class="card"><h4>Data Engineer</h4><p>Connects sources, builds Bronze → Silver → Gold pipelines, sets Data Contracts, monitors ingestion runs.</p></div>
-      <div class="card"><h4>Data Architect</h4><p>Approves schema changes, sets naming standards, manages retention and PII masking rules.</p></div>
-      <div class="card"><h4>Business Analyst</h4><p>Searches the catalog in plain terms, asks the Agent questions, views dashboards. Never touches raw credentials or DDL.</p></div>
-      <div class="card"><h4>Admin</h4><p>Everything above, plus user roles, RBAC policy configuration, and destructive actions like dropping tables.</p></div>
+      <div class="card"><h4>AMI / Data Engineer</h4><p>Connects HES feeds, builds Bronze → Silver → Gold pipelines, sets Data Contracts, monitors micro-batch writes.</p></div>
+      <div class="card"><h4>Utility Data Architect &amp; CISO</h4><p>Approves schema changes, sets naming standards, manages 7-year retention locks and PII masking rules.</p></div>
+      <div class="card"><h4>Settlement Analyst / Ops Engineer</h4><p>Queries natural language interface, verifies settlement proofs, investigates feeder voltage anomalies.</p></div>
+      <div class="card"><h4>Admin</h4><p>Everything above, plus user roles, RBAC policy configuration, and ETP key rotation workflows.</p></div>
     </div>
   </section>
 
@@ -100,19 +99,18 @@
     <table>
       <thead><tr><th>Feature</th><th>Status</th></tr></thead>
       <tbody>
-        <tr><td>Iceberg ingestion (CSV, SuccessFactors OData)</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>ETP Rotating Ingress Route Scrambling (MTD)</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Nonce CAS Replay Protection &amp; ECDSA Hash Checks</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Apache Iceberg Ingestion (Micro-batch Parquet)</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Data Quality Contracts (blocking bad loads)</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>Time Travel / snapshots</td><td><span class="badge live">Live</span></td></tr>
+        <tr><td>Time Travel / Settlement Proof Snapshots</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Query Lab — SQL mode</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>Query Lab — Python extraction scripts</td><td><span class="badge live">Live</span> — sandboxed, Admin/Data Engineer only</td></tr>
         <tr><td>Column-level RBAC masking</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>The meldra Agent (plain-English, tool-calling)</td><td><span class="badge live">Live</span> — doesn't yet enforce the same column masking as Query Lab in every path</td></tr>
+        <tr><td>The meldra Agent (plain-English, tool-calling)</td><td><span class="badge live">Live</span></td></tr>
         <tr><td>Audit log</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>Graph tab — storing/viewing connections</td><td><span class="badge live">Live</span></td></tr>
-        <tr><td>Graph tab — full Cypher query language</td><td><span class="badge roadmap">Roadmap</span></td></tr>
-        <tr><td>MCP Gateway (SAP BAPI, Snowflake, Fraud/IAM)</td><td><span class="badge demo">Demo</span></td></tr>
-        <tr><td>Single Sign-On (SSO)</td><td><span class="badge roadmap">Roadmap</span></td></tr>
-        <tr><td>Multi-tenant SaaS isolation</td><td><span class="badge roadmap">Roadmap</span> — in progress</td></tr>
+        <tr><td>Phantom Grid Deception Routing</td><td><span class="badge live">Live (Harness Demo)</span></td></tr>
+        <tr><td>Apache AGE Topology Graph</td><td><span class="badge live">Live (Cypher Query Subset)</span></td></tr>
+        <tr><td>Daily Merkle Tree Checkpointing &amp; TSA Anchoring</td><td><span class="badge roadmap">Design Spec (HLD/LLD)</span></td></tr>
       </tbody>
     </table>
   </section>
@@ -122,10 +120,10 @@
     <ol>
       <li>Register an account (first account on a fresh instance becomes Admin automatically).</li>
       <li>Verify your email with the code sent to you.</li>
-      <li>Go to <strong>Ingest</strong>, upload a sample CSV, review the auto-detected schema, and load it.</li>
-      <li>Go to <strong>Query Lab</strong>, run <code>SELECT * FROM iceberg_table LIMIT 10</code> against the table you just created.</li>
-      <li>Go to the <strong>Agent</strong> and ask a plain-English question about the same table — watch it choose a tool and run it.</li>
-      <li>Go to <strong>Audit</strong> and see that both actions above were logged, including the Agent's tool call.</li>
+      <li>Go to <strong>Ingest</strong>, upload a sample smart meter telemetry CSV, review the auto-detected schema, and load it.</li>
+      <li>Go to <strong>Query Lab</strong>, run <code>SELECT * FROM bronze_ami_readings LIMIT 10</code> against the table.</li>
+      <li>Go to the <strong>Agent</strong> and ask: <em>"Show me average consumption by feeder in the last 24 hours"</em>.</li>
+      <li>Go to <strong>Audit</strong> to inspect the logged tool call.</li>
     </ol>
   </section>
 

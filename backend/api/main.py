@@ -1871,6 +1871,9 @@ async def dqe_explain(
     from query_engine.models import QueryJob, QueryMode, QueryExplainRequest as _QER
 
     try:
+        # SEC-2026-002: /query/explain loads and registers the real table
+        # (SQLExecutor.explain -> _load_iceberg), so it is a data-touching
+        # path and must carry tenant + role like every other job.
         job = QueryJob(
             mode=QueryMode(payload.mode),
             namespace=payload.namespace,
@@ -1879,6 +1882,8 @@ async def dqe_explain(
             cypher=payload.cypher,
             graph_name=payload.graph_name,
             python_script=payload.python_script,
+            role=user.get("role", "Business Analyst"),
+            tenant_id=get_current_tenant_id(user),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

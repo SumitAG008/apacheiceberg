@@ -188,6 +188,8 @@ class PythonExecutor:
         # ── 1. Load Iceberg data ──────────────────────────────────────────────
         # Catalog read uses the tenant-scoped namespace; job.namespace stays
         # the client-facing name for RBAC matching.
+        from query_engine.sql_executor import assert_tenant_scoped
+        assert_tenant_scoped(job, "python")
         from tenancy import scope_namespace
         scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
         arrow_table = self._load_iceberg(scoped_ns, job.table_name, job.filters)

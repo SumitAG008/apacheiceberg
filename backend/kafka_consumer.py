@@ -1,4 +1,4 @@
-﻿"""
+"""
 kafka_consumer.py — Real-time Kafka consumer for Apache Iceberg.
 Consumes messages from a Kafka topic and writes them to an Iceberg table on S3/ADLS Gen2.
 Supports --dry-run / mock mode for developer testing.
@@ -9,7 +9,7 @@ import json
 import time
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Configure logging
 logging.basicConfig(
@@ -92,7 +92,7 @@ def run_mock_consumer(namespace: str, table_name: str, dry_run: bool):
                     "account_to": f"ACC-{random.randint(200, 300):03d}",
                     "amount": round(random.uniform(5.0, 1500.0), 2),
                     "status": random.choice(["COMPLETED", "COMPLETED", "PENDING", "FAILED"]),
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                    "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
                 }
                 records.append(rec)
                 mock_id += 1

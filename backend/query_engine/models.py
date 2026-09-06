@@ -6,7 +6,7 @@ query_engine/models.py — Pydantic data models for the Distributed Query Engine
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -41,35 +41,39 @@ class QueryResult(BaseModel):
     duration_ms: Optional[int] = None
 
 
-# ─── Job ──────────────────────────────────────────────────────────────────────
+# ─── Core Models ──────────────────────────────────────────────────────────────
 
 class QueryJob(BaseModel):
-    """A submitted query job (immutable after creation, status is updated in place)."""
-
+    """
+    Unified job model passed to QueryEngine.submit() or created by the REST layer.
+    """
     job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     mode: QueryMode
 
-    # Shared optional fields
+    # SQL mode
     namespace: Optional[str] = None
     table_name: Optional[str] = None
-    limit: int = Field(default=1000, ge=1, le=50_000)
-
-    # SQL mode
     sql: Optional[str] = None
 
     # GRAPH mode
-    cypher: Optional[str] = None
     graph_name: Optional[str] = None
-    algorithm: Optional[str] = None        # e.g. "pagerank", "betweenness_centrality"
+    cypher: Optional[str] = None
+    algorithm: Optional[str] = None   # 'pagerank' | 'betweenness_centrality' | etc.
 
     # PYTHON mode
     python_script: Optional[str] = None
 
-    # Pushdown filter predicates (applied before query)
+    # Pushdown filter predicates (applied at Iceberg scan planning time,
+    # before any data file is read). Equality only for now.
     filters: Optional[Dict[str, Any]] = None
 
+    # Column projection pushdown — restrict the Iceberg scan to these
+    # columns. Unknown column names are dropped rather than raising, so a
+    # stale projection degrades to reading more data, never to an error.
+    projection: Optional[List[str]] = None
+
     # Metadata (set by engine)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     status: QueryStatus = QueryStatus.PENDING

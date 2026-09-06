@@ -209,13 +209,18 @@ def denied_columns(namespace: str, table_name: str, role: str) -> List[str]:
     ]
 
 
-# ─── Combined entry point ──────────────────────────────────────────────────
+import logging
+import time
+
+logger = logging.getLogger("meldra.rbac")
+
 
 def enforce_rbac(
     df: pd.DataFrame,
     namespace: str,
     table_name: str,
     role: str,
+    correlation_id: str | None = None,
 ) -> pd.DataFrame:
     """
     Run all three RBAC layers in order: table access, then row filtering,
@@ -224,10 +229,74 @@ def enforce_rbac(
     instead of applying layers individually, so a new caller can't
     accidentally skip one.
 
+    Emits structured Customer Trust telemetry (rows filtered, columns masked/dropped)
+    for security audit compliance.
+
     Raises TableAccessDenied if the role has no access to this table at
     all -- callers should catch this and return a 403, not a 500.
     """
+    start_time = time.time()
+    initial_rows = len(df)
+    initial_cols = list(df.columns)
+
     check_table_access(namespace, table_name, role)
     df = apply_row_filters(df, namespace, table_name, role)
     df = apply_rbac_to_dataframe(df, namespace, table_name, role)
+
+    elapsed_ms = round((time.time() - start_time) * 1000, 2)
+    final_rows = len(df)
+    final_cols = list(df.columns)
+    dropped_cols = [c for c in initial_cols if c not in final_cols]
+
+    logger.info(
+        "RBAC Enforcement Telemetry | role=%s | table=%s.%s | correlation_id=%s | "
+        "initial_rows=%d | final_rows=%d | dropped_cols=%s | duration_ms=%.2f",
+        role,
+        namespace,
+        table_name,
+        correlation_id or "N/A",
+        initial_rows,
+        final_rows,
+        dropped_cols,
+        elapsed_ms,
+    )
     return df
+
+
+# ─── Fast-path probe (zero-copy support) ──────────────────────────────────
+
+def rbac_is_noop(namespace: str, table_name: str, role: str) -> bool:
+    """True when enforcing RBAC on this table for this role would not change
+    a single cell — no row filter, no column mask, no column denial.
+
+    Callers use this to decide whether they can hand an Arrow table straight
+    to the query backend instead of materialising a masked pandas copy.
+
+    SAFETY CONTRACT — this function is allowed to return False when it is
+    unsure, but must NEVER return True when a policy exists:
+
+      * check_table_access() is still invoked here, so an unauthorised role
+        raises TableAccessDenied on the fast path exactly as on the slow one.
+      * Any error reaching the policy store returns False (fail closed), so
+        a database blip degrades performance, never confidentiality.
+    """
+    check_table_access(namespace, table_name, role)
+
+    try:
+        for pol in get_role_policies(role):
+            if pol["column_name"] == TABLE_DENY_SENTINEL:
+                continue  # table-level grants/denies handled above
+            if pol["namespace"] in (namespace, "*") and pol["table_name"] in (table_name, "*"):
+                return False  # a mask or column deny applies
+
+        for flt in get_row_filters(role):
+            if flt["namespace"] in (namespace, "*") and flt["table_name"] in (table_name, "*"):
+                return False  # a row filter applies
+    except TableAccessDenied:
+        raise
+    except Exception:
+        return False  # fail closed: unknown policy state -> take the slow path
+
+    return True
+
+

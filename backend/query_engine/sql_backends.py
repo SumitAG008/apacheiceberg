@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from typing import Any
 
 import pandas as pd
 
@@ -31,8 +32,22 @@ class SQLBackend(ABC):
     name: str = "unknown"
 
     @abstractmethod
-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
-        """Make `df` queryable under `alias` for the next execute()/explain() call."""
+    def register_table(self, alias: str, df: Any) -> None:
+        """Make `df` queryable under `alias` for the next execute()/explain() call.
+
+        `df` is a pandas DataFrame or a pyarrow.Table. Backends that can scan
+        Arrow buffers in place (DuckDB) should do so rather than converting,
+        so the zero-copy path in SQLExecutor stays zero-copy end to end.
+        """
+
+    def register_view(self, alias: str, existing_alias: str) -> None:
+        """Alias an already-registered relation under a second name.
+
+        Used for the `namespace__table` join alias. The default creates a
+        SQL view so the payload is not shipped to the backend twice;
+        backends that cannot do this may override with a re-register.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def execute(self, sql: str) -> pd.DataFrame:
@@ -62,8 +77,16 @@ class DuckDBBackend(SQLBackend):
         self.con = duckdb.connect(database=":memory:")
         self.con.execute("SET enable_external_access=false;")
 
-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
+    def register_table(self, alias: str, df: Any) -> None:
+        # duckdb.register() accepts a pyarrow.Table directly and scans its
+        # buffers without copying, so the Arrow fast path from SQLExecutor
+        # stays zero-copy here rather than being silently materialised.
         self.con.register(alias, df)
+
+    def register_view(self, alias: str, existing_alias: str) -> None:
+        self.con.execute(
+            f'CREATE OR REPLACE TEMP VIEW "{alias}" AS SELECT * FROM "{existing_alias}"'
+        )
 
     def execute(self, sql: str) -> pd.DataFrame:
         return self.con.execute(sql).fetchdf()
@@ -114,8 +137,14 @@ class SparkBackend(SQLBackend):
         from pyspark.sql import SparkSession
         self.spark = SparkSession.builder.master(master).appName("meldra-dqe").getOrCreate()
 
-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
+    def register_table(self, alias: str, df: Any) -> None:
+        import pyarrow as _pa
+        if isinstance(df, _pa.Table):
+            df = df.to_pandas()   # Spark has no in-place Arrow ingestion here
         self.spark.createDataFrame(df).createOrReplaceTempView(alias)
+
+    def register_view(self, alias: str, existing_alias: str) -> None:
+        self.spark.sql(f"SELECT * FROM {existing_alias}").createOrReplaceTempView(alias)
 
     def execute(self, sql: str) -> pd.DataFrame:
         return self.spark.sql(sql).toPandas()
@@ -164,7 +193,7 @@ class DorisBackend(SQLBackend):
             password=os.environ.get("DORIS_PASSWORD", ""),
         )
 
-    def register_table(self, alias: str, df: pd.DataFrame) -> None:
+    def register_table(self, alias: str, df: Any) -> None:
         raise NotImplementedError(
             "Doris table registration needs a real cluster to implement and test the Stream "
             "Load path against — see the DorisBackend docstring in query_engine/sql_backends.py."

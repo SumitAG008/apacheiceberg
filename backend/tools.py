@@ -159,6 +159,12 @@ def ingest_csv_to_iceberg(namespace: str, table_name: str, csv_path: str) -> str
     except Exception as e:
         return f"Error ingesting data: {str(e)}"
 
+import logging
+import time
+
+logger = logging.getLogger("meldra.tools")
+
+
 @tool
 def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
     """
@@ -174,6 +180,7 @@ def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
         table_name: The name of the table.
         sql_query: The SQL query string to execute against 'iceberg_table'.
     """
+    start_time = time.time()
     try:
         catalog = get_catalog()
         identifier = (_scoped_ns(namespace), table_name)
@@ -204,6 +211,16 @@ def query_iceberg_data(namespace: str, table_name: str, sql_query: str) -> str:
         # Execute query using duckdb
         # DuckDB automatically finds the local variable `iceberg_table`
         result = con.execute(sql_query).fetchdf()
+
+        elapsed_ms = round((time.time() - start_time) * 1000, 2)
+        logger.info(
+            "Query Tool Telemetry | role=%s | table=%s.%s | duration_ms=%.2f | rows_returned=%d",
+            current_user_role.get(),
+            namespace,
+            table_name,
+            elapsed_ms,
+            len(result),
+        )
 
         # Convert result to string/JSON representation for the agent
         return result.to_string()
@@ -358,6 +375,11 @@ def _dqe() -> "QueryEngine":
     return query_engine
 
 
+def _job_context() -> tuple[str, str]:
+    """Extract tenant and role from ContextVars for QueryJob construction."""
+    return current_tenant_id.get(), current_user_role.get()
+
+
 @tool
 def distributed_sql_query(namespace: str, table_name: str, sql: str, limit: int = 500) -> str:
     """
@@ -376,12 +398,15 @@ def distributed_sql_query(namespace: str, table_name: str, sql: str, limit: int 
     try:
         from query_engine.models import QueryJob, QueryMode
         engine = _dqe()
+        _tenant, _role = _job_context()
         job = QueryJob(
             mode=QueryMode.SQL,
             namespace=namespace,
             table_name=table_name,
             sql=sql,
             limit=limit,
+            tenant_id=_tenant,
+            role=_role,
         )
         completed = engine.submit_sync(job)
         if completed.status.value == "failed":
@@ -437,6 +462,7 @@ def distributed_graph_query(
                 parsed_filters = json.loads(filters)
             except Exception:
                 pass
+        _tenant, _role = _job_context()
         job = QueryJob(
             mode=QueryMode.GRAPH,
             graph_name=graph_name,
@@ -444,6 +470,8 @@ def distributed_graph_query(
             algorithm=algorithm,
             filters=parsed_filters,
             limit=500,
+            tenant_id=_tenant,
+            role=_role,
         )
         completed = engine.submit_sync(job)
         if completed.status.value == "failed":
@@ -492,12 +520,15 @@ def distributed_python_extract(namespace: str, table_name: str, python_script: s
     try:
         from query_engine.models import QueryJob, QueryMode
         engine = _dqe()
+        _tenant, _role = _job_context()
         job = QueryJob(
             mode=QueryMode.PYTHON,
             namespace=namespace,
             table_name=table_name,
             python_script=python_script,
             limit=limit,
+            tenant_id=_tenant,
+            role=_role,
         )
         completed = engine.submit_sync(job)
         if completed.status.value == "failed":
@@ -550,6 +581,7 @@ def multi_engine_query(queries_json: str) -> str:
         if len(specs) > 10:
             return "❌ Maximum 10 queries per multi_engine_query call."
 
+        _tenant, _role = _job_context()
         jobs = []
         for spec in specs:
             job = QueryJob(
@@ -563,6 +595,8 @@ def multi_engine_query(queries_json: str) -> str:
                 python_script=spec.get("python_script"),
                 filters=spec.get("filters"),
                 limit=spec.get("limit", 200),
+                tenant_id=_tenant,
+                role=_role,
             )
             jobs.append(job)
 
