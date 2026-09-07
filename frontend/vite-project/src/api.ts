@@ -9,8 +9,17 @@
  * - Browser FormData API: Orchestrates multipart file streams for CSV dataset transmission.
  */
 
-// Uses VITE_API_BASE_URL env var for production (Railway URL), falls back to localhost for dev
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8000';
+const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL as string;
+  }
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:8000';
+  }
+  return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
+};
+
+const BASE_URL = getApiBaseUrl();
 
 // ─── Token Storage ──────────────────────────────────────────────────────────
 // Use sessionStorage so tokens don't persist across browser restarts
@@ -19,23 +28,29 @@ const REFRESH_KEY = 'meldra_refresh_token';
 const USER_KEY = 'meldra_user';
 
 export const tokenStore = {
-  getAccessToken: (): string | null => sessionStorage.getItem(TOKEN_KEY),
-  getRefreshToken: (): string | null => sessionStorage.getItem(REFRESH_KEY),
+  getAccessToken: (): string | null => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY),
+  getRefreshToken: (): string | null => sessionStorage.getItem(REFRESH_KEY) || localStorage.getItem(REFRESH_KEY),
   getUser: (): AuthUser | null => {
-    const s = sessionStorage.getItem(USER_KEY);
+    const s = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY);
     return s ? JSON.parse(s) : null;
   },
   setTokens: (access: string, refresh: string, user: AuthUser) => {
     sessionStorage.setItem(TOKEN_KEY, access);
     sessionStorage.setItem(REFRESH_KEY, refresh);
     sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(TOKEN_KEY, access);
+    localStorage.setItem(REFRESH_KEY, refresh);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
   clear: () => {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(REFRESH_KEY);
     sessionStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem(USER_KEY);
   },
-  isLoggedIn: (): boolean => !!sessionStorage.getItem(TOKEN_KEY),
+  isLoggedIn: (): boolean => !!(sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY)),
 };
 
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
