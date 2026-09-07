@@ -27,7 +27,6 @@
         justify-content: center;
         padding: 1.5rem 1rem;
         overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
         transition: opacity 0.4s ease;
       }
       #auth-overlay.active {
@@ -40,6 +39,7 @@
       .auth-card {
         margin: auto;
         background: #ffffff;
+        -webkit-backdrop-filter: blur(24px);
         backdrop-filter: blur(24px);
         border: 1px solid #cbd5e1;
         border-radius: 20px;
@@ -378,6 +378,7 @@
       }
       .academy-nav {
         background: rgba(11, 21, 15, 0.85);
+        -webkit-backdrop-filter: blur(12px);
         backdrop-filter: blur(12px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         padding: 0.85rem 2rem;
@@ -409,6 +410,7 @@
         border-radius: 16px;
         padding: 2rem;
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
       }
       .academy-signup-card {
@@ -891,6 +893,7 @@
         color: #ef4444;
         box-shadow: 0 4px 20px rgba(0,0,0,0.25);
         transition: all 0.2s;
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
       }
       .video-card:hover .video-play-btn {
@@ -980,6 +983,7 @@
         align-items: center;
         justify-content: center;
         padding: 2rem;
+        -webkit-backdrop-filter: blur(8px);
         backdrop-filter: blur(8px);
         animation: fadeIn 0.2s ease;
       }
@@ -4245,7 +4249,7 @@ with DAG(
     </div>
 
     <!-- ── PUBLIC ARTICLE MODAL ── -->
-    <div id="article-modal-overlay" class="settings-modal-overlay" style="z-index: 20000; background: rgba(9, 13, 22, 0.75); backdrop-filter: blur(12px);">
+    <div id="article-modal-overlay" class="settings-modal-overlay" style="z-index: 20000; background: rgba(9, 13, 22, 0.75); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);">
       <div class="settings-modal-box" style="max-width: 780px; background: #0b0f19; border: 1px solid #1e293b;">
         <div class="settings-modal-header" style="border-bottom: 1px solid #1e293b;">
           <h3 class="settings-modal-title" id="article-modal-title" style="color: #fff;"><i class="fa-solid fa-book-open" style="color: #22c55e;"></i> Article Reader</h3>

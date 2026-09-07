@@ -1760,6 +1760,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   inset: 0;
   z-index: 10000;
   background: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   display: none;
   align-items: center;
@@ -1936,6 +1937,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   inset: 0;
   background: rgba(15, 23, 42, 0.4);
   z-index: 15;
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   transition: opacity 0.3s ease;
 }
@@ -3013,6 +3015,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   height: 100vh;
   height: 100dvh;
   background: rgba(15, 23, 42, 0.6);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   z-index: 100000;
   display: flex;

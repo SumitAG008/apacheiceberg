@@ -5540,24 +5540,79 @@ async function loadTableContracts() {
 
   if (!activeTableName) {
     container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No table selected.</div>';
+    contractRules = [];
     return;
   }
 
   try {
     const res = await api.catalog.getContracts(activeNamespace, activeTableName);
     if (!res || !res.rules || res.rules.length === 0) {
+      contractRules = [];
       container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem;">No data quality contracts configured for this table.</div>';
       return;
     }
-
-    container.innerHTML = res.rules.map((rule: any) => `
-      <div class="contract-rule-card">
-        <span class="badge ${rule.level === 'error' ? 'badge-red' : 'badge-yellow'}">${rule.level.toUpperCase()}</span>
-        <span style="font-family:var(--font-mono); font-size:0.75rem;">${rule.column} ${rule.condition}</span>
-      </div>
-    `).join('');
+    contractRules = res.rules;
+    renderContractRulesList();
   } catch (e: any) {
     container.innerHTML = `<div style="color:#ef4444; font-size:0.7rem;">Failed to load contracts: ${e.message}</div>`;
+  }
+}
+
+function renderContractRulesList() {
+  const container = document.getElementById('contracts-rules-container');
+  if (!container) return;
+
+  if (contractRules.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem;">No data quality contracts configured for this table.</div>';
+    return;
+  }
+
+  container.innerHTML = contractRules.map((rule: any, idx: number) => `
+    <div class="contract-rule-card" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; margin-bottom:0.4rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span class="badge ${rule.level === 'error' ? 'badge-red' : 'badge-yellow'}">${(rule.level || 'error').toUpperCase()}</span>
+        <span style="font-family:var(--font-mono); font-size:0.75rem;">${rule.column} ${rule.condition}</span>
+      </div>
+      <button type="button" onclick="removeContractRule(${idx})" style="background:none; border:none; color:#f87171; cursor:pointer; font-size:0.75rem;"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+(window as any).removeContractRule = (idx: number) => {
+  contractRules.splice(idx, 1);
+  renderContractRulesList();
+};
+
+function addContractRuleItem() {
+  const colInput = document.getElementById('contract-rule-column') as HTMLInputElement;
+  const condInput = document.getElementById('contract-rule-condition') as HTMLSelectElement;
+  const levelInput = document.getElementById('contract-rule-level') as HTMLSelectElement;
+
+  const column = colInput ? colInput.value.trim() : '';
+  const condition = condInput ? condInput.value : 'IS NOT NULL';
+  const level = levelInput ? levelInput.value : 'error';
+
+  if (!column) {
+    showToast('Please enter a column name for the contract rule.', 'error');
+    return;
+  }
+
+  contractRules.push({ column, condition, level });
+  if (colInput) colInput.value = '';
+  renderContractRulesList();
+  showToast(`Added contract rule: ${column} ${condition}`, 'success');
+}
+
+async function saveTableContracts() {
+  if (!activeTableName) {
+    showToast('Select a table first.', 'error');
+    return;
+  }
+  try {
+    await api.catalog.saveContracts(activeNamespace, activeTableName, contractRules);
+    showToast(`Data contracts saved for ${activeTableName}`, 'success');
+  } catch (e: any) {
+    showToast(e.message || 'Failed to save data contracts', 'error');
   }
 }
 
