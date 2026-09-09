@@ -127,7 +127,7 @@ class SQLExecutor:
             from tenancy import scope_namespace
             scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
             primary_arrow = self._load_iceberg(
-                catalog, scoped_ns, job.table_name, job.filters, job.projection
+                catalog, scoped_ns, job.table_name, job.filters, job.projection, job.sql
             )
 
             # Enforce full RBAC (table access, row filtering, column masking/
@@ -166,11 +166,20 @@ class SQLExecutor:
             # ── 2. Execution plan (EXPLAIN) ─────────────────────────────────────
             explain_text = backend.explain(job.sql)
             engine_label = f"{backend.name} {backend.version}" if hasattr(backend, "version") else backend.name
+            scan_info = getattr(SQLExecutor, "_last_scan_info", {}) or {}
+            total_files = scan_info.get("total_files", 0)
+            files_pruned = scan_info.get("files_pruned", 0)
+            pruned_files_str = f"{files_pruned} / {total_files}" if total_files else "0 (unpruned/in-memory)"
+            pushed_str = ", ".join(scan_info.get("pushed_predicates", [])) or "none"
+            proj_str = ", ".join(scan_info.get("projection", [])) if scan_info.get("projection") else "all"
+
             plan_note = (
-                f"[DQE/SQL] Engine: {engine_label} | "
-                f"Table: {job.namespace}.{job.table_name} | "
-                f"Source rows scanned: {len(primary_arrow)} | "
-                f"Materialisation: {copy_mode}\n\n"
+                f"[DQE/SQL] Engine: {engine_label} | Table: {job.namespace}.{job.table_name}\n"
+                f"  Files pruned: {pruned_files_str}\n"
+                f"  Source rows scanned: {len(primary_arrow)}\n"
+                f"  Pushed predicates: {pushed_str}\n"
+                f"  Projection: {proj_str}\n"
+                f"  Materialisation: {copy_mode}\n\n"
                 f"{explain_text}"
             )
 
@@ -233,16 +242,33 @@ class SQLExecutor:
             catalog = self._get_catalog()
             scoped_ns = scope_namespace(job.tenant_id, job.namespace) if job.tenant_id else job.namespace
             primary_arrow = self._load_iceberg(
-                catalog, scoped_ns, job.table_name, job.filters, job.projection
+                catalog, scoped_ns, job.table_name, job.filters, job.projection, job.sql
             )
             backend.register_table("iceberg_table", primary_arrow.to_pandas())
-            return backend.explain(job.sql)
+            explain_text = backend.explain(job.sql)
+            scan_info = getattr(SQLExecutor, "_last_scan_info", {}) or {}
+            total_files = scan_info.get("total_files", 0)
+            files_pruned = scan_info.get("files_pruned", 0)
+            pruned_files_str = f"{files_pruned} / {total_files}" if total_files else "0 (unpruned/in-memory)"
+            pushed_str = ", ".join(scan_info.get("pushed_predicates", [])) or "none"
+            proj_str = ", ".join(scan_info.get("projection", [])) if scan_info.get("projection") else "all"
+
+            return (
+                f"[DQE/SQL] Engine: {backend.name} | Table: {job.namespace}.{job.table_name}\n"
+                f"  Files pruned: {pruned_files_str}\n"
+                f"  Rows scanned: {len(primary_arrow)}\n"
+                f"  Pushed predicates: {pushed_str}\n"
+                f"  Projection: {proj_str}\n\n"
+                f"{explain_text}"
+            )
         except Exception as exc:
             return f"[SQLExecutor/EXPLAIN] Could not compute plan: {exc}"
         finally:
             backend.close()
 
     # ─── Helpers ──────────────────────────────────────────────────────────────
+
+    _last_scan_info: Dict[str, Any] = {}
 
     @staticmethod
     def _get_catalog():
@@ -260,6 +286,7 @@ class SQLExecutor:
         table_name: str,
         filters: Optional[Dict[str, Any]],
         projection: Optional[List[str]] = None,
+        sql: Optional[str] = None,
     ) -> pa.Table:
         """Load an Iceberg table with row-filter and column-projection pushdown.
 
@@ -277,30 +304,67 @@ class SQLExecutor:
         scan_kwargs: Dict[str, Any] = {}
 
         # ── Row filter pushdown (partition + file pruning) ──────────────
-        if filters:
-            try:
-                from pyiceberg.expressions import EqualTo, And
-                expr = None
-                for col, val in filters.items():
-                    eq = EqualTo(col, val)
-                    expr = eq if expr is None else And(expr, eq)
-                if expr is not None:
-                    scan_kwargs["row_filter"] = expr
-            except Exception as fe:
-                logger.warning(
-                    "[SQLExecutor] Row-filter pushdown failed (%s); falling back to full scan", fe
-                )
+        pushed_descriptions: List[str] = []
+        try:
+            from query_engine.sql_pushdown import build_iceberg_row_filter
+            expr, pushed_descriptions = build_iceberg_row_filter(filters, sql)
+            if expr is not None:
+                scan_kwargs["row_filter"] = expr
+        except Exception as fe:
+            logger.warning(
+                "[SQLExecutor] Row-filter pushdown failed (%s); falling back to full scan", fe
+            )
 
         # ── Column projection pushdown (avoids reading unused columns) ──
-        if projection:
+        effective_proj = projection
+        if not effective_proj and sql:
+            try:
+                from query_engine.sql_pushdown import extract_projection_from_sql
+                effective_proj = extract_projection_from_sql(sql)
+            except Exception as e:
+                logger.debug("[SQLExecutor] Projection extraction from SQL failed: %s", e)
+
+        selected_cols: List[str] = []
+        if effective_proj:
             try:
                 available = {f.name for f in table.schema().fields}
-                selected = [c for c in projection if c in available]
+                selected = [c for c in effective_proj if c in available]
                 if selected:
                     scan_kwargs["selected_fields"] = tuple(selected)
+                    selected_cols = selected
             except Exception as pe:
                 logger.warning(
                     "[SQLExecutor] Projection pushdown failed (%s); reading all columns", pe
                 )
 
-        return table.scan(**scan_kwargs).to_arrow()
+        # ── Plan inspection for pruning metrics ─────────────────────────
+        total_files = 0
+        planned_files = 0
+        total_rows = 0
+        planned_rows = 0
+        try:
+            for task in table.scan().plan_files():
+                total_files += 1
+                total_rows += task.file.record_count or 0
+        except Exception:
+            pass
+
+        scan = table.scan(**scan_kwargs)
+        try:
+            for task in scan.plan_files():
+                planned_files += 1
+                planned_rows += task.file.record_count or 0
+        except Exception:
+            pass
+
+        SQLExecutor._last_scan_info = {
+            "total_files": total_files,
+            "planned_files": planned_files,
+            "files_pruned": max(0, total_files - planned_files) if total_files else 0,
+            "total_rows": total_rows,
+            "planned_rows": planned_rows,
+            "pushed_predicates": pushed_descriptions,
+            "projection": selected_cols or effective_proj or [],
+        }
+
+        return scan.to_arrow()

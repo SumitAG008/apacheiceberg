@@ -5,36 +5,36 @@
    ──────────────────────────────────────────────────────── */
 
 :root {
-  /* Core Palette — Futuristic Cyber Dark */
-  --bg-primary:        #080b14;       /* Ultra deep space black */
-  --bg-secondary:      #0e1324;       /* Deep slate panel bg */
-  --bg-surface:        #151c33;       /* Surface card bg */
-  --bg-surface2:       #1e2747;       /* Active/hover surface state */
-  --bg-glass:          rgba(21, 28, 51, 0.78);
+  /* Core Palette — Clean Enterprise Light Mode */
+  --bg-primary:        #f8fafc;       /* Crisp soft snow canvas background */
+  --bg-secondary:      #ffffff;       /* Pure white panel & card bg */
+  --bg-surface:        #ffffff;       /* Surface card bg */
+  --bg-surface2:       #f1f5f9;       /* Active/hover surface state */
+  --bg-glass:          rgba(255, 255, 255, 0.88);
 
-  /* Accent — Cyber Emerald / Teal Aura */
-  --color-primary:     #10b981;       /* Cyber Emerald */
-  --color-primary-dim: rgba(16, 185, 129, 0.12);
-  --color-primary-glow:rgba(16, 185, 129, 0.25);
-  --color-accent:      #06b6d4;       /* Holographic Cyan */
-  --color-accent-dim:  rgba(6, 182, 212, 0.12);
+  /* Accent — Deep Emerald & Royal Cobalt */
+  --color-primary:     #0d9488;       /* Deep Royal Emerald / Teal */
+  --color-primary-dim: rgba(13, 148, 136, 0.08);
+  --color-primary-glow:rgba(13, 148, 136, 0.18);
+  --color-accent:      #2563eb;       /* Enterprise Cobalt Blue */
+  --color-accent-dim:  rgba(37, 99, 235, 0.08);
 
   /* Status */
-  --color-success:     #10b981;
-  --color-warning:     #eab308;
-  --color-danger:      #f43f5e;
-  --color-info:        #38bdf8;
+  --color-success:     #0d9488;
+  --color-warning:     #d97706;
+  --color-danger:      #e11d48;
+  --color-info:        #0284c7;
 
   /* Borders */
-  --border-subtle:     rgba(255, 255, 255, 0.08);
-  --border-active:     #10b981;
-  --border-glass:      rgba(16, 185, 129, 0.18);
+  --border-subtle:     #e2e8f0;       /* Soft crisp slate border */
+  --border-active:     #0d9488;
+  --border-glass:      rgba(13, 148, 136, 0.25);
 
-  /* Text */
-  --text-main:         #f8fafc;       /* Bright silver text */
-  --text-muted:        #94a3b8;       /* Slate gray text */
-  --text-dim:          #64748b;
-  --text-dark:         #080b14;
+  /* Text — High Contrast Obsidian & Charcoal */
+  --text-main:         #0f172a;       /* Deep Obsidian text for maximum contrast (15.8:1) */
+  --text-muted:        #475569;       /* Slate charcoal text for subheadings (7.2:1) */
+  --text-dim:          #64748b;       /* Muted label text */
+  --text-dark:         #ffffff;
 
   /* Fonts */
   --font-sans:         'Space Grotesk', 'Inter', sans-serif;
@@ -61,22 +61,15 @@ body {
   font-family: var(--font-body);
   background: var(--bg-primary);
   color: var(--text-main);
-  /* 100vh is calculated against Safari's largest possible viewport (address
-     bar collapsed) — on load, with the address bar still showing, the real
-     visible area is smaller, causing clipped content that visibly "waves"
-     as the bar animates in/out during scroll. 100dvh tracks the actual
-     current viewport instead. Keep the 100vh line as a fallback for older
-     browsers that don't support dvh yet (the dvh rule below overrides it
-     wherever supported). */
   height: 100vh;
   height: 100dvh;
   width: 100vw;
   overflow: hidden;
   line-height: 1.55;
   background-image:
-    radial-gradient(ellipse 65% 55% at 15% -10%, rgba(16, 185, 129, 0.1) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at 85% 110%, rgba(6, 182, 212, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%);
+    radial-gradient(ellipse 65% 55% at 15% -10%, rgba(13, 148, 136, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 110%, rgba(37, 99, 235, 0.04) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(147, 51, 234, 0.02) 0%, transparent 70%);
 }
 
 button, input, textarea, select { font-family: inherit; color: inherit; }
@@ -386,7 +379,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #C4B5FD 0%, #8B5CF6 50%, #10B981 100%);
+  background: linear-gradient(135deg, #0F172A 0%, #0D9488 60%, #2563EB 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -398,7 +391,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 .tab-headers {
   display: flex;
   gap: 0.25rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
   padding: 0.25rem;
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
@@ -424,14 +417,14 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 
 .tab-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .tab-btn.active {
   color: var(--color-primary);
   background: var(--bg-surface2);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.06);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.3);
 }
 
 /* ─── Tab Content ─── */
@@ -498,6 +491,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   transition: var(--transition-fast);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .stat-card::before {
@@ -505,7 +499,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #7C3AED, #10B981);
+  background: linear-gradient(90deg, #2563EB, #0D9488);
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
@@ -517,7 +511,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   font-family: var(--font-sans);
   font-size: 1.45rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #A78BFA, #10B981);
+  background: linear-gradient(135deg, #0F172A, #0D9488);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

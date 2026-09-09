@@ -16,7 +16,11 @@ def get_catalog():
     aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID")
     aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     
-    if s3_uri:
+    # Check if forced to local SQLite catalog (e.g. for testing or offline dev)
+    catalog_type = os.environ.get("CATALOG_TYPE", "").lower()
+    force_local = catalog_type == "sqlite" or os.environ.get("FORCE_LOCAL_CATALOG", "").lower() == "true" or "PYTEST_CURRENT_TEST" in os.environ
+
+    if s3_uri and not force_local:
         print(f"Connecting to AWS Glue Catalog in {aws_region} with S3 warehouse: {s3_uri}")
         properties = {
             "type": "glue",

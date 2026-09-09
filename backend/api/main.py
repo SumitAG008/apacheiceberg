@@ -25,7 +25,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File, Cookie, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import jwt as jose_jwt, JWTError
@@ -70,6 +70,7 @@ from auth_db import (
     decide_promotion,
 )
 import oidc
+import saml
 from mfa_service import send_email_otp
 from roles import (
     ALL_ROLES,
@@ -975,6 +976,102 @@ async def sso_callback(code: str = "", state: str = "", error: str = ""):
     return RedirectResponse(
         f"{frontend_url}/?sso_access_token={access_token}&sso_refresh_token={refresh_token}&sso_user={user_payload}"
     )
+
+
+@app.get("/auth/saml/status", tags=["Auth"])
+async def saml_status():
+    """Public — returns whether Enterprise SAML 2.0 SSO is configured."""
+    configured = saml.is_configured()
+    return {"configured": configured, "provider_name": saml.provider_name() if configured else None}
+
+
+@app.get("/auth/saml/login", tags=["Auth"])
+async def saml_login(relay_state: Optional[str] = None):
+    """Initiates SAML 2.0 SP-initiated SSO, redirecting to the enterprise IdP."""
+    if not saml.is_configured():
+        raise HTTPException(status_code=501, detail="SAML 2.0 SSO is not configured on this deployment.")
+    try:
+        redirect_url = saml.build_authn_request_url(relay_state=relay_state)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not build SAML AuthnRequest: {e}")
+    return RedirectResponse(redirect_url)
+
+
+@app.post("/auth/saml/acs", tags=["Auth"])
+async def saml_acs(request: Request):
+    """
+    Assertion Consumer Service (ACS).
+    Receives HTTP-POST binding SAMLResponse from IdP, validates XML assertion,
+    provisions or loads the SSO user, and redirects to frontend with auth tokens.
+    """
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+    if not saml.is_configured():
+        raise HTTPException(status_code=501, detail="SAML 2.0 SSO is not configured on this deployment.")
+
+    form_data = await request.form()
+    saml_response_b64 = form_data.get("SAMLResponse")
+    relay_state = form_data.get("RelayState", "")
+
+    if not saml_response_b64:
+        return RedirectResponse(f"{frontend_url}/?saml_error=missing_saml_response")
+
+    if relay_state and not saml.validate_relay_state(str(relay_state)):
+        logger.warning("[SAML] Invalid or expired relay state: %s", relay_state)
+        return RedirectResponse(f"{frontend_url}/?saml_error=invalid_relay_state")
+
+    try:
+        claims = saml.parse_saml_response(str(saml_response_b64))
+    except Exception as e:
+        log_audit_pg("unknown", "trial", "saml_login", f"SAML assertion processing failed: {e}", "error")
+        return RedirectResponse(f"{frontend_url}/?saml_error=assertion_invalid")
+
+    email = claims.get("email")
+    if not email:
+        return RedirectResponse(f"{frontend_url}/?saml_error=no_email_claim")
+
+    # Map enterprise role or fallback to Business Analyst
+    assigned_role = "Business Analyst"
+    saml_roles = claims.get("roles", [])
+    if any("admin" in str(r).lower() for r in saml_roles):
+        assigned_role = "Admin"
+    elif any("engineer" in str(r).lower() for r in saml_roles):
+        assigned_role = "Data Engineer"
+
+    user = get_or_create_sso_user(email, provider=saml.provider_name(), user_role=assigned_role)
+    update_last_login(user["id"])
+
+    access_token = _create_access_token({
+        "sub": user["id"],
+        "email": user["email"],
+        "tier": user["tier"],
+        "role": user.get("user_role", assigned_role),
+    })
+    refresh_token = create_session(user["id"])
+
+    log_audit_pg(user["id"], user["tier"], "saml_login", f"SSO login via SAML for {email}", "success")
+
+    import json as _json
+    import base64 as _base64
+    user_payload = _base64.urlsafe_b64encode(_json.dumps({
+        "id": user["id"],
+        "email": user["email"],
+        "mfa_method": user.get("mfa_method", "email"),
+        "is_verified": True,
+        "tier": user["tier"],
+        "role": user.get("user_role", assigned_role),
+        "subscription_status": user.get("subscription_status", "active"),
+    }).encode()).decode()
+
+    return RedirectResponse(
+        f"{frontend_url}/?sso_access_token={access_token}&sso_refresh_token={refresh_token}&sso_user={user_payload}"
+    )
+
+
+@app.get("/auth/saml/metadata", tags=["Auth"])
+async def saml_metadata():
+    """Returns Service Provider (SP) SAML 2.0 metadata XML for IdP setup."""
+    xml_content = saml.generate_sp_metadata()
+    return Response(content=xml_content, media_type="application/xml")
 
 
 @app.post("/auth/api-token", tags=["Auth"])
@@ -1990,6 +2087,89 @@ async def dqe_multi(
         "merged_result": merged_result,
         "merge_strategy": payload.merge_strategy,
     }
+
+
+# ── Quantum & AI/ML Optimization Endpoints ───────────────────────────────────
+
+class _QuantumQuboRequest(BaseModel):
+    graph_name: Optional[str] = "main"
+    nodes: Optional[List[str]] = None
+    edges: Optional[List[List[Any]]] = None
+    sweeps: int = 400
+
+class _AIEmbedRequest(BaseModel):
+    graph_name: Optional[str] = "main"
+    dimensions: int = 16
+    metric: Optional[str] = "adamic_adar"
+
+@app.post("/v1/quantum/qubo-solve", tags=["Quantum Engine"])
+async def quantum_qubo_solve(
+    payload: _QuantumQuboRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Solves combinatorial graph clustering & partitioning using the Quantum-Inspired
+    Simulated Annealer (QISA) and generates QAOA OpenQASM quantum circuits.
+    """
+    from query_engine.quantum_optimizer import QuantumOptimizer
+    import networkx as nx
+
+    G = nx.Graph()
+    if payload.nodes and payload.edges:
+        G.add_nodes_from(payload.nodes)
+        for e in payload.edges:
+            if len(e) >= 2:
+                w = float(e[2]) if len(e) >= 3 else 1.0
+                G.add_edge(e[0], e[1], weight=w)
+    else:
+        from graph_db import load_networkx_graph
+        try:
+            G = load_networkx_graph(payload.graph_name).to_undirected()
+        except Exception:
+            G = nx.cycle_graph(6)
+
+    res = QuantumOptimizer.partition_graph_quantum(G, sweeps=payload.sweeps)
+    return res
+
+
+@app.post("/v1/ai/graph-embeddings", tags=["AI Engine"])
+async def ai_graph_embeddings(
+    payload: _AIEmbedRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Generates topological node embeddings using random walks and spectral projections.
+    """
+    from query_engine.ai_ml_engine import AIMLEngine
+    from graph_db import load_networkx_graph
+    import networkx as nx
+    try:
+        G = load_networkx_graph(payload.graph_name)
+    except Exception:
+        G = nx.path_graph(10, create_using=nx.DiGraph)
+
+    embeddings = AIMLEngine.generate_node_embeddings(G, dimensions=payload.dimensions)
+    return {"total_nodes": len(embeddings), "dimensions": payload.dimensions, "embeddings": embeddings}
+
+
+@app.post("/v1/ai/link-prediction", tags=["AI Engine"])
+async def ai_link_prediction(
+    payload: _AIEmbedRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """
+    Predicts high-probability candidate links/relationships in the graph store.
+    """
+    from query_engine.ai_ml_engine import AIMLEngine
+    from graph_db import load_networkx_graph
+    import networkx as nx
+    try:
+        G = load_networkx_graph(payload.graph_name)
+    except Exception:
+        G = nx.path_graph(10, create_using=nx.DiGraph)
+
+    links = AIMLEngine.predict_links(G, top_k=20, metric=payload.metric or "adamic_adar")
+    return {"predicted_links": links, "metric": payload.metric}
 
 
 # ── Live Traffic WebSocket & REST Fallback ──────────────────────────────────

@@ -187,6 +187,11 @@ Attacker               ETP Gateway            Phantom Grid            Threat Sen
 - **Trigger:** High-volume scanner engagement with Phantom Grid.
 - **Goal:** Export real-time attack patterns, IP ranges, and payload signatures to enterprise SOC tools (Splunk, Sentinel).
 
+### UC-14 — AI Low-Voltage Grid Digital Twin: Feeder Headroom & Phase Inference ●
+- **Primary Actor:** DNO Grid Planning Engineer $\rightarrow$ Meldra AI Digital Twin
+- **Trigger:** EV/Heat pump connection request, solar export assessment, or annual network capacity review under RIIO-ED2.
+- **Goal:** Fuses physical CIM topology with Iceberg smart meter telemetry to calculate real-time feeder headroom, detect reverse power flow, and infer unmeasured meter phase assignments ($L1, L2, L3$) via topological embeddings in sub-second latency.
+
 ---
 
 ## 4. Traceability Matrix
@@ -206,6 +211,7 @@ Attacker               ETP Gateway            Phantom Grid            Threat Sen
 | **UC-11** | Cross-DNO Exchange | Query / RBAC | `enforce_dno_isolation()` | `silver_ami_readings` | T21 |
 | **UC-12** | Firmware Audit | Blocks 1, 3, 5 | `verify_firmware_block()` | `bronze_ami_readings` | T22 |
 | **UC-13** | STIX/TAXII Export | Block 4, Sentinel| `export_stix_telemetry()` | `_etp_threat_log` | T23 |
+| **UC-14** | AI LV Digital Twin | Graph / Query / AI| `generate_node_embeddings()`, `partition_graph_quantum()` | `gold_settlement_daily` | T24, T25 |
 
 ---
 

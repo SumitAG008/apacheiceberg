@@ -232,8 +232,15 @@ kind: Ingress
 metadata:
   name: meldra-ingress
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  tls:
+  - hosts:
+    - meldra.ai
+    - api.meldra.ai
+    secretName: meldra-tls-cert
   rules:
   - http:
       paths:
@@ -258,3 +265,4 @@ spec:
             name: frontend-service
             port:
               number: 80
+

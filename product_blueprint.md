@@ -89,6 +89,15 @@ Data Studio is the control room of the smart meter lakehouse. Every energy enter
     2.  **Graph Analysis:** Execute Cypher query over topology graph to map anomalous meters back to common upstream substation.
     3.  **Alerting:** Push asset IDs to grid ops dashboard for immediate field dispatch.
 
+### 🌐 Business Case E: AI Grid Digital Twin for Low-Voltage Operations (UC-05)
+*   **Problem:** DNOs face an unmonitored blind spot across 800,000+ secondary distribution substations (11kV/400V) as EV charging and heat pumps cluster, with physical sensor retrofits costing over £3B.
+*   **Value:** Complete software-defined LV visibility fusing physical CIM IEC 61968 electrical network graphs directly to 50B+ half-hourly smart meter readings on Apache Iceberg, delivering sub-second feeder headroom calculations and AI-driven phase identification ($L1/L2/L3$) at < 5% of physical hardware costs.
+*   **Workflow:**
+    1.  **Topology Mapping:** Ingest CIM XML / GIS topology into Apache AGE graph store (Substation → Feeder → Secondary Transformer → LV Cable → Cutout → MPAN).
+    2.  **Telemetry Synchronization:** Synchronize half-hourly active power (kW), reactive power (kvar), and voltage (V) in Apache Iceberg with automated SQL pushdown.
+    3.  **AI State Estimation:** Run in-engine topological random-walk embeddings (`AIMLEngine.generate_node_embeddings`) to cluster and predict unmapped meter phase connections ($L1, L2, L3$).
+    4.  **Operational Simulation:** Execute sub-second Feeder Headroom and Reverse Power Flow queries to alert planning engineers of thermal breaches and voltage limit violations (+10% / -6%).
+
 ---
 
 ## 4. Competitive Differentiation & Capability Roadmap

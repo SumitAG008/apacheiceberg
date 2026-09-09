@@ -175,23 +175,48 @@ class GraphExecutor:
     def _run_algorithm(self, G: nx.DiGraph, job: QueryJob) -> QueryResult:
         algo = job.algorithm.lower()
         limit = job.limit
+        filters = job.filters or {}
+
+        # ── Optional Sub-graph Neighborhood Extraction ───────────────────────
+        if "center" in filters or "seed_node" in filters:
+            center_node = filters.get("center") or filters.get("seed_node")
+            radius = int(filters.get("radius", 2))
+            if center_node in G:
+                G = nx.ego_graph(G, center_node, radius=radius)
+                logger.info(
+                    "[GraphExecutor] Scoped graph to %d-hop neighborhood of %s (%d nodes, %d edges)",
+                    radius, center_node, G.number_of_nodes(), G.number_of_edges(),
+                )
 
         if algo == "pagerank":
-            scores = nx.pagerank(G, alpha=0.85, max_iter=200)
+            max_iter = int(filters.get("max_iter", 100))
+            tol = float(filters.get("tol", 1e-4))
+            scores = nx.pagerank(G, alpha=0.85, max_iter=max_iter, tol=tol)
             rows = [
                 {"node_id": n, "pagerank_score": round(s, 6)}
                 for n, s in sorted(scores.items(), key=lambda x: -x[1])
             ]
-            plan = f"[DQE/GRAPH] PageRank (alpha=0.85) on {G.number_of_nodes()} nodes"
+            plan = f"[DQE/GRAPH] PageRank (alpha=0.85, max_iter={max_iter}) on {G.number_of_nodes()} nodes"
             columns = ["node_id", "pagerank_score"]
 
         elif algo == "betweenness_centrality":
-            scores = nx.betweenness_centrality(G, normalized=True)
+            # Sample-based approximation scales to massive graphs: O(k * (|V|+|E|)) vs O(|V| * (|V|+|E|))
+            node_count = G.number_of_nodes()
+            sample_k = filters.get("sample_k")
+            if sample_k is not None:
+                k_val = min(int(sample_k), node_count)
+            elif node_count > 250:
+                k_val = min(100, node_count)
+            else:
+                k_val = None
+
+            scores = nx.betweenness_centrality(G, k=k_val, normalized=True)
             rows = [
                 {"node_id": n, "betweenness": round(s, 6)}
                 for n, s in sorted(scores.items(), key=lambda x: -x[1])
             ]
-            plan = f"[DQE/GRAPH] Betweenness Centrality on {G.number_of_nodes()} nodes"
+            k_desc = f"approximate k={k_val} samples" if k_val else "exact"
+            plan = f"[DQE/GRAPH] Betweenness Centrality ({k_desc}) on {G.number_of_nodes()} nodes"
             columns = ["node_id", "betweenness"]
 
         elif algo == "degree_centrality":
@@ -290,11 +315,48 @@ class GraphExecutor:
                     f"Communities: {len(communities)}"
                 )
                 columns = ["community_id", "size", "sample_nodes"]
+
+        elif algo in ("qubo_partitioning", "quantum_max_cut"):
+            from query_engine.quantum_optimizer import QuantumOptimizer
+            sweeps = int(filters.get("sweeps", 400))
+            UG = G.to_undirected()
+            q_res = QuantumOptimizer.partition_graph_quantum(UG, sweeps=sweeps)
+            rows = [
+                {"cluster": "cluster_0", "size": q_res["cluster_0_size"], "sample_nodes": ", ".join(q_res["cluster_0"][:10])},
+                {"cluster": "cluster_1", "size": q_res["cluster_1_size"], "sample_nodes": ", ".join(q_res["cluster_1"][:10])},
+            ]
+            columns = ["cluster", "size", "sample_nodes"]
+            plan = (
+                f"[DQE/QUANTUM] QUBO / Max-Cut Partitioning (sweeps={sweeps}) | "
+                f"Cut Edges: {q_res['cut_edges']} | QUBO Energy: {q_res['qubo_energy']}\n"
+                f"QAOA Circuit: {q_res.get('qaoa_qasm_preview', 'N/A')}"
+            )
+
+        elif algo == "node_embeddings":
+            from query_engine.ai_ml_engine import AIMLEngine
+            dims = int(filters.get("dimensions", 16))
+            emb_list = AIMLEngine.generate_node_embeddings(G, dimensions=dims)
+            rows = [
+                {"node_id": item["node_id"], "dimension": item["dimension"], "embedding_sample": str(item["embedding"][:4])}
+                for item in emb_list
+            ]
+            columns = ["node_id", "dimension", "embedding_sample"]
+            plan = f"[DQE/AI-ML] Random Walk Topological Embeddings (dim={dims}) on {G.number_of_nodes()} nodes"
+
+        elif algo == "link_prediction":
+            from query_engine.ai_ml_engine import AIMLEngine
+            metric = str(filters.get("metric", "adamic_adar"))
+            top_k = int(filters.get("top_k", 20))
+            rows = AIMLEngine.predict_links(G, top_k=top_k, metric=metric)
+            columns = ["source", "target", "score", "metric"]
+            plan = f"[DQE/AI-ML] Link Prediction (metric={metric}, top_k={top_k}) on {G.number_of_nodes()} nodes"
+
         else:
             raise ValueError(
                 f"Unknown algorithm '{algo}'. Supported: pagerank, betweenness_centrality, "
                 "degree_centrality, connected_components, find_cycles, shortest_path, "
-                "community_detection"
+                "community_detection, qubo_partitioning, quantum_max_cut, node_embeddings, "
+                "link_prediction"
             )
 
         total_rows = len(rows)
