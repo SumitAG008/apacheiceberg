@@ -4719,61 +4719,262 @@ with DAG(
     <!-- SCREEN 4f: Developer & Data Dictionary -->
     <div id="modal-data-dict-4f" class="meldra-modal-overlay">
       <div class="meldra-modal-card wide">
-        <div style="background:#fcfcfb;min-height:520px;display:flex;flex-direction:column;position:relative;">
+        <div style="background:#fcfcfb;min-height:540px;display:flex;flex-direction:column;position:relative;">
           <button onclick="closeMeldraModal('modal-data-dict-4f')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#8a8f89;z-index:5;">&times;</button>
           
-          <div style="display:flex;align-items:center;gap:28px;padding:20px 28px;border-bottom:1px solid #e8e7e3">
+          <div style="display:flex;align-items:center;gap:28px;padding:18px 28px;border-bottom:1px solid #e8e7e3">
             <div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#15201c">MELDRA</div>
             <div style="font-size:13px;color:#15201c;font-weight:600">Developer & Data Dictionary</div>
             <div style="margin-left:auto;font-size:12px;color:#8a8f89">docs.meldra.io</div>
           </div>
 
           <div style="display:flex;flex:1;min-height:0">
-            <!-- Sidebar -->
-            <div style="width:180px;border-right:1px solid #e8e7e3;padding:20px 18px;display:flex;flex-direction:column;gap:9px;background:#fff">
-              <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89">REFERENCE</div>
-              <div style="font-size:12.5px;color:#15201c;font-weight:600">Data dictionary</div>
-              <div style="font-size:12.5px;color:#6f7570">REST API</div>
-              <div style="font-size:12.5px;color:#6f7570">Webhooks</div>
+            <!-- Sidebar Tabs -->
+            <div style="width:200px;border-right:1px solid #e8e7e3;padding:16px 14px;display:flex;flex-direction:column;gap:6px;background:#fff">
+              <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89;margin-bottom:4px;padding-left:6px;">REFERENCE</div>
+              <div class="datadict-tab-item active" id="tab-datadict-schema" onclick="switchDataDictTab('schema')">📊 Data dictionary</div>
+              <div class="datadict-tab-item" id="tab-datadict-rest" onclick="switchDataDictTab('rest')">⚡ REST API</div>
+              <div class="datadict-tab-item" id="tab-datadict-webhooks" onclick="switchDataDictTab('webhooks')">🔔 Webhooks</div>
+              <div class="datadict-tab-item" id="tab-datadict-apikeys" onclick="switchDataDictTab('apikeys')">🔑 API keys</div>
+              <div class="datadict-tab-item" id="tab-datadict-sandbox" onclick="switchDataDictTab('sandbox')">🧪 Sandbox instance</div>
+              <div class="datadict-tab-item" id="tab-datadict-standards" onclick="switchDataDictTab('standards')">📐 Standards mapping</div>
             </div>
 
             <!-- Content Body -->
-            <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;min-width:0">
-              <div>
-                <div style="font-size:18px;font-weight:600;color:#15201c;">silver_ami_readings</div>
-                <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Deduplicated half-hourly meter readings · owner: AMI team · certified</div>
+            <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;min-width:0;overflow-y:auto;max-height:580px;">
+              
+              <!-- PANEL 1: DATA DICTIONARY SCHEMA -->
+              <div id="panel-datadict-schema" class="datadict-panel active">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <select id="datadict-table-select" onchange="handleSelectDataDictTable(this.value)" class="input-field" style="font-size:15px;font-weight:600;color:#15201c;padding:4px 8px;border:1px solid #d9d8d3;border-radius:6px;">
+                        <option value="silver_ami_readings" selected>silver_ami_readings</option>
+                        <option value="gold_settlement_disputes">gold_settlement_disputes</option>
+                        <option value="bronze_raw_telemetry">bronze_raw_telemetry</option>
+                        <option value="dim_feeder_topology">dim_feeder_topology</option>
+                      </select>
+                      <span class="badge" style="background:#e8f5e9;color:#2e7d32;font-size:11px;">certified</span>
+                    </div>
+                    <div style="font-size:12.5px;color:#6f7570;margin-top:4px">Deduplicated half-hourly meter readings · owner: AMI team</div>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="handleAddDataDictField()">+ Add Field</button>
+                    <button class="btn btn-primary btn-sm" onclick="handleSaveDataDictSchema()" style="background:#15201c;color:#fff;">Save Schema</button>
+                  </div>
+                </div>
+
+                <!-- Editable Schema Table -->
+                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:11px;letter-spacing:.07em;color:#8a8f89;background:#fafaf8;border-bottom:1px solid #e8e7e3">
+                    <div style="padding:10px 14px">FIELD</div>
+                    <div style="padding:10px 8px">TYPE</div>
+                    <div style="padding:10px 8px">MEANING · STANDARD</div>
+                    <div style="padding:10px 4px;text-align:center;">DEL</div>
+                  </div>
+                  <div id="datadict-schema-rows">
+                    <div class="schema-row" style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec;align-items:center;">
+                      <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="mpan" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+                      <div style="padding:8px 8px;"><select class="input-field field-type" style="font-size:12px;padding:4px;"><option value="string" selected>string</option><option value="timestamp">timestamp</option><option value="double">double</option><option value="long">long</option></select></div>
+                      <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="Metering point · IEC 61968 UsagePoint" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+                      <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+                    </div>
+                    <div class="schema-row" style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec;align-items:center;">
+                      <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="hh_start" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+                      <div style="padding:8px 8px;"><select class="input-field field-type" style="font-size:12px;padding:4px;"><option value="string">string</option><option value="timestamp" selected>timestamp</option><option value="double">double</option><option value="long">long</option></select></div>
+                      <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="Settlement period start · UTC" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+                      <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+                    </div>
+                    <div class="schema-row" style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec;align-items:center;">
+                      <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="kwh" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+                      <div style="padding:8px 8px;"><select class="input-field field-type" style="font-size:12px;padding:4px;"><option value="string">string</option><option value="timestamp">timestamp</option><option value="double" selected>double</option><option value="long">long</option></select></div>
+                      <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="Active energy consumed" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+                      <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+                    </div>
+                    <div class="schema-row" style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;align-items:center;">
+                      <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="feeder_id" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+                      <div style="padding:8px 8px;"><select class="input-field field-type" style="font-size:12px;padding:4px;"><option value="string" selected>string</option><option value="timestamp">timestamp</option><option value="double">double</option><option value="long">long</option></select></div>
+                      <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="Network element · CIM ACLineSegment" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+                      <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Schema Table -->
-              <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;overflow:hidden">
-                <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr;font-size:11px;letter-spacing:.07em;color:#8a8f89;background:#fafaf8;border-bottom:1px solid #e8e7e3">
-                  <div style="padding:10px 14px">FIELD</div><div style="padding:10px 8px">TYPE</div><div style="padding:10px 8px">MEANING · STANDARD</div>
+              <!-- PANEL 2: REST API EXPLORER -->
+              <div id="panel-datadict-rest" class="datadict-panel">
+                <div>
+                  <div style="font-size:16px;font-weight:600;color:#15201c;">MELDRA REST API Explorer</div>
+                  <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Test endpoints, generate cURL commands, and inspect JSON payloads</div>
                 </div>
-                <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec">
-                  <div style="padding:10px 14px;font-family:monospace">mpan</div><div style="padding:10px 8px;color:#6f7570">string</div><div style="padding:10px 8px;color:#6f7570">Metering point · IEC 61968 UsagePoint</div>
+
+                <div style="display:flex;gap:12px;align-items:center;">
+                  <span class="badge" style="background:#15201c;color:#fff;font-family:monospace;padding:6px 10px;">GET</span>
+                  <select id="rest-endpoint-select" onchange="handleSelectRestEndpoint(this.value)" class="input-field" style="flex:1;font-family:monospace;font-size:13px;padding:6px 10px;">
+                    <option value="/v1/readings?feeder=F-4471&limit=50">/v1/readings?feeder=F-4471&limit=50</option>
+                    <option value="/v1/namespaces/default/tables">/v1/namespaces/default/tables</option>
+                    <option value="/v1/disputes/sign-off">POST /v1/disputes/sign-off</option>
+                    <option value="/v1/rbac/policies">/v1/rbac/policies</option>
+                  </select>
+                  <button class="btn btn-primary" onclick="handleExecuteRestAPI()" style="background:#15201c;color:#fff;">Execute Request</button>
                 </div>
-                <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec">
-                  <div style="padding:10px 14px;font-family:monospace">hh_start</div><div style="padding:10px 8px;color:#6f7570">timestamp</div><div style="padding:10px 8px;color:#6f7570">Settlement period start · UTC</div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:8px;background:#fafaf8;padding:12px 16px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89">cURL COMMAND</div>
+                    <button class="btn btn-secondary btn-sm" onclick="copyRestCurl()" style="padding:2px 8px;font-size:11px;">Copy cURL</button>
+                  </div>
+                  <div id="rest-curl-code" style="font-family:monospace;font-size:11.5px;color:#15201c;background:#fff;padding:8px 12px;border:1px solid #e8e7e3;border-radius:6px;white-space:pre-wrap;">curl -X GET "https://zerocopy.meldra.ai/v1/readings?feeder=F-4471&limit=50" -H "Authorization: Bearer mld_live_8f3a921"</div>
                 </div>
-                <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec">
-                  <div style="padding:10px 14px;font-family:monospace">kwh</div><div style="padding:10px 8px;color:#6f7570">double</div><div style="padding:10px 8px;color:#6f7570">Active energy consumed</div>
-                </div>
-                <div style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr;font-size:12px;color:#15201c">
-                  <div style="padding:10px 14px;font-family:monospace">feeder_id</div><div style="padding:10px 8px;color:#6f7570">string</div><div style="padding:10px 8px;color:#6f7570">Network element · CIM ACLineSegment</div>
+
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:#15201c;margin-bottom:6px;">HTTP Response Payload:</div>
+                  <div style="border:1px solid #e8e7e3;border-radius:8px;background:#1e1e1e;color:#80ffea;padding:14px;font-family:monospace;font-size:12px;max-height:180px;overflow-y:auto;" id="rest-response-output">
+{
+  "status": "200 OK",
+  "latency": "24ms",
+  "feeder": "F-4471",
+  "total_records": 48,
+  "data": [
+    { "mpan": "1019283746", "hh_start": "2026-09-12T22:00:00Z", "kwh": 14.82, "status": "Substantiated" }
+  ]
+}
+                  </div>
                 </div>
               </div>
 
-              <!-- Interactive Sandbox API Runner -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;padding:14px 16px">
-                  <div style="font-size:12.5px;font-weight:600;color:#15201c">Try it</div>
-                  <div style="font:11.5px ui-monospace,monospace;color:#6f7570;margin-top:8px">GET /v1/readings?feeder=F-4471</div>
-                  <button class="btn btn-primary btn-sm" id="btn-run-sandbox-api" onclick="handleRunSandboxAPI()" style="margin-top:10px;background:#15201c;color:#fff;">Run against sandbox</button>
+              <!-- PANEL 3: WEBHOOKS -->
+              <div id="panel-datadict-webhooks" class="datadict-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:16px;font-weight:600;color:#15201c;">Webhooks & Event Streaming</div>
+                    <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Stream real-time iceberg table commits and dispute events</div>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="handleRegisterWebhookModal()" style="background:#15201c;color:#fff;">+ Add Webhook</button>
                 </div>
-                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;padding:14px 16px;max-height:120px;overflow-y:auto;" id="sandbox-api-output">
-                  <div style="font-size:11.5px;color:#8a8f89">Click 'Run' to execute live request…</div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:2fr 1.5fr .8fr 1fr;font-size:11px;letter-spacing:.07em;color:#8a8f89;background:#fafaf8;border-bottom:1px solid #e8e7e3;padding:10px 14px;">
+                    <div>ENDPOINT URL</div><div>EVENTS</div><div>STATUS</div><div style="text-align:right;">ACTION</div>
+                  </div>
+                  <div id="webhook-list-rows">
+                    <div style="display:grid;grid-template-columns:2fr 1.5fr .8fr 1fr;font-size:12px;color:#15201c;padding:12px 14px;border-bottom:1px solid #f0efec;align-items:center;">
+                      <div style="font-family:monospace;font-size:11.5px;color:#15201c;">https://api.nationalgrid.co.uk/hooks/meldra</div>
+                      <div><span class="badge" style="font-size:10px;background:#f0efec;color:#555;">table.commit</span> <span class="badge" style="font-size:10px;background:#f0efec;color:#555;">dispute.created</span></div>
+                      <div><span class="badge" style="background:#e8f5e9;color:#2e7d32;">ACTIVE</span></div>
+                      <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+                        <button class="btn btn-secondary btn-sm" onclick="handleTestPingWebhook('https://api.nationalgrid.co.uk/hooks/meldra')" style="padding:3px 8px;font-size:11px;">Test Ping</button>
+                        <button class="btn btn-secondary btn-sm" onclick="showToast('Webhook deleted', 'info')" style="padding:3px 8px;font-size:11px;color:#ef4444;">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:8px;background:#fafaf8;padding:12px 16px;">
+                  <div style="font-size:12px;font-weight:600;color:#15201c;margin-bottom:6px;">Webhook Secret Signing Key</div>
+                  <div style="display:flex;gap:10px;align-items:center;">
+                    <input type="text" class="input-field" value="whsec_9a8f3b2e7c410982d61e5" readonly style="font-family:monospace;font-size:12px;flex:1;padding:6px;">
+                    <button class="btn btn-secondary btn-sm" onclick="showToast('Webhook secret copied to clipboard', 'success')">Copy Key</button>
+                  </div>
                 </div>
               </div>
+
+              <!-- PANEL 4: API KEYS -->
+              <div id="panel-datadict-apikeys" class="datadict-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:16px;font-weight:600;color:#15201c;">API Keys & Tokens</div>
+                    <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Manage credentials for programmatic REST and Iceberg REST catalog integration</div>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="handleGenerateAPIKey()" style="background:#15201c;color:#fff;">+ Generate Key</button>
+                </div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr .8fr;font-size:11px;letter-spacing:.07em;color:#8a8f89;background:#fafaf8;border-bottom:1px solid #e8e7e3;padding:10px 14px;">
+                    <div>NAME</div><div>TOKEN PREFIX</div><div>ROLE SCOPE</div><div>CREATED</div><div style="text-align:right;">ACTION</div>
+                  </div>
+                  <div id="apikeys-list-rows">
+                    <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr .8fr;font-size:12px;color:#15201c;padding:12px 14px;border-bottom:1px solid #f0efec;align-items:center;">
+                      <div style="font-weight:600;">Production Sync Service</div>
+                      <div style="font-family:monospace;color:#6f7570;">mld_live_8f3a...</div>
+                      <div><span class="badge" style="background:#e0f2fe;color:#0369a1;">Admin</span></div>
+                      <div style="color:#6f7570;font-size:11.5px;">10 Sep 2026</div>
+                      <div style="text-align:right;"><button class="btn btn-secondary btn-sm" onclick="handleRevokeAPIKey(this)" style="padding:3px 8px;font-size:11px;color:#ef4444;">Revoke</button></div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr .8fr;font-size:12px;color:#15201c;padding:12px 14px;align-items:center;">
+                      <div style="font-weight:600;">Analyst Read-Only CLI</div>
+                      <div style="font-family:monospace;color:#6f7570;">mld_live_3c21...</div>
+                      <div><span class="badge" style="background:#f1f5f9;color:#475569;">Analyst</span></div>
+                      <div style="color:#6f7570;font-size:11.5px;">12 Sep 2026</div>
+                      <div style="text-align:right;"><button class="btn btn-secondary btn-sm" onclick="handleRevokeAPIKey(this)" style="padding:3px 8px;font-size:11px;color:#ef4444;">Revoke</button></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PANEL 5: SANDBOX INSTANCE -->
+              <div id="panel-datadict-sandbox" class="datadict-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:16px;font-weight:600;color:#15201c;">Synthetic SQL Sandbox</div>
+                    <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Test zero-copy queries against isolated synthetic energy datasets</div>
+                  </div>
+                  <span class="badge" style="background:#e8f5e9;color:#2e7d32;">SANDBOX ACTIVE</span>
+                </div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:8px;padding:12px 16px;background:#fafaf8;">
+                  <div style="font-size:12px;font-weight:600;color:#15201c;margin-bottom:8px;">Preset Query Templates:</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-secondary btn-sm" onclick="loadSandboxPreset(1)">Top 10 Meter Readings</button>
+                    <button class="btn btn-secondary btn-sm" onclick="loadSandboxPreset(2)">Feeder Energy Aggregation</button>
+                    <button class="btn btn-secondary btn-sm" onclick="loadSandboxPreset(3)">Unreconciled Disputes</button>
+                  </div>
+                </div>
+
+                <textarea id="sandbox-sql-input" class="input-field" style="font-family:monospace;font-size:12px;height:90px;padding:10px;" placeholder="SELECT * FROM silver_ami_readings WHERE feeder_id = 'F-4471' LIMIT 10;"></textarea>
+
+                <div style="display:flex;gap:10px;">
+                  <button class="btn btn-primary" onclick="handleRunSandboxSQL()" style="background:#15201c;color:#fff;">Run SQL Query</button>
+                  <button class="btn btn-secondary" onclick="document.getElementById('sandbox-sql-input').value=''">Clear Console</button>
+                </div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:8px;background:#1e1e1e;color:#34d399;padding:12px;font-family:monospace;font-size:11.5px;max-height:140px;overflow-y:auto;" id="sandbox-sql-output">
+                  -- SQL execution output will appear here --
+                </div>
+              </div>
+
+              <!-- PANEL 6: STANDARDS MAPPING -->
+              <div id="panel-datadict-standards" class="datadict-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:16px;font-weight:600;color:#15201c;">International Standards Mapping</div>
+                    <div style="font-size:12.5px;color:#6f7570;margin-top:3px">Map MELDRA Iceberg column schemas to IEC 61968, CIM, and ELEXON BSC standards</div>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="handleSaveStandardsMapping()" style="background:#15201c;color:#fff;">Save Mapping</button>
+                </div>
+
+                <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:1.2fr 1.5fr 1.5fr;font-size:11px;letter-spacing:.07em;color:#8a8f89;background:#fafaf8;border-bottom:1px solid #e8e7e3;padding:10px 14px;">
+                    <div>MELDRA COLUMN</div><div>STANDARD SCHEMA</div><div>TRANSFORMATION / REGULATION</div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1.2fr 1.5fr 1.5fr;font-size:12px;color:#15201c;padding:10px 14px;border-bottom:1px solid #f0efec;align-items:center;">
+                    <div style="font-family:monospace;font-weight:600;">mpan</div>
+                    <div><input type="text" class="input-field" value="IEC 61968-9 · UsagePoint.mRID" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                    <div><input type="text" class="input-field" value="UK Market Meter Point Admin Number" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1.2fr 1.5fr 1.5fr;font-size:12px;color:#15201c;padding:10px 14px;border-bottom:1px solid #f0efec;align-items:center;">
+                    <div style="font-family:monospace;font-weight:600;">hh_start</div>
+                    <div><input type="text" class="input-field" value="ELEXON BSC Section S · SettlementPeriodStart" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                    <div><input type="text" class="input-field" value="ISO 8601 UTC timestamp format" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1.2fr 1.5fr 1.5fr;font-size:12px;color:#15201c;padding:10px 14px;align-items:center;">
+                    <div style="font-family:monospace;font-weight:600;">feeder_id</div>
+                    <div><input type="text" class="input-field" value="CIM IEC 61970 · ACLineSegment.mRID" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                    <div><input type="text" class="input-field" value="Primary distribution grid feeder ID" style="font-size:12px;padding:4px 6px;width:95%;"></div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -4783,26 +4984,57 @@ with DAG(
     <!-- SCREEN 4g: Contextual Help Drawer -->
     <div id="drawer-help-overlay" class="meldra-drawer-overlay" onclick="closeMeldraHelpDrawer()"></div>
     <div id="drawer-help-4g" class="meldra-drawer">
-      <div style="padding:24px 26px;display:flex;flex-direction:column;gap:14px;height:100%;box-sizing:border-box;">
+      <div style="padding:24px 26px;display:flex;flex-direction:column;gap:14px;height:100%;box-sizing:border-box;overflow-y:auto;">
         <div style="display:flex;align-items:baseline">
-          <div style="font-size:16px;font-weight:600;color:#15201c">Help</div>
+          <div style="font-size:16px;font-weight:600;color:#15201c">Help & Documentation</div>
           <div style="margin-left:auto;font-size:12px;color:#8a8f89;cursor:pointer;" onclick="closeMeldraHelpDrawer()">Esc to close &times;</div>
         </div>
-        <input type="text" id="help-search-input" class="input-field" placeholder="Search help and guides…" style="font-size:12.5px;padding:9px;">
         
-        <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fafaf8;padding:14px 16px">
+        <input type="text" id="help-search-input" class="input-field" oninput="handleFilterHelpTopics(this.value)" placeholder="Search help and guides…" style="font-size:12.5px;padding:9px;">
+        
+        <div style="display:flex;flex-direction:column;gap:10px;" id="help-faq-container">
           <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89">ON THIS SCREEN</div>
-          <div style="font-size:12.5px;color:#15201c;margin-top:8px;line-height:1.6">What "reading completeness" means<br>When to raise a case vs. wait<br>Who can sign off settlement</div>
+          
+          <div class="help-faq-card" onclick="toggleHelpFAQ(this)">
+            <div class="help-faq-header">What "reading completeness" means <span>&#9662;</span></div>
+            <div class="help-faq-body">
+              Reading completeness measures the percentage of expected 30-minute AMI meter intervals successfully ingested and validated without zero-copy discrepancies against BSC Section S standards.
+            </div>
+          </div>
+
+          <div class="help-faq-card" onclick="toggleHelpFAQ(this)">
+            <div class="help-faq-header">When to raise a case vs. wait <span>&#9662;</span></div>
+            <div class="help-faq-body">
+              Raise a settlement dispute case if completeness drops below 98.5% across a 24-hour window, or if unverified zero-copy delta exceeds £5,000. Wait if data stream is undergoing routine 15-minute buffering.
+            </div>
+          </div>
+
+          <div class="help-faq-card" onclick="toggleHelpFAQ(this)">
+            <div class="help-faq-header">Who can sign off settlement <span>&#9662;</span></div>
+            <div class="help-faq-body">
+              Only authorized users assigned the <strong>Admin</strong> or <strong>Analyst</strong> role in the RBAC Governance Matrix can sign off settlement dispute evidence packages with cryptographic audit signatures.
+            </div>
+          </div>
+
+          <div class="help-faq-card" onclick="toggleHelpFAQ(this)">
+            <div class="help-faq-header">How zero-copy replication works <span>&#9662;</span></div>
+            <div class="help-faq-body">
+              Zero-copy replication reads Apache Iceberg metadata snapshots directly from storage without physically duplicating raw Parquet files, reducing storage costs by up to 90% while ensuring instant ACID isolation.
+            </div>
+          </div>
         </div>
         
-        <div>
-          <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89">GUIDED WALKTHROUGHS</div>
-          <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px">
-            <div class="home-checklist-item" style="cursor:pointer;" onclick="showToast('Starting 4-min dispute tutorial...', 'info')">
-              <div style="border:1px solid #e8e7e3;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#15201c;width:100%;">Close your first dispute · 4 min</div>
+        <div id="help-walkthroughs-container">
+          <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89;margin-bottom:8px;">GUIDED WALKTHROUGHS</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div class="help-walkthrough-btn" onclick="openGuidedWalkthrough('dispute')">
+              <span>Close your first dispute</span> <span class="badge" style="font-size:10px;background:#ededea;color:#555;">4 min</span>
             </div>
-            <div class="home-checklist-item" style="cursor:pointer;" onclick="showToast('Starting 6-min data source tutorial...', 'info')">
-              <div style="border:1px solid #e8e7e3;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#15201c;width:100%;">Set up a new data source · 6 min</div>
+            <div class="help-walkthrough-btn" onclick="openGuidedWalkthrough('datasource')">
+              <span>Set up a new data source</span> <span class="badge" style="font-size:10px;background:#ededea;color:#555;">6 min</span>
+            </div>
+            <div class="help-walkthrough-btn" onclick="openGuidedWalkthrough('rbac')">
+              <span>Configure RBAC Governance</span> <span class="badge" style="font-size:10px;background:#ededea;color:#555;">5 min</span>
             </div>
           </div>
         </div>
@@ -4810,22 +5042,29 @@ with DAG(
         <div style="margin-top:auto;border-top:1px solid #e8e7e3;padding-top:14px">
           <div style="font-size:12.5px;font-weight:600;color:#15201c">Still stuck?</div>
           <div style="font-size:12px;color:#6f7570;margin-top:4px">Support tickets attach your session correlation ID.</div>
-          <button class="btn btn-primary" id="btn-help-contact-support" onclick="showToast('Support ticket raised with correlation ID: #corr-8f92a', 'success')" style="width:100%;background:#15201c;border-radius:7px;padding:10px;margin-top:10px;">Contact support</button>
+          <button class="btn btn-primary" id="btn-help-contact-support" onclick="openSupportTicketModal()" style="width:100%;background:#15201c;border-radius:7px;padding:10px;margin-top:10px;">Contact support</button>
         </div>
       </div>
     </div>
 
     <!-- SCREEN 3a: Roles & Access RBAC Matrix -->
     <div id="modal-rbac-3a" class="meldra-modal-overlay">
-      <div class="meldra-modal-card" style="width:780px;">
+      <div class="meldra-modal-card" style="width:820px;">
         <div style="background:#fcfcfb;padding:24px 28px;display:flex;flex-direction:column;gap:16px;position:relative;">
           <button onclick="closeMeldraModal('modal-rbac-3a')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#8a8f89;">&times;</button>
-          <div>
-            <div style="font-size:19px;font-weight:600;color:#15201c;letter-spacing:-.01em">Roles & Access (RBAC)</div>
-            <div style="font-size:12.5px;color:#6f7570;margin-top:4px">Role-to-capability governance matrix</div>
+          
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:19px;font-weight:600;color:#15201c;letter-spacing:-.01em">Roles & Access (RBAC) Governance Matrix</div>
+              <div style="font-size:12.5px;color:#6f7570;margin-top:4px">Configure role permissions and capability matrix rules</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-sm" onclick="handleAddRBACCapabilityRow()">+ Add Capability</button>
+              <button class="btn btn-primary btn-sm" onclick="handleSaveRBACMatrix()" style="background:#15201c;color:#fff;">Save Matrix</button>
+            </div>
           </div>
 
-          <div class="rbac-matrix-grid">
+          <div class="rbac-matrix-grid" id="rbac-matrix-grid-element">
             <div class="rbac-cell rbac-header-cell">CAPABILITY</div>
             <div class="rbac-cell rbac-header-cell" style="justify-content:center;">ADMIN</div>
             <div class="rbac-cell rbac-header-cell" style="justify-content:center;">ANALYST</div>
@@ -4833,28 +5072,123 @@ with DAG(
             <div class="rbac-cell rbac-header-cell" style="justify-content:center;">AUDITOR</div>
 
             <div class="rbac-cell">View live telemetry & Iceberg queries</div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
 
             <div class="rbac-cell">Sign off settlement dispute evidence</div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
 
             <div class="rbac-cell">Provision & delete instances</div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
 
             <div class="rbac-cell">Export signed audit evidence PDF</div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
-            <div class="rbac-cell"><div class="rbac-check none"></div></div>
-            <div class="rbac-cell"><div class="rbac-check">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+
+            <div class="rbac-cell">Edit data dictionary & standards mapping</div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+
+            <div class="rbac-cell">Manage API keys & webhooks</div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+            <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUIDED WALKTHROUGH MODAL -->
+    <div id="modal-guided-walkthrough" class="meldra-modal-overlay">
+      <div class="meldra-modal-card" style="width:600px;">
+        <div style="background:#fcfcfb;padding:24px 28px;display:flex;flex-direction:column;gap:16px;position:relative;">
+          <button onclick="closeMeldraModal('modal-guided-walkthrough')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#8a8f89;">&times;</button>
+          
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span class="badge" style="background:#15201c;color:#fff;" id="walkthrough-step-badge">Step 1 of 4</span>
+            <span style="font-size:12px;color:#8a8f89;" id="walkthrough-timer">Estimated: 4 mins</span>
+          </div>
+
+          <div>
+            <div style="font-size:18px;font-weight:600;color:#15201c" id="walkthrough-title">Close Your First Dispute</div>
+            <div style="font-size:13px;color:#4a504c;margin-top:6px;line-height:1.5" id="walkthrough-body">
+              Welcome to the Settlement Dispute Sign-off Workflow. In this tutorial, you will learn how to verify telemetry readings, compare zero-copy diffs, and generate cryptographic evidence signatures.
+            </div>
+          </div>
+
+          <div style="border:1px solid #e8e7e3;border-radius:10px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:11px;letter-spacing:.08em;color:#8a8f89">INTERACTIVE DEMO TIP</div>
+            <div style="font-size:12.5px;color:#15201c" id="walkthrough-tip">
+              Navigate to the <strong>Audit Ledger</strong> or <strong>Data Studio</strong> to inspect unverified meter intervals flagged with high discrepancy scores.
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <button class="btn btn-secondary" id="btn-walkthrough-prev" onclick="handleWalkthroughStep(-1)" disabled>Previous</button>
+            <button class="btn btn-primary" id="btn-walkthrough-next" onclick="handleWalkthroughStep(1)" style="background:#15201c;color:#fff;">Next Step &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPPORT TICKET MODAL -->
+    <div id="modal-support-ticket" class="meldra-modal-overlay">
+      <div class="meldra-modal-card" style="width:620px;">
+        <div style="background:#fcfcfb;padding:24px 28px;display:flex;flex-direction:column;gap:16px;position:relative;">
+          <button onclick="closeMeldraModal('modal-support-ticket')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#8a8f89;">&times;</button>
+          
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="font-size:19px;font-weight:600;color:#15201c;">Contact Meldra Support</div>
+              <span class="badge" style="background:#f0efec;color:#15201c;font-family:monospace;">#corr-8f92a</span>
+            </div>
+            <div style="font-size:12.5px;color:#6f7570;margin-top:4px">Your session correlation ID will be attached to expedite troubleshooting</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Issue Category</label>
+              <select id="support-category-select" class="input-field" style="width:100%;font-size:12.5px;padding:8px;">
+                <option value="dispute">Settlement Dispute Sign-off</option>
+                <option value="ingest">Data Ingestion & Telemetry</option>
+                <option value="rbac">RBAC Permissions & Roles</option>
+                <option value="api">REST API & Webhooks</option>
+                <option value="general">General Support / Feature Request</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Subject</label>
+              <input type="text" id="support-subject-input" class="input-field" placeholder="Brief summary of the issue..." style="width:100%;font-size:12.5px;padding:8px;">
+            </div>
+
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Description</label>
+              <textarea id="support-desc-input" class="input-field" placeholder="Please describe what happened, expected behavior, and steps to reproduce..." style="width:100%;height:100px;font-size:12.5px;padding:8px;"></textarea>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="support-attach-logs" checked>
+              <label for="support-attach-logs" style="font-size:12px;color:#6f7570;">Attach anonymized browser console diagnostic logs & Lakehouse session context</label>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;">
+            <button class="btn btn-secondary" onclick="closeMeldraModal('modal-support-ticket')">Cancel</button>
+            <button class="btn btn-primary" onclick="handleSubmitSupportTicket()" style="background:#15201c;color:#fff;">Submit Support Ticket</button>
           </div>
         </div>
       </div>

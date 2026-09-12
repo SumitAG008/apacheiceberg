@@ -3431,23 +3431,141 @@ body.prod-instance-active .app-header {
   border-bottom: 1px solid #e8e7e3;
 }
 
+
 .rbac-check {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   background: #3f7d63;
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: bold;
   margin: auto;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.rbac-check:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
 .rbac-check.none {
-  background: transparent;
-  border: 1px solid #d9d8d3;
+  background: #fafaf8;
+  border: 1.5px solid #d9d8d3;
+  color: transparent;
 }
+
+.rbac-check.none:hover {
+  border-color: #3f7d63;
+  color: #3f7d63;
+  background: #f0f7f4;
+}
+
+/* Data Dictionary Tabs */
+.datadict-tab-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: #6f7570;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.datadict-tab-item:hover {
+  background: #f4f4f1;
+  color: #15201c;
+}
+
+.datadict-tab-item.active {
+  background: #15201c;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.datadict-panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.datadict-panel.active {
+  display: flex;
+}
+
+/* Help Drawer Accordion */
+.help-faq-card {
+  border: 1px solid #e8e7e3;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.help-faq-card:hover {
+  border-color: #15201c;
+}
+
+.help-faq-header {
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #15201c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  background: #fafaf8;
+}
+
+.help-faq-body {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #4a504c;
+  line-height: 1.5;
+  border-top: 1px solid #e8e7e3;
+  background: #ffffff;
+  display: none;
+}
+
+.help-faq-card.open .help-faq-body {
+  display: block;
+}
+
+.help-faq-card.open .help-faq-header {
+  background: #ffffff;
+}
+
+.help-walkthrough-btn {
+  border: 1px solid #e8e7e3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: #15201c;
+  background: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.15s ease;
+}
+
+.help-walkthrough-btn:hover {
+  border-color: #15201c;
+  background: #fafaf8;
+  transform: translateX(2px);
+}
+
 
 
 

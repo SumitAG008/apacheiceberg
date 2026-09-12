@@ -8243,3 +8243,424 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ==========================================
+// DEVELOPER DICTIONARY TABS & INTERACTIVITY
+// ==========================================
+(window as any).switchDataDictTab = function(tabId: string) {
+  const tabs = document.querySelectorAll('.datadict-tab-item');
+  tabs.forEach(t => t.classList.remove('active'));
+  const activeTab = document.getElementById(`tab-datadict-${tabId}`);
+  if (activeTab) activeTab.classList.add('active');
+
+  const panels = document.querySelectorAll('.datadict-panel');
+  panels.forEach(p => p.classList.remove('active'));
+  const activePanel = document.getElementById(`panel-datadict-${tabId}`);
+  if (activePanel) activePanel.classList.add('active');
+};
+
+(window as any).handleSelectDataDictTable = function(tableName: string) {
+  const container = document.getElementById('datadict-schema-rows');
+  if (!container) return;
+
+  const schemas: Record<string, Array<{name: string; type: string; desc: string}>> = {
+    silver_ami_readings: [
+      { name: 'mpan', type: 'string', desc: 'Metering point · IEC 61968 UsagePoint' },
+      { name: 'hh_start', type: 'timestamp', desc: 'Settlement period start · UTC' },
+      { name: 'kwh', type: 'double', desc: 'Active energy consumed' },
+      { name: 'feeder_id', type: 'string', desc: 'Network element · CIM ACLineSegment' }
+    ],
+    gold_settlement_disputes: [
+      { name: 'dispute_id', type: 'string', desc: 'Unique settlement dispute case UUID' },
+      { name: 'feeder_id', type: 'string', desc: 'Grid feeder identifier' },
+      { name: 'variance_kwh', type: 'double', desc: 'Unreconciled energy discrepancy' },
+      { name: 'financial_impact_gbp', type: 'double', desc: 'Estimated GBP settlement delta' },
+      { name: 'status', type: 'string', desc: 'Dispute lifecycle status' }
+    ],
+    bronze_raw_telemetry: [
+      { name: 'device_id', type: 'string', desc: 'Raw smart meter device serial number' },
+      { name: 'raw_payload', type: 'string', desc: 'JSON blob telemetry packet' },
+      { name: 'ingest_time', type: 'timestamp', desc: 'Ingestion timestamp UTC' }
+    ],
+    dim_feeder_topology: [
+      { name: 'feeder_id', type: 'string', desc: 'Primary distribution feeder key' },
+      { name: 'substation_name', type: 'string', desc: 'Connected primary substation name' },
+      { name: 'rated_capacity_mw', type: 'double', desc: 'Maximum rated feeder capacity in MW' }
+    ]
+  };
+
+  const rows = schemas[tableName] || schemas['silver_ami_readings'];
+  container.innerHTML = rows.map(r => `
+    <div class="schema-row" style="display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec;align-items:center;">
+      <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="${r.name}" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+      <div style="padding:8px 8px;">
+        <select class="input-field field-type" style="font-size:12px;padding:4px;">
+          <option value="string" ${r.type === 'string' ? 'selected' : ''}>string</option>
+          <option value="timestamp" ${r.type === 'timestamp' ? 'selected' : ''}>timestamp</option>
+          <option value="double" ${r.type === 'double' ? 'selected' : ''}>double</option>
+          <option value="long" ${r.type === 'long' ? 'selected' : ''}>long</option>
+        </select>
+      </div>
+      <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="${r.desc}" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+      <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+    </div>
+  `).join('');
+
+  showToast(`Loaded schema for table: ${tableName}`, 'info');
+};
+
+(window as any).handleAddDataDictField = function() {
+  const container = document.getElementById('datadict-schema-rows');
+  if (!container) return;
+  const newRow = document.createElement('div');
+  newRow.className = 'schema-row';
+  newRow.style.cssText = 'display:grid;grid-template-columns:1.2fr .7fr 1.7fr 40px;font-size:12px;color:#15201c;border-bottom:1px solid #f0efec;align-items:center;';
+  newRow.innerHTML = `
+    <div style="padding:8px 14px;"><input type="text" class="input-field field-name" value="new_field_${Date.now().toString().slice(-4)}" style="font-family:monospace;font-size:12px;padding:4px 6px;"></div>
+    <div style="padding:8px 8px;">
+      <select class="input-field field-type" style="font-size:12px;padding:4px;">
+        <option value="string" selected>string</option>
+        <option value="timestamp">timestamp</option>
+        <option value="double">double</option>
+        <option value="long">long</option>
+      </select>
+    </div>
+    <div style="padding:8px 8px;"><input type="text" class="input-field field-desc" value="Custom field description" style="font-size:12px;padding:4px 6px;width:100%;"></div>
+    <div style="padding:8px 4px;text-align:center;"><button onclick="handleDeleteSchemaRow(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;">&times;</button></div>
+  `;
+  container.appendChild(newRow);
+  showToast('Added new field row to schema', 'success');
+};
+
+(window as any).handleDeleteSchemaRow = function(btn: HTMLElement) {
+  const row = btn.closest('.schema-row');
+  if (row) {
+    row.remove();
+    showToast('Field row removed from schema', 'info');
+  }
+};
+
+(window as any).handleSaveDataDictSchema = function() {
+  const tableSelect = document.getElementById('datadict-table-select') as HTMLSelectElement;
+  const tableName = tableSelect ? tableSelect.value : 'silver_ami_readings';
+  showToast(`Schema metadata changes saved for table ${tableName}`, 'success');
+};
+
+// REST API Explorer Handlers
+(window as any).handleSelectRestEndpoint = function(val: string) {
+  const curlEl = document.getElementById('rest-curl-code');
+  const respEl = document.getElementById('rest-response-output');
+  if (curlEl) {
+    const isPost = val.includes('POST');
+    const method = isPost ? 'POST' : 'GET';
+    curlEl.textContent = `curl -X ${method} "https://zerocopy.meldra.ai${val}" -H "Authorization: Bearer mld_live_8f3a921"${isPost ? ' -H "Content-Type: application/json" -d \'{"reason":"bsc_audit"}\'' : ''}`;
+  }
+  if (respEl) {
+    if (val.includes('namespaces')) {
+      respEl.textContent = JSON.stringify({ status: '200 OK', latency: '19ms', namespaces: ['default', 'production', 'sandbox', 'audit'] }, null, 2);
+    } else if (val.includes('disputes')) {
+      respEl.textContent = JSON.stringify({ status: '200 OK', dispute_id: 'DSP-9812', signed_by: 'sumitagaria', certificate_hash: 'a9f8c2e1...' }, null, 2);
+    } else if (val.includes('policies')) {
+      respEl.textContent = JSON.stringify({ status: '200 OK', policies_count: 8, rbac_mode: 'STRICT_ENFORCEMENT' }, null, 2);
+    } else {
+      respEl.textContent = JSON.stringify({ status: '200 OK', latency: '24ms', feeder: 'F-4471', total_records: 48 }, null, 2);
+    }
+  }
+};
+
+(window as any).handleExecuteRestAPI = function() {
+  const select = document.getElementById('rest-endpoint-select') as HTMLSelectElement;
+  const endpoint = select ? select.value : '/v1/readings';
+  showToast(`Executed HTTP ${endpoint} (200 OK - 18ms)`, 'success');
+};
+
+(window as any).copyRestCurl = function() {
+  const curlEl = document.getElementById('rest-curl-code');
+  if (curlEl) {
+    navigator.clipboard.writeText(curlEl.textContent || '');
+    showToast('cURL command copied to clipboard', 'success');
+  }
+};
+
+// Webhooks Handlers
+(window as any).handleRegisterWebhookModal = function() {
+  const url = prompt('Enter Webhook Endpoint URL:', 'https://api.company.com/webhooks/meldra');
+  if (url) {
+    const list = document.getElementById('webhook-list-rows');
+    if (list) {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr .8fr 1fr;font-size:12px;color:#15201c;padding:12px 14px;border-bottom:1px solid #f0efec;align-items:center;';
+      div.innerHTML = `
+        <div style="font-family:monospace;font-size:11.5px;color:#15201c;">${url}</div>
+        <div><span class="badge" style="font-size:10px;background:#f0efec;color:#555;">table.commit</span></div>
+        <div><span class="badge" style="background:#e8f5e9;color:#2e7d32;">ACTIVE</span></div>
+        <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="handleTestPingWebhook('${url}')" style="padding:3px 8px;font-size:11px;">Test Ping</button>
+          <button class="btn btn-secondary btn-sm" onclick="this.closest('div').remove(); showToast('Webhook deleted', 'info')" style="padding:3px 8px;font-size:11px;color:#ef4444;">Delete</button>
+        </div>
+      `;
+      list.appendChild(div);
+      showToast(`Registered webhook for ${url}`, 'success');
+    }
+  }
+};
+
+(window as any).handleTestPingWebhook = function(url: string) {
+  showToast(`Test ping event (200 OK) delivered to ${url}`, 'success');
+};
+
+// API Key Handlers
+(window as any).handleGenerateAPIKey = function() {
+  const keyName = prompt('Enter API Key Name:', 'Data Pipeline Worker');
+  if (keyName) {
+    const list = document.getElementById('apikeys-list-rows');
+    if (list) {
+      const randPrefix = Math.random().toString(36).substring(2, 6);
+      const div = document.createElement('div');
+      div.style.cssText = 'display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr .8fr;font-size:12px;color:#15201c;padding:12px 14px;border-bottom:1px solid #f0efec;align-items:center;';
+      div.innerHTML = `
+        <div style="font-weight:600;">${keyName}</div>
+        <div style="font-family:monospace;color:#6f7570;">mld_live_${randPrefix}...</div>
+        <div><span class="badge" style="background:#e0f2fe;color:#0369a1;">Admin</span></div>
+        <div style="color:#6f7570;font-size:11.5px;">Today</div>
+        <div style="text-align:right;"><button class="btn btn-secondary btn-sm" onclick="handleRevokeAPIKey(this)" style="padding:3px 8px;font-size:11px;color:#ef4444;">Revoke</button></div>
+      `;
+      list.appendChild(div);
+      showToast(`Generated new API key token: mld_live_${randPrefix}...`, 'success');
+    }
+  }
+};
+
+(window as any).handleRevokeAPIKey = function(btn: HTMLElement) {
+  const row = btn.closest('div[style*="grid"]');
+  if (row) {
+    row.remove();
+    showToast('API key revoked successfully', 'info');
+  }
+};
+
+// SQL Sandbox Handlers
+(window as any).loadSandboxPreset = function(type: number) {
+  const input = document.getElementById('sandbox-sql-input') as HTMLTextAreaElement;
+  if (!input) return;
+  if (type === 1) {
+    input.value = `SELECT mpan, hh_start, kwh, feeder_id FROM silver_ami_readings WHERE feeder_id = 'F-4471' ORDER BY hh_start DESC LIMIT 10;`;
+  } else if (type === 2) {
+    input.value = `SELECT feeder_id, COUNT(*) as reading_count, SUM(kwh) as total_kwh FROM silver_ami_readings GROUP BY feeder_id;`;
+  } else if (type === 3) {
+    input.value = `SELECT dispute_id, feeder_id, variance_kwh, financial_impact_gbp FROM gold_settlement_disputes WHERE status = 'OPEN';`;
+  }
+};
+
+(window as any).handleRunSandboxSQL = function() {
+  const input = document.getElementById('sandbox-sql-input') as HTMLTextAreaElement;
+  const output = document.getElementById('sandbox-sql-output');
+  if (!output) return;
+  const sql = input ? input.value : '';
+  output.innerHTML = `
+    <div>Executing: <span style="color:#fff;">${sql.slice(0, 50)}...</span></div>
+    <div style="margin-top:6px;color:#80ffea;">Query executed in 31ms · 10 rows returned:</div>
+    <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px;">
+      <tr style="border-bottom:1px solid #444;color:#aaa;"><th style="text-align:left;">mpan</th><th style="text-align:left;">hh_start</th><th style="text-align:left;">kwh</th><th style="text-align:left;">feeder_id</th></tr>
+      <tr><td>1019283746</td><td>2026-09-12 22:00</td><td>14.82</td><td>F-4471</td></tr>
+      <tr><td>1019283747</td><td>2026-09-12 22:00</td><td>12.14</td><td>F-4471</td></tr>
+      <tr><td>1019283748</td><td>2026-09-12 22:00</td><td>18.90</td><td>F-4471</td></tr>
+    </table>
+  `;
+  showToast('Executed SQL query against sandbox dataset', 'success');
+};
+
+(window as any).handleSaveStandardsMapping = function() {
+  showToast('IEC 61968 & CIM standards mapping updated', 'success');
+};
+
+// ==========================================
+// RBAC GOVERNANCE MATRIX INTERACTIVITY
+// ==========================================
+(window as any).toggleRBACCheck = function(el: HTMLElement) {
+  if (el.classList.contains('none')) {
+    el.classList.remove('none');
+    el.textContent = '✓';
+    showToast('Granted capability permission', 'success');
+  } else {
+    el.classList.add('none');
+    el.textContent = '✓';
+    showToast('Revoked capability permission', 'info');
+  }
+};
+
+(window as any).handleAddRBACCapabilityRow = function() {
+  const grid = document.getElementById('rbac-matrix-grid-element');
+  if (!grid) return;
+  const capName = prompt('Enter New Capability Name:', 'Manage Data Retention Rules');
+  if (capName) {
+    const rowHTML = `
+      <div class="rbac-cell">${capName}</div>
+      <div class="rbac-cell"><div class="rbac-check" onclick="toggleRBACCheck(this)">✓</div></div>
+      <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+      <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+      <div class="rbac-cell"><div class="rbac-check none" onclick="toggleRBACCheck(this)">✓</div></div>
+    `;
+    grid.insertAdjacentHTML('beforeend', rowHTML);
+    showToast(`Added capability '${capName}' to governance matrix`, 'success');
+  }
+};
+
+(window as any).handleSaveRBACMatrix = function() {
+  showToast('RBAC Governance Matrix policies saved & enforced across tenant', 'success');
+};
+
+// ==========================================
+// HELP DRAWER FAQS, SEARCH & WALKTHROUGHS
+// ==========================================
+(window as any).handleFilterHelpTopics = function(query: string) {
+  const q = query.toLowerCase().trim();
+  const faqCards = document.querySelectorAll('.help-faq-card');
+  const walkthroughBtns = document.querySelectorAll('.help-walkthrough-btn');
+
+  faqCards.forEach(card => {
+    const text = card.textContent?.toLowerCase() || '';
+    if (!q || text.includes(q)) {
+      (card as HTMLElement).style.display = 'block';
+    } else {
+      (card as HTMLElement).style.display = 'none';
+    }
+  });
+
+  walkthroughBtns.forEach(btn => {
+    const text = btn.textContent?.toLowerCase() || '';
+    if (!q || text.includes(q)) {
+      (btn as HTMLElement).style.display = 'flex';
+    } else {
+      (btn as HTMLElement).style.display = 'none';
+    }
+  });
+};
+
+(window as any).toggleHelpFAQ = function(card: HTMLElement) {
+  card.classList.toggle('open');
+};
+
+// Guided Walkthrough State Engine
+let currentWalkthroughStep = 0;
+let currentWalkthroughSteps: Array<{title: string; body: string; tip: string}> = [];
+
+(window as any).openGuidedWalkthrough = function(type: string) {
+  if (type === 'dispute') {
+    currentWalkthroughSteps = [
+      {
+        title: '1. Review Settlement Discrepancy',
+        body: 'Navigate to the Audit Ledger screen. Locate the feeder row highlighted with a non-zero zero-copy discrepancy delta.',
+        tip: 'Look for feeder F-4471 in August 2026 settlement window.'
+      },
+      {
+        title: '2. Inspect Substation Telemetry',
+        body: 'Compare raw smart meter readings with zero-copy Iceberg table snapshots to identify unvalidated interval gaps.',
+        tip: 'Check for missing 30-minute intervals between 14:00 UTC and 16:30 UTC.'
+      },
+      {
+        title: '3. Attach Cryptographic Proof',
+        body: 'Click "Export Signed Evidence" to attach SHA-256 timestamp certificates verified against National Grid UK keys.',
+        tip: 'Ensure all 4,182 audit events match the tenant correlation hash.'
+      },
+      {
+        title: '4. Sign Off Settlement Case',
+        body: 'Click "Sign Off Dispute" to finalize settlement reconciliation and record the cryptographic sign-off in the audit ledger.',
+        tip: 'Your user digital signature will be permanently logged.'
+      }
+    ];
+  } else if (type === 'datasource') {
+    currentWalkthroughSteps = [
+      {
+        title: '1. Connect Remote Lakehouse',
+        body: 'Specify your S3 or Azure ADLS Gen2 object storage URI along with Iceberg REST catalog credentials.',
+        tip: 'Supported formats: Parquet, ORC, Avro with Iceberg metadata v2.'
+      },
+      {
+        title: '2. Auto-Detect Table Schemas',
+        body: 'MELDRA automatically inspects catalog metadata, extracts column definitions, and maps them to IEC 61968 standards.',
+        tip: 'Verify data types for timestamp and active energy (kWh) fields.'
+      },
+      {
+        title: '3. Configure Ingestion Pipeline',
+        body: 'Set replication frequency (Real-time micro-batching or half-hourly BSC settlement sync).',
+        tip: 'Micro-batching yields sub-minute query readiness.'
+      }
+    ];
+  } else {
+    currentWalkthroughSteps = [
+      {
+        title: '1. Select User Role',
+        body: 'Choose from Admin, Analyst, Engineer, or Auditor roles to set baseline capabilities.',
+        tip: 'Admin role possesses complete instance provisioning rights.'
+      },
+      {
+        title: '2. Toggle Capability Matrix',
+        body: 'Click checkmarks in the RBAC Governance Matrix to grant or revoke specific operational permissions.',
+        tip: 'Analyst role requires settlement sign-off authorization.'
+      }
+    ];
+  }
+
+  currentWalkthroughStep = 0;
+  updateWalkthroughUI();
+  (window as any).openMeldraModal('modal-guided-walkthrough');
+};
+
+function updateWalkthroughUI() {
+  const step = currentWalkthroughSteps[currentWalkthroughStep];
+  if (!step) return;
+
+  const badge = document.getElementById('walkthrough-step-badge');
+  const title = document.getElementById('walkthrough-title');
+  const body = document.getElementById('walkthrough-body');
+  const tip = document.getElementById('walkthrough-tip');
+  const btnPrev = document.getElementById('btn-walkthrough-prev') as HTMLButtonElement;
+  const btnNext = document.getElementById('btn-walkthrough-next') as HTMLButtonElement;
+
+  if (badge) badge.textContent = `Step ${currentWalkthroughStep + 1} of ${currentWalkthroughSteps.length}`;
+  if (title) title.textContent = step.title;
+  if (body) body.textContent = step.body;
+  if (tip) tip.textContent = step.tip;
+
+  if (btnPrev) btnPrev.disabled = currentWalkthroughStep === 0;
+  if (btnNext) {
+    if (currentWalkthroughStep === currentWalkthroughSteps.length - 1) {
+      btnNext.textContent = 'Finish Walkthrough ✓';
+    } else {
+      btnNext.textContent = 'Next Step →';
+    }
+  }
+}
+
+(window as any).handleWalkthroughStep = function(delta: number) {
+  currentWalkthroughStep += delta;
+  if (currentWalkthroughStep >= currentWalkthroughSteps.length) {
+    (window as any).closeMeldraModal('modal-guided-walkthrough');
+    showToast('Walkthrough completed successfully!', 'success');
+    return;
+  }
+  if (currentWalkthroughStep < 0) currentWalkthroughStep = 0;
+  updateWalkthroughUI();
+};
+
+// Support Ticket Modal Handlers
+(window as any).openSupportTicketModal = function() {
+  (window as any).closeMeldraHelpDrawer();
+  (window as any).openMeldraModal('modal-support-ticket');
+};
+
+(window as any).handleSubmitSupportTicket = function() {
+  const subjectIn = document.getElementById('support-subject-input') as HTMLInputElement;
+  const subject = subjectIn ? subjectIn.value.trim() : '';
+
+  if (!subject) {
+    showToast('Please enter a ticket subject', 'warning');
+    return;
+  }
+
+  const ticketId = `TK-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+  (window as any).closeMeldraModal('modal-support-ticket');
+  showToast(`Support ticket ${ticketId} submitted! Our team will respond shortly.`, 'success');
+};
+
+
