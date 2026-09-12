@@ -222,53 +222,64 @@ def seed_demo_data():
         # Ensure default namespace exists
         create_namespace_if_not_exists(catalog, "default")
         
-        # 1. Seed employees_sample
-        emp_identifier = ("default", "employees_sample")
+        # Clean up legacy successfactors / HR tables if they exist
+        for legacy_tbl in ["employees_sample", "successfactors_acareporting", "successfactors_empjob", "testing_jp"]:
+            try:
+                catalog.drop_table(("default", legacy_tbl))
+                print(f"[startup-seeder] Cleaned up legacy table default.{legacy_tbl}")
+            except Exception:
+                pass
+
+        # 1. Seed smartmeter_readings_sample
+        sm_identifier = ("default", "smartmeter_readings_sample")
         table_exists = False
         try:
-            catalog.load_table(emp_identifier)
+            catalog.load_table(sm_identifier)
             table_exists = True
         except Exception:
             pass
             
         if not table_exists:
-            print("[startup-seeder] Seeding default.employees_sample...")
+            print("[startup-seeder] Seeding default.smartmeter_readings_sample...")
             from pyiceberg.schema import Schema
             from pyiceberg.types import NestedField, IntegerType, StringType, DoubleType
             import pyarrow as pa
             
             schema = Schema(
-                NestedField(field_id=1, name="id", field_type=IntegerType(), required=True),
-                NestedField(field_id=2, name="name", field_type=StringType(), required=False),
-                NestedField(field_id=3, name="department", field_type=StringType(), required=False),
-                NestedField(field_id=4, name="salary", field_type=DoubleType(), required=False),
-                NestedField(field_id=5, name="joined_date", field_type=StringType(), required=False),
+                NestedField(field_id=1, name="meter_id", field_type=StringType(), required=False),
+                NestedField(field_id=2, name="kw_active", field_type=DoubleType(), required=False),
+                NestedField(field_id=3, name="kvar_reactive", field_type=DoubleType(), required=False),
+                NestedField(field_id=4, name="voltage", field_type=DoubleType(), required=False),
+                NestedField(field_id=5, name="timestamp", field_type=StringType(), required=False),
+                NestedField(field_id=6, name="status", field_type=StringType(), required=False),
             )
             
             # Create Table
-            table = catalog.create_table(emp_identifier, schema=schema)
+            table = catalog.create_table(sm_identifier, schema=schema)
             
             # Append Snapshot 1
             data1 = {
-                "id": [1, 2, 3],
-                "name": ["Sumit", "Alice", "Bob"],
-                "department": ["Data Engineering", "Enterprise Architecture", "Data Analytics"],
-                "salary": [125000.0, 140000.0, 95000.0],
-                "joined_date": ["2024-01-15", "2023-11-10", "2024-03-01"]
+                "meter_id": ["MPAN-00129481", "MPAN-00129482", "MPAN-00129483"],
+                "kw_active": [14.2, 8.7, 22.1],
+                "kvar_reactive": [1.4, 0.9, 2.3],
+                "voltage": [238.5, 241.2, 236.8],
+                "timestamp": ["2026-07-06T10:00:00Z", "2026-07-06T10:00:00Z", "2026-07-06T10:00:00Z"],
+                "status": ["NORMAL", "NORMAL", "EXCURSION"]
             }
             table.append(pa.Table.from_pydict(data1))
             
-            # Append Snapshot 2 (adds transactions history for Time Travel)
+            # Append Snapshot 2 (adds interval telemetry history for Time Travel)
             data2 = {
-                "id": [4, 5],
-                "name": ["Charlie", "Diana"],
-                "department": ["Data Platform", "VP of Data"],
-                "salary": [115000.0, 195000.0],
-                "joined_date": ["2024-06-01", "2022-04-12"]
+                "meter_id": ["MPAN-00129484", "MPAN-00129485"],
+                "kw_active": [19.5, 11.3],
+                "kvar_reactive": [2.0, 1.1],
+                "voltage": [239.1, 240.0],
+                "timestamp": ["2026-07-06T10:15:00Z", "2026-07-06T10:15:00Z"],
+                "status": ["NORMAL", "NORMAL"]
             }
             table.append(pa.Table.from_pydict(data2))
             
-            print("[startup-seeder] Seeded default.employees_sample successfully with 2 snapshots.")
+            print("[startup-seeder] Seeded default.smartmeter_readings_sample successfully with 2 snapshots.")
             
         # 2. Seed orders_sample
         ord_identifier = ("default", "orders_sample")
@@ -286,7 +297,7 @@ def seed_demo_data():
             import pyarrow as pa
             
             schema = Schema(
-                NestedField(field_id=1, name="order_id", field_type=IntegerType(), required=True),
+                NestedField(field_id=1, name="order_id", field_type=IntegerType(), required=False),
                 NestedField(field_id=2, name="customer", field_type=StringType(), required=False),
                 NestedField(field_id=3, name="amount", field_type=DoubleType(), required=False),
                 NestedField(field_id=4, name="status", field_type=StringType(), required=False),
@@ -320,7 +331,7 @@ def seed_demo_data():
             import random
             
             schema = Schema(
-                NestedField(field_id=1, name="tx_id", field_type=IntegerType(), required=True),
+                NestedField(field_id=1, name="tx_id", field_type=IntegerType(), required=False),
                 NestedField(field_id=2, name="account_from", field_type=StringType(), required=False),
                 NestedField(field_id=3, name="account_to", field_type=StringType(), required=False),
                 NestedField(field_id=4, name="amount", field_type=DoubleType(), required=False),
@@ -2289,25 +2300,43 @@ async def create_namespace(payload: CreateNamespaceRequest, user: Dict[str, Any]
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/v1/catalog/namespaces/{namespace}", tags=["Catalog"])
-async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
+async def delete_namespace(namespace: str, cascade: bool = False, user: Dict[str, Any] = Depends(get_current_user)):
     role = user.get("role", "Business Analyst")
     if role not in CAN_MANAGE_SCHEMA:
         raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to delete namespaces.")
+    
+    if namespace == "default":
+        raise HTTPException(status_code=400, detail="The 'default' system workspace namespace cannot be deleted.")
+
     from meldra import MeldraCatalog
     from tenancy import get_current_tenant_id, scope_namespace
     tenant_id = get_current_tenant_id(user)
     scoped_ns = scope_namespace(tenant_id, namespace)
+    
     try:
         m_catalog = MeldraCatalog()
+        tables = m_catalog.list_tables(scoped_ns)
+        if tables:
+            if not cascade:
+                table_list = ", ".join(tables[:5])
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete namespace '{namespace}': it contains {len(tables)} table(s) ({table_list}). Please delete all tables first or confirm cascade deletion."
+                )
+            for tbl in tables:
+                m_catalog.drop_table(scoped_ns, tbl, purge=True)
+
         m_catalog.delete_namespace(scoped_ns)
         log_audit(
             user_id=user.get("sub", "unknown"),
             tier=user.get("tier", "trial"),
             action="delete_namespace",
-            details=f"Deleted namespace {namespace}",
+            details=f"Deleted namespace {namespace} (cascade={cascade})",
             status="success"
         )
         return {"status": "success", "message": f"Namespace {namespace} dropped."}
+    except HTTPException:
+        raise
     except Exception as e:
         log_audit(
             user_id=user.get("sub", "unknown"),
@@ -2316,7 +2345,7 @@ async def delete_namespace(namespace: str, user: Dict[str, Any] = Depends(get_cu
             details=f"Failed to delete namespace {namespace}: {e}",
             status="error"
         )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=f"Cannot delete namespace '{namespace}': {str(e)}")
 
 @app.get("/v1/catalog/namespaces/{namespace}/tables", tags=["Catalog"])
 async def list_tables(namespace: str, user: Dict[str, Any] = Depends(get_current_user)):
@@ -2341,6 +2370,36 @@ async def get_table_details(namespace: str, table_name: str, user: Dict[str, Any
         details["namespace"] = namespace  # report back the client-facing (unscoped) name
         return details
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/v1/catalog/namespaces/{namespace}/tables/{table_name}", tags=["Catalog"])
+async def delete_table(namespace: str, table_name: str, purge: bool = False, user: Dict[str, Any] = Depends(get_current_user)):
+    role = user.get("role", "Business Analyst")
+    if role not in CAN_MANAGE_SCHEMA:
+        raise HTTPException(status_code=403, detail=f"Access Denied: Role '{role}' does not have permission to delete tables.")
+    from meldra import MeldraCatalog
+    from tenancy import get_current_tenant_id, scope_namespace
+    tenant_id = get_current_tenant_id(user)
+    scoped_ns = scope_namespace(tenant_id, namespace)
+    try:
+        m_catalog = MeldraCatalog()
+        m_catalog.drop_table(scoped_ns, table_name, purge=purge)
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="delete_table",
+            details=f"Dropped table {namespace}.{table_name} (purge={purge})",
+            status="success"
+        )
+        return {"status": "success", "message": f"Table {namespace}.{table_name} dropped."}
+    except Exception as e:
+        log_audit(
+            user_id=user.get("sub", "unknown"),
+            tier=user.get("tier", "trial"),
+            action="delete_table",
+            details=f"Failed to drop table {namespace}.{table_name}: {e}",
+            status="error"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/catalog/namespaces/{namespace}/tables/{table_name}/schema", tags=["Catalog"])

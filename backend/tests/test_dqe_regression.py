@@ -91,7 +91,7 @@ class TestOriginalToolsUnchanged:
             mock_cat.return_value.load_table.return_value = mock_tbl
             result = query_iceberg_data.invoke({
                 "namespace": "default",
-                "table_name": "employees_sample",
+                "table_name": "smartmeter_readings_sample",
                 "sql_query": "SELECT COUNT(*) as cnt FROM iceberg_table"
             })
         assert "3" in result

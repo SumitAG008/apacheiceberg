@@ -25,6 +25,14 @@ class MeldraCatalog:
     def delete_namespace(self, namespace: str) -> None:
         self.catalog.drop_namespace(namespace)
 
+    def drop_table(self, namespace: str, table_name: str, purge: bool = False) -> None:
+        identifier = (namespace, table_name)
+        try:
+            self.catalog.drop_table(identifier, purge=purge)
+        except AttributeError:
+            # Fallback if catalog implementation uses drop_table without purge parameter keyword
+            self.catalog.drop_table(identifier)
+
     def list_tables(self, namespace: str) -> List[str]:
         tables = self.catalog.list_tables(namespace)
         return [tbl[1] if len(tbl) > 1 else tbl[0] for tbl in tables]

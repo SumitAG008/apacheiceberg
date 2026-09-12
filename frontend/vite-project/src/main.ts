@@ -4279,14 +4279,31 @@ async function initDataStudio() {
   const btnDeleteNs = document.getElementById('btn-delete-ns') as HTMLButtonElement;
   if (btnDeleteNs) {
     btnDeleteNs.onclick = async () => {
-      const confirmDelete = confirm(`Are you sure you want to drop namespace '${activeNamespace}'? This fails if tables exist.`);
+      if (activeNamespace === 'default') {
+        showToast("The 'default' primary workspace namespace cannot be deleted.", 'error');
+        return;
+      }
+      const confirmDelete = confirm(`Are you sure you want to drop namespace '${activeNamespace}'?`);
       if (!confirmDelete) return;
       try {
-        await api.catalog.deleteNamespace(activeNamespace);
+        await api.catalog.deleteNamespace(activeNamespace, false);
         showToast(`Namespace '${activeNamespace}' dropped.`);
         await loadStudioNamespaces();
       } catch (e: any) {
-        showToast(e.message, 'error');
+        if (e.message && e.message.includes('contains')) {
+          const cascadeConfirm = confirm(`${e.message}\n\nDo you want to FORCE delete namespace '${activeNamespace}' AND ALL ITS TABLES?`);
+          if (cascadeConfirm) {
+            try {
+              await api.catalog.deleteNamespace(activeNamespace, true);
+              showToast(`Namespace '${activeNamespace}' and all its tables were deleted.`);
+              await loadStudioNamespaces();
+            } catch (err: any) {
+              showToast(err.message, 'error');
+            }
+          }
+        } else {
+          showToast(e.message, 'error');
+        }
       }
     };
   }
@@ -5266,10 +5283,13 @@ async function loadStudioTables() {
 
       const activeStyle = tbl === activeTableName ? 'background: rgba(255,255,255,0.06); border-color: var(--border-glass);' : '';
       return `
-        <button class="btn btn-secondary btn-sm" style="display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; font-family:var(--font-mono); font-size:0.78rem; padding:0.5rem 0.75rem; margin:0; ${activeStyle}" onclick="selectStudioTable('${tbl}')">
-          <span><i class="fa-solid fa-table" style="margin-right:0.35rem; color:var(--text-muted);"></i> ${tbl}</span>
-          <span style="font-size:0.6rem; font-weight:700; color:${badgeColor}; border:1px solid ${badgeColor}40; background:${badgeColor}10; padding:0.1rem 0.3rem; border-radius:3px;">${layerTag}</span>
-        </button>
+        <div class="btn btn-secondary btn-sm" style="display:flex; justify-space-between; align-items:center; width:100%; text-align:left; font-family:var(--font-mono); font-size:0.78rem; padding:0.4rem 0.6rem; margin:0; cursor:pointer; ${activeStyle}" onclick="selectStudioTable('${tbl}')">
+          <span style="flex:1; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"><i class="fa-solid fa-table" style="margin-right:0.35rem; color:var(--text-muted);"></i> ${tbl}</span>
+          <div style="display:flex; align-items:center; gap:0.35rem;">
+            <span style="font-size:0.6rem; font-weight:700; color:${badgeColor}; border:1px solid ${badgeColor}40; background:${badgeColor}10; padding:0.1rem 0.3rem; border-radius:3px;">${layerTag}</span>
+            <button type="button" title="Delete Table" onclick="deleteStudioTable(event, '${tbl}')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.75rem; padding:0.1rem 0.25rem; opacity:0.8; transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        </div>
       `;
     }).join('');
 
@@ -5281,6 +5301,24 @@ async function loadStudioTables() {
     showToast('Failed to list tables in namespace.', 'error');
   }
 }
+
+async function deleteStudioTable(e: Event, tableName: string) {
+  e.stopPropagation();
+  const confirmDelete = confirm(`Are you sure you want to delete table '${tableName}' from namespace '${activeNamespace}'? This will drop the table and its schema metadata from backend storage.`);
+  if (!confirmDelete) return;
+
+  try {
+    await api.catalog.deleteTable(activeNamespace, tableName);
+    showToast(`Table '${tableName}' deleted successfully.`);
+    if (activeTableName === tableName) {
+      activeTableName = '';
+    }
+    await loadStudioTables();
+  } catch (err: any) {
+    showToast(err.message || 'Failed to delete table', 'error');
+  }
+}
+(window as any).deleteStudioTable = deleteStudioTable;
 
 async function selectStudioTable(tableName: string) {
   activeTableName = tableName;
@@ -7995,3 +8033,213 @@ navQueryLab?.addEventListener('click', async () => {
     } catch (_) { /* silent */ }
   }
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// MELDRA ENTERPRISE PLATFORM INTERACTIVE CONTROLLERS (4a–4h, 3a)
+// ────────────────────────────────────────────────────────────────────────────
+
+// 1. Modal & Drawer Management
+(window as any).openMeldraModal = function(modalId: string) {
+  const el = document.getElementById(modalId);
+  if (el) el.classList.add('active');
+};
+
+(window as any).closeMeldraModal = function(modalId: string) {
+  const el = document.getElementById(modalId);
+  if (el) el.classList.remove('active');
+};
+
+(window as any).openMeldraHelpDrawer = function() {
+  document.getElementById('drawer-help-overlay')?.classList.add('active');
+  document.getElementById('drawer-help-4g')?.classList.add('active');
+};
+
+(window as any).closeMeldraHelpDrawer = function() {
+  document.getElementById('drawer-help-overlay')?.classList.remove('active');
+  document.getElementById('drawer-help-4g')?.classList.remove('active');
+};
+
+// 2. Theme Engine
+(window as any).setThemeMode = function(mode: 'light' | 'dark' | 'contrast') {
+  document.body.classList.remove('theme-dark', 'theme-high-contrast');
+  
+  const cardLight = document.getElementById('theme-card-light');
+  const cardDark = document.getElementById('theme-card-dark');
+  const cardContrast = document.getElementById('theme-card-contrast');
+
+  if (cardLight) cardLight.style.borderColor = '#e8e7e3';
+  if (cardDark) cardDark.style.borderColor = '#e8e7e3';
+  if (cardContrast) cardContrast.style.borderColor = '#e8e7e3';
+
+  if (mode === 'dark') {
+    document.body.classList.add('theme-dark');
+    if (cardDark) cardDark.style.borderColor = '#15201c';
+    showToast('Applied Dark (Control Room) theme', 'info');
+  } else if (mode === 'contrast') {
+    document.body.classList.add('theme-high-contrast');
+    if (cardContrast) cardContrast.style.borderColor = '#15201c';
+    showToast('Applied High Contrast theme', 'info');
+  } else {
+    if (cardLight) cardLight.style.borderColor = '#15201c';
+    showToast('Applied Light theme', 'info');
+  }
+};
+
+// 3. Instance Switcher Engine
+let activeInstance = 'uknorth-prod';
+
+(window as any).switchInstance = function(instanceId: string) {
+  activeInstance = instanceId;
+  const labelEl = document.getElementById('active-instance-label');
+  const badgeEl = document.getElementById('active-instance-badge');
+  
+  if (instanceId === 'uknorth-prod') {
+    document.body.classList.add('prod-instance-active');
+    if (labelEl) labelEl.textContent = 'Production · UK North';
+    if (badgeEl) {
+      badgeEl.className = 'prod-badge-indicator';
+      badgeEl.textContent = 'LIVE DATA';
+      badgeEl.style.display = 'inline-flex';
+    }
+    showToast('Switched session to Production · UK North (LIVE DATA)', 'info');
+  } else if (instanceId === 'uknorth-qa') {
+    document.body.classList.remove('prod-instance-active');
+    if (labelEl) labelEl.textContent = 'QA · UK North';
+    if (badgeEl) {
+      badgeEl.className = 'badge badge-blue';
+      badgeEl.textContent = 'MASKED COPY';
+      badgeEl.style.display = 'inline-flex';
+    }
+    showToast('Switched session to QA · UK North', 'info');
+  } else if (instanceId === 'uknorth-dev') {
+    document.body.classList.remove('prod-instance-active');
+    if (labelEl) labelEl.textContent = 'Development';
+    if (badgeEl) {
+      badgeEl.className = 'badge badge-green';
+      badgeEl.textContent = 'SYNTHETIC';
+      badgeEl.style.display = 'inline-flex';
+    }
+    showToast('Switched session to Development', 'info');
+  } else if (instanceId === 'siemens-demo') {
+    document.body.classList.remove('prod-instance-active');
+    if (labelEl) labelEl.textContent = 'Demo · Customer Pitch';
+    if (badgeEl) {
+      badgeEl.className = 'badge badge-orange';
+      badgeEl.textContent = 'RESETS NIGHTLY';
+      badgeEl.style.display = 'inline-flex';
+    }
+    showToast('Switched session to Demo Sandbox', 'info');
+  }
+  
+  (window as any).closeMeldraModal('modal-instance-picker-4b');
+};
+
+// Initialize Production Theme Indicator by default
+document.body.classList.add('prod-instance-active');
+
+// 4. MFA OTP Box Inputs & Countdown Timer
+let mfaTimer = 27;
+setInterval(() => {
+  mfaTimer--;
+  if (mfaTimer <= 0) mfaTimer = 30;
+  const timerEl = document.getElementById('mfa-timer-sec');
+  if (timerEl) timerEl.textContent = String(mfaTimer);
+}, 1000);
+
+for (let i = 1; i <= 6; i++) {
+  const input = document.getElementById(`otp-${i}`) as HTMLInputElement;
+  if (input) {
+    input.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      if (val.length === 1 && i < 6) {
+        const nextInput = document.getElementById(`otp-${i + 1}`) as HTMLInputElement;
+        if (nextInput) nextInput.focus();
+      }
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 1) {
+        const prevInput = document.getElementById(`otp-${i - 1}`) as HTMLInputElement;
+        if (prevInput) prevInput.focus();
+      }
+    });
+  }
+}
+
+(window as any).handleMFAVerify = function() {
+  showToast('MFA verification successful! Session authenticated.', 'success');
+  (window as any).closeMeldraModal('modal-mfa-4b');
+};
+
+// 5. Audit Evidence PDF Pack Builder
+(window as any).handleGeneratePDFPack = function() {
+  const hashEl = document.getElementById('audit-export-hash');
+  const mockHash = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+  if (hashEl) hashEl.textContent = mockHash + '…';
+  
+  showToast(`Digitally signed audit pack generated! Report hash: ${mockHash}`, 'success');
+  setTimeout(() => {
+    (window as any).closeMeldraModal('modal-audit-export-4e');
+  }, 1200);
+};
+
+// 6. Data Dictionary Sandbox REST API Runner
+(window as any).handleRunSandboxAPI = function() {
+  const outputEl = document.getElementById('sandbox-api-output');
+  if (outputEl) {
+    outputEl.innerHTML = `
+      <div style="font-family:monospace;font-size:11px;color:#3f7d63;">
+        HTTP/1.1 200 OK<br>
+        Content-Type: application/json<br><br>
+        {<br>
+        &nbsp;&nbsp;"status": "success",<br>
+        &nbsp;&nbsp;"feeder_id": "F-4471",<br>
+        &nbsp;&nbsp;"readings_count": 48,<br>
+        &nbsp;&nbsp;"assurance_level": "SUBSTANTIATED",<br>
+        &nbsp;&nbsp;"snapshot_id": "iceberg-snap-901842"<br>
+        }
+      </div>
+    `;
+  }
+  showToast('Executed GET /v1/readings query against sandbox', 'success');
+};
+
+// 7. Event Listeners for Header Launchers
+document.getElementById('btn-instance-switcher')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-instance-picker-4b');
+});
+
+document.getElementById('btn-open-help')?.addEventListener('click', () => {
+  (window as any).openMeldraHelpDrawer();
+});
+
+document.getElementById('btn-open-canvas')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-canvas-viewer');
+});
+
+document.getElementById('btn-open-org-console')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-org-console-4c');
+});
+
+document.getElementById('btn-open-journey-map')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-journey-map-4a');
+});
+
+document.getElementById('btn-open-settings')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-account-4d');
+});
+
+document.getElementById('btn-open-data-dict')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-data-dict-4f');
+});
+
+document.getElementById('btn-open-rbac')?.addEventListener('click', () => {
+  (window as any).openMeldraModal('modal-rbac-3a');
+});
+
+// Close drawers on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    (window as any).closeMeldraHelpDrawer();
+  }
+});
+

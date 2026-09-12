@@ -486,16 +486,29 @@ export const api = {
       if (!res.ok) throw new Error('Failed to create namespace');
       return res.json();
     },
-    async deleteNamespace(namespace: string): Promise<any> {
-      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}`, {
+    async deleteNamespace(namespace: string, cascade: boolean = false): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}?cascade=${cascade}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Failed to delete namespace');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || err.error || 'Failed to delete namespace');
+      }
       return res.json();
     },
     async listTables(namespace: string): Promise<{ tables: string[] }> {
       const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables`);
       if (!res.ok) throw new Error('Failed to list tables');
+      return res.json();
+    },
+    async deleteTable(namespace: string, tableName: string, purge: boolean = false): Promise<any> {
+      const res = await authFetch(`${BASE_URL}/v1/catalog/namespaces/${namespace}/tables/${tableName}?purge=${purge}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || err.detail || 'Failed to delete table');
+      }
       return res.json();
     },
     async getTableDetails(namespace: string, tableName: string): Promise<any> {
