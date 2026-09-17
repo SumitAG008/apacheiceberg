@@ -192,8 +192,8 @@ history. Nobody believes the clean history.
 > Grid4C, Camus, Pravāh. I'm not competing there and I don't intend to.
 >
 > Ingestion security is empty. I searched and found nobody doing route
-> mutation with active deception at the metering boundary. I have a UK
-> patent application filed and a working implementation measured at 9,254
+> mutation with active deception at the metering boundary. I have a proprietary
+> cryptographic specification and a working implementation measured at 9,254
 > verified blocks/sec on a single thread.
 >
 > The customer isn't the utility. It's the analytics vendors who all

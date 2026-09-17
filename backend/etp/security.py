@@ -16,8 +16,11 @@ class ETPSecurityManager:
 
     def __init__(self, master_key: bytes = None):
         if master_key is None:
-            # 256-bit default key derived from environment or random seed
-            raw_key = os.environ.get("ETP_MASTER_KEY", "etp-secret-master-key-32-bytes!!")
+            raw_key = os.environ.get("ETP_MASTER_KEY")
+            if not raw_key:
+                if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+                    raise ValueError("ETP_MASTER_KEY environment variable is required in production.")
+                raw_key = "dev-etp-master-key-must-be-set-in-prod-32-bytes!"
             self.master_key = hashlib.sha256(raw_key.encode("utf-8")).digest()
         else:
             if len(master_key) != 32:

@@ -86,17 +86,23 @@ class ETPVerifier:
         hashes = [r["etp_block_hash"] for r in sorted_readings]
         computed_root = canonical_merkle_root(hashes)
 
-        # 3. Find matching anchored checkpoint
-        anchor_ref = "tsa:mock-anchor-token"
+        # 3. Find matching anchored checkpoint & compare Merkle root
+        anchor_ref = ""
         checkpoint_match = None
         for cp in self.checkpointer.checkpoints:
             if cp["mpan"] == mpan and cp["day"] == day:
                 checkpoint_match = cp
-                anchor_ref = cp.get("anchor_ref", anchor_ref)
+                anchor_ref = cp.get("anchor_ref", "")
                 break
 
         overall_status = "VERIFIED"
-        if failed > 0:
+        if not checkpoint_match:
+            overall_status = "UNANCHORED"
+        elif checkpoint_match.get("merkle_root") != computed_root:
+            overall_status = "FAILED"
+            failed = len(readings)
+            verified = 0
+        elif failed > 0:
             overall_status = "FAILED"
         elif gaps > 0:
             overall_status = "VERIFIED_WITH_GAPS"

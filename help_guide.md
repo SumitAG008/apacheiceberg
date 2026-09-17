@@ -15,7 +15,7 @@ meldra is an agentic data platform for Apache Iceberg smart meter lakehouses. At
 | Term you'll see in the app | What it actually means |
 |---|---|
 | **Apache Iceberg** | The open table format your telemetry is saved in. Remembers every past version of itself and never silently loses data. |
-| **ETP (EnergyTrust Protocol)** | Patented security layer for smart meter ingestion featuring Moving Target Defense (MTD) routes, deception honeypots, and first-class verification state in Iceberg. |
+| **ETP (EnergyTrust Protocol)** | Proprietary cryptographic security layer for smart meter ingestion featuring Moving Target Defense (MTD) routes, deception honeypots, and first-class verification state in Iceberg. |
 | **MPAN** | Meter Point Administration Number — the unique identifier for an electricity smart meter (MPRN for gas). |
 | **Moving Target Defense (MTD)** | Dynamically rotating HTTPS ingress routes (`/api/v1/telemetry/rotated_<hash>`) derived from time windows and secrets to defeat port scanners. |
 | **Phantom Grid** | An isolated deception honeypot that catches unauthenticated or stale-route probes, returning plausible synthetic data while logging threat intelligence. |

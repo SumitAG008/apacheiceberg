@@ -2,7 +2,7 @@
 
 **Baseline Issued:** 2026-09-06T17:46:00Z · **Version:** 2.1  
 
-Patented security layer for smart meter telemetry ingestion, with an Apache Iceberg lakehouse that carries cryptographic verification from the physical gateway wire through to the analyst's query screen.
+Cryptographic security layer for smart meter telemetry ingestion, with an Apache Iceberg lakehouse that carries cryptographic verification from the physical gateway wire through to the analyst's query screen.
 
 ---
 

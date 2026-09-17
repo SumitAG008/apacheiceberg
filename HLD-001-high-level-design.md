@@ -115,7 +115,7 @@ flowchart TD
 
 ---
 
-## 4. Architectural Escalation State Machine (Patent §5.5)
+## 4. Architectural Escalation State Machine (Specification §5.5)
 
 The gateway maintains a dynamic security escalation state machine for every meter device and network source IP:
 

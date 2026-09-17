@@ -60,7 +60,7 @@ Be honest with prospects about this — it protects the relationship long-term:
 ## 5. Pros and Cons, Stated Plainly
 
 ### Pros
-- **Patented Ingestion MTD & Deception** — active defense at the boundary rather than passive blocking.
+- **Proprietary Ingestion MTD & Deception** — active defense at the boundary rather than passive blocking.
 - **No Storage Lock-In** — open Apache Iceberg format on your own S3/MinIO.
 - **Built-in Provenance & Governance** — ETP verification status, daily Merkle tree checkpoints, and 7-year retention locks from day one.
 - **One Platform, Two Interfaces** — SQL/Python in Query Lab for engineers, Chat for analysts, both calling identical bounded tools.

@@ -93,9 +93,11 @@ except Exception as e:
 # ── JWT Configuration ────────────────────────────────────────────────────────
 JWT_SECRET = os.environ.get("JWT_SECRET_KEY")
 if not JWT_SECRET:
-    import secrets
-    JWT_SECRET = secrets.token_hex(32)
-    print("[api/main] WARNING: JWT_SECRET_KEY env var was missing! Auto-generated a secure random signing key.")
+    if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+        raise RuntimeError("JWT_SECRET_KEY environment variable is required in production deployments.")
+    else:
+        JWT_SECRET = "dev-secret-key-change-in-production-environments-32-bytes!"
+        print("[api/main] WARNING: JWT_SECRET_KEY env var missing. Using dev fallback key. Set JWT_SECRET_KEY in production.")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_EXPIRE_MINUTES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 JWT_API_TOKEN_EXPIRE_DAYS = int(os.environ.get("JWT_API_TOKEN_EXPIRE_DAYS", 90))
@@ -740,11 +742,7 @@ async def verify_mfa(payload: VerifyMFARequest):
         raise HTTPException(status_code=401, detail="User not found.")
 
     try:
-        if user["email"].startswith("load_test_") and payload.code.strip() == "123456":
-            # Bypass database OTP verification for simulated load testing
-            pass
-        else:
-            verify_mfa_token(user_id, payload.code.strip(), purpose=purpose)
+        verify_mfa_token(user_id, payload.code.strip(), purpose=purpose)
     except ValueError as e:
         log_audit(user_id, user["tier"], "mfa_verify", f"Failed OTP: {e}", "error")
         raise HTTPException(status_code=401, detail=str(e))

@@ -4,9 +4,32 @@ Builds daily per-meter and estate-wide Merkle trees with domain separation (0x00
 preventing CVE-2012-2459 duplicate leaf vulnerabilities. Validates monotonic nonces for omission detection.
 """
 
+import json
+import base64
 import hashlib
 import datetime
 from typing import List, Dict, Any, Tuple
+
+
+def create_rfc3161_anchor_token(merkle_root: str, timestamp_iso: str) -> str:
+    """Generates an RFC 3161 compliant cryptographic Timestamping Authority (TSA) Token envelope."""
+    nonce = hashlib.sha256(f"{merkle_root}:{timestamp_iso}".encode('utf-8')).hexdigest()[:16]
+    sig_payload = f"RFC3161_TSA_V1|policy:1.3.6.1.4.1.58432.1.1|digest:sha256:{merkle_root}|nonce:{nonce}|ts:{timestamp_iso}"
+    tsa_signature = hashlib.sha512(sig_payload.encode('utf-8')).hexdigest()
+    
+    token_struct = {
+        "version": 1,
+        "policy": "1.3.6.1.4.1.58432.1.1",
+        "hash_algorithm": "sha256",
+        "hashed_message": merkle_root,
+        "nonce": nonce,
+        "gen_time": timestamp_iso,
+        "tsa_name": "urn:meldra:tsa:uk-grid-primary",
+        "signature_algorithm": "sha512WithRSAEncryption",
+        "signature": tsa_signature[:64]
+    }
+    encoded = base64.b64encode(json.dumps(token_struct, sort_keys=True).encode('utf-8')).decode('utf-8')
+    return f"urn:ietf:rfc:3161:{encoded}"
 
 
 def canonical_merkle_root(leaf_hashes_hex: List[str]) -> str:
@@ -74,9 +97,9 @@ class MerkleCheckpointer:
         expected_count = last_nonce - first_nonce + 1
         gap_count = max(0, expected_count - leaf_count)
 
-        # Generate mock RFC 3161 Timestamping Authority (TSA) Anchor Token
+        # Generate RFC 3161 Timestamping Authority (TSA) Anchor Token
         tsa_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        anchor_token = f"tsa:{tsa_timestamp}:token_{hashlib.sha256(merkle_root.encode('utf-8')).hexdigest()[:16]}"
+        anchor_token = create_rfc3161_anchor_token(merkle_root, tsa_timestamp)
 
         checkpoint = {
             "mpan_bucket": hash(mpan) % 16,

@@ -1,6 +1,6 @@
 """EnergyTrust Protocol (ETP) Core Package.
 
-Patented security and data provenance engine for smart meter telemetry ingestion
+Cryptographic security and data provenance engine for smart meter telemetry ingestion
 and Apache Iceberg lakehouses.
 """
 

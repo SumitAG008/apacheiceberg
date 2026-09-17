@@ -2476,15 +2476,7 @@ LIMIT 10;`;
       setTimeout(() => otpDigits[0]?.focus(), 100);
     } catch(e: any) {
       if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('Network Error'))) {
-        tokenStore.setTokens("demo_access_token", "demo_refresh_token", {
-          id: "demo-user-001",
-          email: email || "demo@meldra.ai",
-          mfa_method: "email",
-          is_verified: true,
-          role: "Business Analyst"
-        });
-        showMainApp(true);
-        showToast("Backend API unreachable — logged into meldra Demo Sandbox.", "info");
+        setError(loginErrorEl, 'Unable to connect to authentication server. Please verify backend API status.');
       } else {
         setError(loginErrorEl, e.message || 'Login failed. Check your credentials.');
       }
@@ -2598,16 +2590,7 @@ LIMIT 10;`;
       }
     } catch(e: any) {
       if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('Network Error'))) {
-        const email = sessionStorage.getItem('meldra_mfa_email') || 'demo@meldra.ai';
-        tokenStore.setTokens("demo_access_token", "demo_refresh_token", {
-          id: "demo-user-001",
-          email: email,
-          mfa_method: "email",
-          is_verified: true,
-          role: "Business Analyst"
-        });
-        showMainApp(true);
-        showToast("Logged in successfully (Demo Session).", "success");
+        setError(mfaErrorEl, 'Unable to connect to authentication server. Please verify backend API status.');
         return;
       }
       setError(mfaErrorEl, e.message || 'Invalid code. Please try again.');

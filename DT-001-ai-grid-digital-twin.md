@@ -13,7 +13,7 @@
 ### 1.1 Formal Definition
 > **Meldra is an Open-Architecture AI Grid Digital Twin for Low-Voltage (LV) Network Operations.**
 > 
-> It continuously couples physical electrical network topology (IEC 61968 Common Information Model) in a high-performance graph engine directly to petabyte-scale smart meter telemetry on an open Apache Iceberg lakehouse. By executing in-engine state estimation, topological machine learning, and quantum-inspired optimization over zero-copy columnar data, it delivers sub-second visibility into **LV feeder headroom, phase unbalance, and EV hosting capacity** without requiring billions of pounds in physical substation sensor retrofits.
+> It continuously couples physical electrical network topology (IEC 61968 Common Information Model) in a high-performance graph engine directly to smart meter telemetry on an open Apache Iceberg lakehouse. By executing in-engine state estimation, topological machine learning, and quantum-inspired optimization over zero-copy columnar data, it delivers sub-second visibility into **LV feeder headroom, phase unbalance, and EV hosting capacity**—filling operational blind spots across the vast secondary substation estate without requiring physical hardware sensor retrofits on every site.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -51,9 +51,9 @@ DNO engineers frequently reject "Digital Twin" pitches because 95% of vendors se
 
 ---
 
-## 2. Why Low Voltage (LV)? — The Multi-Billion-Pound Operational Crisis
+## 2. Why Low Voltage (LV)? — The Operational Challenge at the Grid Edge
 
-The electricity network is divided into three distinct operational tiers, but **the crisis is entirely concentrated at Low Voltage**:
+The electricity network is divided into three distinct operational tiers, with operational blind spots heavily concentrated at Low Voltage:
 
 ```
 National Transmission Grid (400kV / 275kV / 132kV)
@@ -62,35 +62,40 @@ National Transmission Grid (400kV / 275kV / 132kV)
 Primary Distribution Network (33kV / 11kV)
 ├── Status: 100% Monitored (RTUs in every Primary Substation, SCADA remote control)
 │
-Secondary Substations (11kV / 400V) & Low-Voltage Street Feeders
-└── Status: ❌ 90%+ UNMONITORED BLIND SPOT across 800,000+ UK Substations
+Secondary Substations (11kV / 400V) & Low-Voltage Street Feeders (~600,000 sites in GB)
+└── Status: ⚠️ Majority of sites—especially smaller & pole-mounted—remain unmonitored
     └── Customer Cutouts / Premises (230V Single-Phase)
-        └── Status: ✅ The ONLY Sensor on the Street: The Smart Meter (MPAN)!
+        └── Status: ✅ 22M+ Smart Electricity Meters deployed across Great Britain (as at Q2 2026)
 ```
 
-### 2.1 The "Fit and Forget" Legacy
-For over seven decades, the Low Voltage network (400V three-phase mains cables feeding 230V single-phase homes) operated on a **"fit and forget"** philosophy:
-* Power flowed in one direction: from centralized coal/gas plants down to passive domestic lighting and appliances.
-* Load curves were predictable and smoothed by broad statistical diversity (ADMD — After Diversity Maximum Demand).
-* Consequently, DNOs installed **no instrumentation, no communications, and no sensors** on secondary transformers or street pillars.
+### 2.1 The Asset Landscape & RIIO-ED2 Monitoring Context
+Around **600,000 secondary substations** across Great Britain form the "last mile" of the electricity distribution system (spanning DNO asset counts: NGED ~185k, UKPN >130k, SSEN ~106k, SPEN ~86.4k, Northern Powergrid >63k, ENWL ~50k). 
+* **Ground-Mounted vs. Pole-Mounted:** Only roughly 250,000 of these are ground-mounted substations—the population primarily targeted by physical monitoring products. The remaining ~350,000 are smaller pole-mounted transformers.
+* **The Monitoring Gap:** Historically, DNOs operated LV circuits under a passive "fit and forget" model. While RIIO-ED2 investments are actively instrumenting larger, high-value sites (e.g., SPEN investing £28.3m to monitor 52% of its $\ge 200\text{kVA}$ secondary substations by 2028), the majority of secondary substations—and the great majority of smaller/pole-mounted ones—still have no real-time LV hardware monitoring (as at Q2 2026).
 
 ### 2.2 The Clean Energy Avalanche at the Grid Edge
-The UK net-zero transition is happening **almost entirely on the unmonitored LV network**:
-1. **Electric Vehicle (EV) Clustering:** A standard 7kW domestic EV charger draws more power than an entire typical house's baseline peak load (~2–3 kW). When five households on the same street plug in at 18:00, local cable conductors exceed thermal limits.
+The net-zero transition is happening almost entirely on LV networks:
+1. **Electric Vehicle (EV) Clustering:** A standard 7kW domestic EV charger draws more power than a house's baseline peak load (~2–3 kW). Uncoordinated EV clustering causes local cable conductors to exceed thermal limits.
 2. **Domestic Heat Pumps:** Adding 10kW electrical compressors increases winter peak demand and degrades local voltage.
-3. **Rooftop Solar PV Backfeed:** On sunny summer afternoons, domestic solar PV feeds power **backwards** up the 400V cable into the 11kV transformer. This reverse power flow pushes voltage above statutory UK limits (+10% / 253V), damaging consumer appliances and tripping inverters.
-4. **Phase Imbalance:** Homes are single-phase ($L1, L2,$ or $L3$) connected to three-phase street mains. Uneven EV/PV distribution creates massive neutral currents, accelerating transformer thermal degradation.
+3. **Rooftop Solar PV Backfeed:** Solar PV feeds power backwards up 400V cables into 11kV transformers on sunny afternoons. Reverse power flow pushes voltage above statutory UK limits (+10% / 253V), tripping inverters and damaging equipment.
+4. **Phase Imbalance:** Single-phase home connections ($L1, L2, L3$) to 3-phase street mains create neutral currents and accelerate transformer aging when unevenly loaded.
 
-### 2.3 Why Hardware Sensors Cannot Solve This Alone (The £3B Capital Barrier)
-There are over **800,000 secondary distribution transformers** and millions of kilometers of underground LV cables in Great Britain.
-* Retrofitting dedicated physical monitoring hardware (Rogowski coils, RTUs, cellular modems) costs **£3,000 to £8,000 per substation**.
-* Rolling this out nationwide requires **£2.5 to £6.4 Billion in capital expenditure**, plus disruptive street excavations.
-* DNOs under Ofgem RIIO-ED2 price controls cannot justify this cost to bill-payers.
+### 2.3 Physical Hardware Economics: Derived £1–3B CapEx Estimate
+Instrumenting the full GB secondary substation estate with physical monitoring hardware represents a massive capital commitment:
+* **Hardware Unit Cost:** SPEN's RIIO-ED2 business plan implies roughly **£2,000 per site** for hardware alone (£28.3m for 14,102 sites).
+* **Total Estate Cost:** Applied across ~600,000 sites, physical hardware alone equals ~£1.2 Billion. Including installation outages, communications, civil works, back-office integration, and lifecycle maintenance, nationwide physical instrumentation is **derived to cost £1.0 to £3.0 Billion in CapEx**.
+* DNOs under Ofgem price controls cannot justify physical hardware on every small transformer.
 
-### 2.4 The Software Resolution: Smart Meters as Virtual Grid Sensors
-Under **Market-wide Half-Hourly Settlement (MHHS)**, over 30 million smart meters (SMETS1 / SMETS2) transmit active consumption (kWh), reactive power (kvarh), and voltage measurements.
-* **The smart meter is already deployed, already paid for, and already sitting at the end of every LV service cable.**
-* By building a **software-defined Digital Twin** that aggregates half-hourly meter telemetry onto the physical CIM cable topology, DNOs achieve 100% LV visibility **at less than 5% of the cost of physical sensor rollouts.**
+### 2.4 Software Resolution: Smart Meters as Virtual Grid Sensors (Framing & Boundaries)
+Under **Market-wide Half-Hourly Settlement (MHHS)**, over **22 million smart electricity meters** (operating in smart mode across Great Britain as at Q2 2026) transmit active consumption (kWh), reactive power (kvarh), and voltage measurements.
+
+> **Honest Framing — Virtual vs. Physical Sensors:**  
+> Smart meter virtual sensors do *not* replace physical substation monitoring for sub-second power quality, fault level detection, or direct transformer thermal loading. Instead, virtual sensors cover the ~90% of smaller sites that will never justify dedicated physical hardware, while providing DNOs with data-driven insights to target physical hardware deployment where it pays most.
+
+### 2.5 Data Privacy & Feeder Penetration Constraints
+Any practical smart meter analytics solution must navigate two regulatory and technical realities:
+1. **Ofgem Data Privacy Rules:** DNOs access half-hourly smart meter data under approved privacy plans for regulated network planning, requiring a minimum aggregation floor of **$\ge 5$ smart meters per LV circuit** (excluding sensitive/individual premises).
+2. **Feeder Penetration Thresholds:** Conventional grid modeling assumes an ~80% smart meter penetration per feeder before deriving network state estimates. **Meldra AI models are specifically designed to produce usable feeder state estimates below the 80% per-feeder threshold**, working within Ofgem privacy aggregation constraints.
 
 ---
 
@@ -190,8 +195,39 @@ NIA projects are specifically structured for small technology companies and solo
 
 ---
 
-## 7. Document Control & Sign-off
+## 7. References & Methodological Notes
+
+Every asset count, meter figure, and cost model in this specification adheres to published UK regulatory documents or explicit derived calculations shown below.
+
+### 7.1 Asset Counts & Geographic Scope
+1. **Secondary Substation Counts (~600,000 GB Total)**:
+   - **National Grid Electricity Distribution (NGED)**: ~185,000 substations (*NGED RIIO-ED2 Business Plan 2023–2028*).
+   - **UK Power Networks (UKPN)**: >130,000 substations (*UKPN RIIO-ED2 Business Plan Annex 4.1*).
+   - **Scottish and Southern Electricity Networks (SSEN)**: ~106,000 substations (*SSEN Distribution RIIO-ED2 Plan*).
+   - **SP Energy Networks (SPEN)**: 86,386 secondary substations across SPD and SP Manweb, of which 30,774 are rated $\ge 200\text{kVA}$ (*SPEN Ofgem RIIO-ED2 Submission ED2-SPEN-NVS-2022*).
+   - **Northern Powergrid (NPG)**: >63,000 substations (*NPG RIIO-ED2 Business Plan*).
+   - **Electricity North West (ENWL)**: ~50,000 substations (*ENWL RIIO-ED2 Business Plan*).
+   - **Sum Total**: ~585,000 to ~600,000 secondary substations across Great Britain (including ground-mounted ~250k and pole-mounted ~350k).
+
+2. **Smart Electricity Meter Population (~22.5 Million Usable)**:
+   - **Source**: Department for Energy Security and Net Zero (DESNZ), *Smart Meters, Great Britain: Quarterly Report*, Q2 2026.
+   - **Data**: Of 42.0M total smart/advanced meters (gas + electric), 75% of domestic/business properties have a smart electricity meter, with 71% communicating in smart mode. This yields **~22.5 million usable smart electricity meters** in Great Britain. Gas meters cannot act as LV grid sensors, and Northern Ireland operates a separate non-smart metering framework.
+
+### 7.2 Monitoring Baselines & RIIO-ED2 Progress
+- **SPEN Network Visibility Strategy (ED2-SPEN-NVS-2022)**: SPEN is investing **£28.3m** to deploy LV hardware monitoring across **14,102 secondary substations** rated $\ge 200\text{kVA}$. Combined with 2,438 ED1 monitors, **52% of SPEN's $\ge 200\text{kVA}$ secondary substations** will have hardware LV monitoring by 2028.
+- **Estate Scope**: While larger $\ge 200\text{kVA}$ sites are being instrumented under ED2, smaller ground-mounted (<200kVA) and pole-mounted substations (~70% of the nationwide count) remain unmonitored.
+
+### 7.3 Derived CapEx Estimate & Arithmetic Breakdown
+- **Hardware-Only Baseline**: SPEN plan implies £28.3m ÷ 14,102 sites $\approx$ **£2,007 per site** for hardware. Scaled across 600,000 GB sites: $600,000 \times £2,000 = \mathbf{£1.2\text{ Billion}}$.
+- **All-In Lifetime CapEx Baseline**: Including installation outages, communications, civil works, back-office integration, and asset replacement: $600,000 \times £5,000 = \mathbf{£3.0\text{ Billion}}$.
+- **Stated Range**: **£1.2B to £3.0B in CapEx**.
+
+---
+
+## 8. Document Control & Sign-off
 
 | Version | Date | Author | Status |
 |---|---|---|---|
 | 1.0 | 2026-09-09 | Meldra AI Engineering | Approved Architecture Specification |
+| 1.1 | 2026-09-17 | Meldra Engineering | Updated with exact DNO RIIO-ED2 & DESNZ Q2 2026 references |
+

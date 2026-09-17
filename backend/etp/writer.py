@@ -47,15 +47,21 @@ class MicroBatchWriter:
             dt = datetime.datetime.fromisoformat(block.timestamp.replace('Z', '+00:00'))
             settlement_period = (dt.hour * 2) + (1 if dt.minute < 30 else 2)
 
+            voltage_v = getattr(block, "voltage_v", 230.0)
+            feeder_id = getattr(block, "feeder_id", f"F-{(hash(block.mpan) % 9000 + 1000)}")
+            substation_id = getattr(block, "substation_id", f"SUB-{(hash(block.mpan) % 9000 + 1000)}")
+            gsp_group = getattr(block, "gsp_group", "_A")
+            gateway_id = getattr(block, "gateway_id", "gw-uk-01")
+
             row = {
                 "mpan": block.mpan,
                 "reading_ts": block.timestamp,
                 "settlement_period": settlement_period,
                 "reading_kwh": block.reading_kwh,
-                "voltage_v": 230.0,  # Nominal RMS voltage
-                "feeder_id": "F-4471",
-                "substation_id": "SUB-0912",
-                "gsp_group": "_A",
+                "voltage_v": voltage_v,
+                "feeder_id": feeder_id,
+                "substation_id": substation_id,
+                "gsp_group": gsp_group,
                 "etp_block_hash": block.block_hash,
                 "etp_prev_hash": block.prev_hash,
                 "etp_nonce": block.nonce,
@@ -65,7 +71,7 @@ class MicroBatchWriter:
                 "etp_verified_at": now_iso,
                 "etp_verify_status": status,
                 "etp_sentinel_score": 0.0,
-                "etp_gateway_id": "gw-uk-01",
+                "etp_gateway_id": gateway_id,
                 "ingested_at": now_iso,
                 "source_batch_id": f"batch_{int(self.last_flush_time)}"
             }

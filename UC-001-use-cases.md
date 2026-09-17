@@ -150,7 +150,7 @@ Attacker               ETP Gateway            Phantom Grid            Threat Sen
 - **Primary Actor:** Settlement Auditor $\rightarrow$ ETP Verifier Engine
 - **Trigger:** Audit of suspected meter tampering or missing billing interval readings.
 - **Goal:** Prove whether readings were **omitted or withheld** from the ledger, beyond row-level integrity checks.
-- **Background / IP Note:** Merkle tree proofs verify that existing rows were not modified. They **cannot** detect missing rows. Monotonic nonces solve this: any gap in the sequence $N_{last} - N_{first} \ne \text{leaf\_count} - 1$ proves missing readings. *(Secondary patent application pending).*
+- **Background / IP Note:** Merkle tree proofs verify that existing rows were not modified. They **cannot** detect missing rows. Monotonic nonces solve this: any gap in the sequence $N_{last} - N_{first} \ne \text{leaf\_count} - 1$ proves missing readings. *(Monotonic Nonce Omission Verification).*
 
 #### Flow
 1. Auditor requests completeness verification for `mpan` over target billing month.

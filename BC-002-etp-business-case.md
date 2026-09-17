@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-The **EnergyTrust Protocol (ETP)** is a patented security and data provenance layer for smart meter telemetry ingestion, integrated with an Apache Iceberg lakehouse that maintains cryptographic verification from the physical gateway through to analytical query execution.
+The **EnergyTrust Protocol (ETP)** is a proprietary security and data provenance layer for smart meter telemetry ingestion, integrated with an Apache Iceberg lakehouse that maintains cryptographic verification from the physical gateway through to analytical query execution.
 
 The core value proposition is **provable telemetry data provenance**. While existing AMI (Advanced Metering Infrastructure) technologies encrypt data in transit and authenticate meter identities, they fail to maintain a verifiable audit trail once telemetry lands in data lakes. When regulatory authorities or market settlement entities question consumption or generation figures, utilities face manual, costly, and multi-week reconciliation processes. ETP solves this by binding cryptographically verified wire telemetry directly into open lakehouse columns, backed by daily Merkle checkpoints and external timestamp anchors.
 
