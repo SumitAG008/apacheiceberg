@@ -127,28 +127,89 @@ class ETPVerifier:
         result_set: List[Dict[str, Any]],
         contributing_readings: List[Dict[str, Any]]
     ) -> VerificationAwareQueryObject:
-        """Constructs a Verification-Aware Query Object combining query results with Merkle proofs."""
+        """Constructs a Verification-Aware Query Object combining query results with Merkle proofs.
         
+        Fixes circular self-attestation by matching computed Merkle roots against 
+        stored checkpoints in self.checkpointer, sorting nonces deterministically.
+        """
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
-        # Verify contributing rows
-        verified_count = sum(1 for r in contributing_readings if r.get("etp_verify_status") == "VERIFIED")
-        gap_count = sum(1 for r in contributing_readings if r.get("etp_verify_status") == "CHAIN_GAP")
-        failed_count = sum(1 for r in contributing_readings if r.get("etp_verify_status") == "FAILED")
+        if not contributing_readings:
+            proof = {
+                "total_rows_scanned": 0,
+                "status_summary": {"VERIFIED": 0, "CHAIN_GAP": 0, "FAILED": 0},
+                "merkle_root": "",
+                "anchor_references": [],
+                "proof_verified_independently": False
+            }
+            return VerificationAwareQueryObject(
+                query_id=query_id,
+                executed_at=now_iso,
+                snapshot_id=snapshot_id,
+                sql_string=sql_string,
+                result_set=result_set,
+                verification_proof=proof
+            )
+
+        # 1. Deterministic sorting by mpan, reading_ts, and etp_nonce
+        sorted_readings = sorted(
+            contributing_readings,
+            key=lambda x: (x.get("mpan", ""), x.get("reading_ts", ""), x.get("etp_nonce", 0))
+        )
+
+        verified_count = sum(1 for r in sorted_readings if r.get("etp_verify_status") == "VERIFIED")
+        gap_count = sum(1 for r in sorted_readings if r.get("etp_verify_status") == "CHAIN_GAP")
+        failed_count = sum(1 for r in sorted_readings if r.get("etp_verify_status") not in ("VERIFIED", "CHAIN_GAP"))
         
-        hashes = [r["etp_block_hash"] for r in contributing_readings if "etp_block_hash" in r]
-        root = canonical_merkle_root(hashes) if hashes else ""
+        # 2. Recompute Merkle root over deterministically sorted block hashes
+        hashes = [r["etp_block_hash"] for r in sorted_readings if "etp_block_hash" in r]
+        computed_root = canonical_merkle_root(hashes) if hashes else ""
+
+        # 3. Group readings by (mpan, day) and verify against stored checkpoints
+        meter_days: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+        for r in sorted_readings:
+            mpan = r.get("mpan", "UNKNOWN")
+            ts = r.get("reading_ts", "")
+            day = ts[:10] if len(ts) >= 10 else "UNKNOWN"
+            meter_days.setdefault((mpan, day), []).append(r)
+
+        anchor_refs = []
+        all_checkpoints_valid = True
+        
+        for (mpan, day), group_readings in meter_days.items():
+            group_hashes = [r["etp_block_hash"] for r in group_readings if "etp_block_hash" in r]
+            group_root = canonical_merkle_root(group_hashes)
+            
+            # Find stored checkpoint in checkpointer
+            cp_match = None
+            for cp in self.checkpointer.checkpoints:
+                if cp.get("mpan") == mpan and cp.get("day") == day:
+                    cp_match = cp
+                    break
+
+            if cp_match:
+                if cp_match.get("merkle_root") == group_root:
+                    anchor_refs.append(cp_match.get("anchor_ref", ""))
+                else:
+                    all_checkpoints_valid = False
+            else:
+                all_checkpoints_valid = False
+
+        # Proof is verified ONLY if zero failed rows AND all checkpoints exist & match recomputed roots
+        independent_verification = (failed_count == 0) and all_checkpoints_valid and len(anchor_refs) > 0
 
         proof = {
-            "total_rows_scanned": len(contributing_readings),
+            "total_rows_scanned": len(sorted_readings),
             "status_summary": {
                 "VERIFIED": verified_count,
                 "CHAIN_GAP": gap_count,
                 "FAILED": failed_count
             },
-            "merkle_root": root,
-            "anchor_reference": f"tsa:{now_iso}:token_{root[:12]}",
-            "proof_verified_independently": (failed_count == 0)
+            "merkle_root": computed_root,
+            "anchor_references": list(set(anchor_refs)),
+            "checkpoints_matched": len(anchor_refs),
+            "total_meter_days": len(meter_days),
+            "proof_verified_independently": independent_verification
         }
 
         return VerificationAwareQueryObject(

@@ -20,55 +20,117 @@ from .security import ETPSecurityManager
 import threading
 import warnings
 
-class MemoryNonceStore:
-    """In-memory atomic nonce store with separate non-committal check and commit operations."""
+import hmac
+import time
+import datetime
+import collections
+from typing import Dict, Any, Tuple, Optional
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
 
-    def __init__(self):
-        # mpan -> {"last_nonce": int, "last_hash": str, "updated_at": str}
+from .route_mutator import RouteMutator
+from .meter import TelemetryBlock, UNIT_SEPARATOR, compute_canonical_hash
+from .phantom_grid import PhantomGridHoneypot
+from .security import ETPSecurityManager
+
+
+import threading
+import warnings
+
+class SlidingWindowNonceStore:
+    """Atomic sliding-window nonce store implementing IPsec RFC 6479 anti-replay design.
+    
+    Supports out-of-order backfill during network comms loss while preventing replay attacks 
+    and maintaining thread safety across workers.
+    
+    Window Size W = 64 nonces.
+    - Nonces N > N_max: Accepted; shifts window and bitmap.
+    - Nonces in range [N_max - 63, N_max]: Accepted if bit in seen_bitmap is 0; sets bit to 1.
+    - Nonces N < N_max - 63: Rejected as expired/too old.
+    """
+
+    def __init__(self, window_size: int = 64):
+        self.window_size = window_size
+        # mpan -> {"last_nonce": int, "seen_bitmap": int, "last_hash": str, "updated_at": str}
         self._store: Dict[str, Dict[str, Any]] = {}
         self._lock = threading.Lock()
 
     def check_only(self, mpan: str, incoming_nonce: int) -> Tuple[int, int, str]:
-        """Non-committal replay check. NEVER mutates state.
-        Returns: (status: 1=OK / 0=REPLAY, last_nonce: int, message: str)
-        """
-        record = self._store.get(mpan)
-        if record is not None:
-            last_nonce = record["last_nonce"]
-            if incoming_nonce <= last_nonce:
-                return 0, last_nonce, "REPLAY_REJECTED"
-            return 1, last_nonce, "OK"
-        return 1, -1, "OK"
-
-    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
-        """Advance counter for a FULLY VERIFIED block under thread lock."""
+        """Non-committal replay check using sliding window bitmap. NEVER mutates state."""
         with self._lock:
             record = self._store.get(mpan)
-            if record is not None and incoming_nonce <= record["last_nonce"]:
-                return 0, record["last_nonce"], "REPLAY_REJECTED"
-            self._store[mpan] = {
-                "last_nonce": incoming_nonce,
-                "last_hash": incoming_hash,
-                "updated_at": timestamp,
-            }
-            return 1, incoming_nonce, "ACCEPT"
+            if record is None:
+                return 1, -1, "OK"
+            
+            last_nonce = record["last_nonce"]
+            seen_bitmap = record["seen_bitmap"]
+            
+            if incoming_nonce > last_nonce:
+                return 1, last_nonce, "OK"
+            
+            diff = last_nonce - incoming_nonce
+            if diff < self.window_size:
+                # Inside sliding window: check if already seen
+                is_seen = (seen_bitmap >> diff) & 1
+                if is_seen == 1:
+                    return 0, last_nonce, "REPLAY_REJECTED"
+                return 1, last_nonce, "OK_BACKFILL"
+            else:
+                # Too old (below sliding window)
+                return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
 
-    def atomic_cas(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
-        """DEPRECATED — check-and-commit in one step."""
-        warnings.warn(
-            "atomic_cas() commits before verification (ETP-2026-001); "
-            "use check_only() then commit()",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        status, last, msg = self.check_only(mpan, incoming_nonce)
-        if status == 0:
-            return status, last, msg
-        return self.commit(mpan, incoming_nonce, incoming_hash, timestamp)
+    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
+        """Advance counter or set bit in sliding window for a FULLY VERIFIED block under lock."""
+        with self._lock:
+            record = self._store.get(mpan)
+            if record is None:
+                self._store[mpan] = {
+                    "last_nonce": incoming_nonce,
+                    "seen_bitmap": 1,
+                    "last_hash": incoming_hash,
+                    "updated_at": timestamp
+                }
+                return 1, incoming_nonce, "ACCEPT"
+            
+            last_nonce = record["last_nonce"]
+            seen_bitmap = record["seen_bitmap"]
+            
+            if incoming_nonce > last_nonce:
+                shift = incoming_nonce - last_nonce
+                if shift >= self.window_size:
+                    new_bitmap = 1
+                else:
+                    new_bitmap = ((seen_bitmap << shift) | 1) & 0xFFFFFFFFFFFFFFFF
+                
+                self._store[mpan] = {
+                    "last_nonce": incoming_nonce,
+                    "seen_bitmap": new_bitmap,
+                    "last_hash": incoming_hash,
+                    "updated_at": timestamp
+                }
+                return 1, incoming_nonce, "ACCEPT"
+            
+            diff = last_nonce - incoming_nonce
+            if diff < self.window_size:
+                if (seen_bitmap >> diff) & 1 == 1:
+                    return 0, last_nonce, "REPLAY_REJECTED"
+                
+                new_bitmap = seen_bitmap | (1 << diff)
+                self._store[mpan]["seen_bitmap"] = new_bitmap
+                self._store[mpan]["last_hash"] = incoming_hash
+                self._store[mpan]["updated_at"] = timestamp
+                return 1, incoming_nonce, "ACCEPT_BACKFILL"
+            
+            return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
 
     def get_last_hash(self, mpan: str) -> Optional[str]:
-        record = self._store.get(mpan)
-        return record["last_hash"] if record else None
+        with self._lock:
+            record = self._store.get(mpan)
+            return record["last_hash"] if record else None
+
+
+# Retain alias MemoryNonceStore for backward compatibility
+MemoryNonceStore = SlidingWindowNonceStore
 
 
 class ETPGateway:
@@ -77,7 +139,7 @@ class ETPGateway:
     def __init__(
         self,
         route_mutator: RouteMutator,
-        nonce_store: MemoryNonceStore,
+        nonce_store: SlidingWindowNonceStore,
         phantom_grid: PhantomGridHoneypot,
         security_manager: ETPSecurityManager = None
     ):
@@ -86,7 +148,8 @@ class ETPGateway:
         self.phantom_grid = phantom_grid
         self.security = security_manager or ETPSecurityManager()
         self.public_key_registry: Dict[str, ec.EllipticCurvePublicKey] = {}
-        self.audit_log: list = []
+        # Bounded audit log deque to prevent memory leaks during DoS scans (ETP-2026-003)
+        self.audit_log = collections.deque(maxlen=10000)
 
     def register_meter_public_key(self, mpan: str, public_key: ec.EllipticCurvePublicKey):
         """Registers a meter's public key for signature verification."""
@@ -136,6 +199,12 @@ class ETPGateway:
         try:
             block = TelemetryBlock(**payload)
         except Exception as e:
+            self.audit_log.append({
+                "action": "telemetry.malformed",
+                "source_ip": source_ip,
+                "path": requested_path,
+                "outcome": "MALFORMED_REJECTED"
+            })
             return 400, {"status": "error", "message": f"Malformed block schema: {str(e)}"}
 
         # 3. Fast Nonce Check (PEEK only, zero state mutation before ECDSA verification)
@@ -214,3 +283,4 @@ class ETPGateway:
             "verify_status": verify_status,
             "block_hash": block.block_hash
         }
+

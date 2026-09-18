@@ -241,11 +241,19 @@ def test_verification_aware_query_object(meter):
     block = meter.generate_block(0.412)
     row = {
         "mpan": meter.mpan,
+        "reading_ts": "2026-09-06T17:30:00.000Z",
         "reading_kwh": 0.412,
         "etp_block_hash": block.block_hash,
         "etp_nonce": block.nonce,
         "etp_verify_status": "VERIFIED"
     }
+
+    # Build stored checkpoint in checkpointer first
+    checkpointer.build_meter_day_checkpoint(
+        mpan=meter.mpan,
+        day="2026-09-06",
+        readings=[row]
+    )
 
     query_obj = verifier.execute_verification_aware_query(
         query_id="q_12345",

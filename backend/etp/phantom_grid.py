@@ -10,15 +10,25 @@ import math
 import random
 import uuid
 import datetime
+import collections
 from typing import Dict, Any, List
 
 
 class PhantomGridHoneypot:
     """Isolated deception honeypot for reconnaissance traffic."""
 
-    def __init__(self):
+    def __init__(self, max_sessions: int = 5000, max_logs: int = 10000):
+        # Bounded sessions dictionary to prevent memory exhaustion from IP spoofing
+        self.max_sessions = max_sessions
         self.sessions: Dict[str, Dict[str, Any]] = {}
-        self.threat_logs: List[Dict[str, Any]] = []
+        self.session_order = collections.deque()
+        # Bounded threat logs deque
+        self.threat_logs = collections.deque(maxlen=max_logs)
+
+    def _prune_sessions_if_needed(self):
+        while len(self.sessions) > self.max_sessions and self.session_order:
+            oldest_ip = self.session_order.popleft()
+            self.sessions.pop(oldest_ip, None)
 
     def _generate_plausible_consumption(self, timestamp_epoch: float) -> float:
         """Derives a statistically plausible kWh consumption value following a time-of-day load curve."""
@@ -46,12 +56,14 @@ class PhantomGridHoneypot:
         # Track session duration for Attacker Containment Duration metric
         session_id = self.sessions.get(source_ip, {}).get("session_id")
         if not session_id:
+            self._prune_sessions_if_needed()
             session_id = f"session_{uuid.uuid4().hex[:12]}"
             self.sessions[source_ip] = {
                 "session_id": session_id,
                 "first_seen": now,
                 "request_count": 0
             }
+            self.session_order.append(source_ip)
 
         session = self.sessions[source_ip]
         session["request_count"] += 1
