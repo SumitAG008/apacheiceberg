@@ -76,9 +76,10 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 4. **Checkpoint Process Persistence Across Restarts**
    - **Persistence:** Updated `MerkleCheckpointer` in `backend/etp/checkpointer.py` to persist daily Merkle checkpoints to disk (`backend/data/etp_checkpoints.json`) and reload them on process startup.
 
-5. **CI Gating & Shared Golden Test Vectors**
-   - **CI Pipeline:** Added all ETP security suites to `.github/workflows/ci-cd.yml`.
-   - **Golden Vectors:** Added `backend/tests/test_golden_vectors.py` and cross-validated in `cpp/tests/test_etp_core.cpp` for canonical block hash `81165bf25fb1ef8d7e6c4cf3b544b60098dfc382f6e52c803ff2ef3c8dceb6a5`.
+5. **CI Gating & Automated Golden Test Vector Generation**
+   - **CI Pipeline:** Added all ETP security suites including `tests/test_golden_vectors.py` to `.github/workflows/ci-cd.yml`.
+   - **Automated Golden Generator:** Built `tools/gen_golden_vectors.py` to derive `backend/tests/golden_vectors.json` directly from the Python implementation. Prevents hand-written constant drift.
+   - **Programmatic Assertions:** Updated `backend/tests/test_golden_vectors.py` to load `golden_vectors.json` and assert canonical hash `1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41` and route scramble `2559e962cce1`. Cross-validated in `cpp/tests/test_etp_core.cpp`.
 
-6. **Git Status:** All changes committed (`705138d` & follow-up) and pushed to remote `main` branch.
+6. **Git Status:** All changes committed (`705138d` → `6825dc4` → `eb41638` → `8714541`) and pushed to remote `main` branch.
 
