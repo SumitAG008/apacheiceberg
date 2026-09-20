@@ -65,7 +65,10 @@ def test_golden_route_mutator_scramble_vector(golden_data):
 def test_golden_merkle_tree_domain_separation_vector(golden_data):
     """Validates domain-separated Merkle tree root vector against golden JSON output."""
     inputs = golden_data["inputs"]
+    expected = golden_data["expected_outputs"]["merkle_root"]
     leaves = inputs["test_leaves"]
 
     root = canonical_merkle_root(leaves)
     assert len(root) == 64
+    assert root == expected, f"Merkle root mismatch: got {root}, expected {expected}"
+

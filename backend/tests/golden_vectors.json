@@ -17,6 +17,7 @@
   },
   "expected_outputs": {
     "canonical_hash": "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41",
-    "route_scramble": "2559e962cce1"
+    "route_scramble": "2559e962cce1",
+    "merkle_root": "0971c8a1ce81287ccbc95aa4f171a5f807fb13ea2118f56b99769459a64906ad"
   }
 }

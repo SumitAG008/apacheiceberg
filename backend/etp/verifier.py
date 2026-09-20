@@ -89,7 +89,7 @@ class ETPVerifier:
         # 3. Find matching anchored checkpoint & compare Merkle root
         anchor_ref = ""
         checkpoint_match = None
-        for cp in self.checkpointer.checkpoints:
+        for cp in reversed(self.checkpointer.checkpoints):
             if cp["mpan"] == mpan and cp["day"] == day:
                 checkpoint_match = cp
                 anchor_ref = cp.get("anchor_ref", "")
@@ -180,9 +180,9 @@ class ETPVerifier:
             group_hashes = [r["etp_block_hash"] for r in group_readings if "etp_block_hash" in r]
             group_root = canonical_merkle_root(group_hashes)
             
-            # Find stored checkpoint in checkpointer
+            # Find stored checkpoint in checkpointer (searching reversed to get the latest)
             cp_match = None
-            for cp in self.checkpointer.checkpoints:
+            for cp in reversed(self.checkpointer.checkpoints):
                 if cp.get("mpan") == mpan and cp.get("day") == day:
                     cp_match = cp
                     break

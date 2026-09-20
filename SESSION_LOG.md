@@ -83,3 +83,31 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 
 6. **Git Status:** All changes committed (`705138d` → `6825dc4` → `eb41638` → `8714541`) and pushed to remote `main` branch.
 
+---
+
+## 📅 Session Log — 2026-09-21T00:45:00Z (Final Verification & Golden Vector Synchronization)
+
+### Summary of Final Fixes & Verifications:
+
+1. **Golden Test Vector Verification & Auto-Generation:**
+   - Executed `tools/gen_golden_vectors.py` to generate `backend/tests/golden_vectors.json` containing exact, programmatically derived outputs:
+     - Canonical Hash: `1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41`
+     - Route Scramble: `2559e962cce1`
+     - Merkle Root: `0971c8a1ce81287ccbc95aa4f171a5f807fb13ea2118f56b99769459a64906ad`
+   - Updated `backend/tests/test_golden_vectors.py` with explicit assertions for canonical hash, route scramble, and Merkle root against `golden_vectors.json`. Cross-validated in C++ test harness `cpp/tests/test_etp_core.cpp`.
+
+2. **CI Pipeline Inclusion:**
+   - Verified `tests/test_golden_vectors.py` is included in `.github/workflows/ci-cd.yml` step `Run ETP security & regression tests`.
+
+3. **End-of-Day Truncation & Boundary Gap Detection:**
+   - Verified same-day end-of-day gap detection (`eod_gap`) and day-boundary gap detection (`boundary_gap`) in `backend/etp/checkpointer.py` via `expected_daily_readings`.
+
+4. **$O(1)$ Append-Only Threat Log Persistence:**
+   - Verified `PhantomGridHoneypot` in `backend/etp/phantom_grid.py` uses `_append_threat_log` writing JSON-lines (`.jsonl`) format to prevent disk I/O DoS under attacker request floods.
+
+5. **Checkpoint Lookup Matching Fix:**
+   - Updated `backend/etp/verifier.py` (`verify_meter_day_readings` and `execute_verification_aware_query`) to search `reversed(self.checkpointer.checkpoints)` so the latest checkpoint for `(mpan, day)` is matched.
+
+6. **Automated Verification:**
+   - Ran full ETP test suite (48 test cases across `test_golden_vectors.py`, `test_etp_suite.py`, `test_etp_gateway_regressions.py`, `test_sliding_window_tsa_regressions.py`, `test_sec_2026_regressions.py`) -> **48 passed, 0 failed (100%)**.
+
