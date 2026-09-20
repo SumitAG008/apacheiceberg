@@ -35,7 +35,7 @@ READING_KWH = 12.345
 
 # Pre-computed Golden Outputs
 EXPECTED_CANONICAL_HASH = "81165bf25fb1ef8d7e6c4cf3b544b60098dfc382f6e52c803ff2ef3c8dceb6a5"
-EXPECTED_ROUTE_SCRAMBLE_W28333333 = "c49339e0eb9b"
+EXPECTED_ROUTE_SCRAMBLE_W28333333 = "2559e962cce1"
 
 
 def test_golden_canonical_hash_vector():

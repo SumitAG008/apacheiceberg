@@ -1,0 +1,38 @@
+[
+  {
+    "mpan_bucket": 9,
+    "mpan": "MPAN-1200012345678",
+    "day": "2026-09-06",
+    "merkle_root": "cd9c2a59f8572a5c6e8b9ab5f2252307a8f971fc7585582a84b2c9976f7cc94f",
+    "anchor_digest": "386afaa4de341eeb2b0bff6c93920c92070a0bf01d3ed4bd8195307ac24a5b1f",
+    "leaf_count": 1,
+    "first_nonce": 184291,
+    "last_nonce": 184291,
+    "prev_day_last_nonce": null,
+    "gap_count": 0,
+    "boundary_gap": 0,
+    "built_at": "2026-09-20T23:36:39.692868+00:00",
+    "anchor_ref": "urn:meldra:simulated-tsa:eyJnZW5fdGltZSI6ICIyMDI2LTA5LTIwVDIzOjM2OjM5LjY5Mjg2OCswMDowMCIsICJoYXNoX2FsZ29yaXRobSI6ICJzaGEyNTYiLCAiaGFzaGVkX21lc3NhZ2UiOiAiMzg2YWZhYTRkZTM0MWVlYjJiMGJmZjZjOTM5MjBjOTIwNzBhMGJmMDFkM2VkNGJkODE5NTMwN2FjMjRhNWIxZiIsICJpc19zaW11bGF0ZWQiOiB0cnVlLCAibm9uY2UiOiAiMWZiN2Q4ZTkxYmJjYjNmMSIsICJwb2xpY3kiOiAiMS4zLjYuMS40LjEuNTg0MzIuMS4xLnNpbXVsYXRlZCIsICJzaWduYXR1cmUiOiAiM2I0Y2UxNzVlYmQ3OWQ0OTJmNDM0ZWQ5NGJiNDAzNTUzZmY3NjE5ZWQwOWNjODlkZTJjYzVjZjZlNWMzNTVkZCIsICJzaWduYXR1cmVfYWxnb3JpdGhtIjogInNpbXVsYXRlZFNoYTI1NkhNQUMiLCAidHNhX25hbWUiOiAidXJuOm1lbGRyYTp0c2E6c2ltdWxhdGVkLWxvY2FsIiwgInZlcnNpb24iOiAxfQ==",
+    "anchor_at": "2026-09-20T23:36:39.692868+00:00",
+    "is_simulated_anchor": true,
+    "status": "ANCHORED"
+  },
+  {
+    "mpan_bucket": 9,
+    "mpan": "MPAN-ANCHOR-01",
+    "day": "2026-09-18",
+    "merkle_root": "528bcabc9ce722f64a4f871fb4ae8f25509011c69105da5ffb5785af86323ec2",
+    "anchor_digest": "b3694f7a838779774aac93b9d3909ab2feafa60ac27a3a7d37ad42b2796bc6b4",
+    "leaf_count": 1,
+    "first_nonce": 100,
+    "last_nonce": 100,
+    "prev_day_last_nonce": 99,
+    "gap_count": 0,
+    "boundary_gap": 0,
+    "built_at": "2026-09-20T23:36:39.749896+00:00",
+    "anchor_ref": "urn:meldra:simulated-tsa:eyJnZW5fdGltZSI6ICIyMDI2LTA5LTIwVDIzOjM2OjM5Ljc0OTg5NiswMDowMCIsICJoYXNoX2FsZ29yaXRobSI6ICJzaGEyNTYiLCAiaGFzaGVkX21lc3NhZ2UiOiAiYjM2OTRmN2E4Mzg3Nzk3NzRhYWM5M2I5ZDM5MDlhYjJmZWFmYTYwYWMyN2EzYTdkMzdhZDQyYjI3OTZiYzZiNCIsICJpc19zaW11bGF0ZWQiOiB0cnVlLCAibm9uY2UiOiAiYWE0MmJiZmVhODE5Y2Y0MSIsICJwb2xpY3kiOiAiMS4zLjYuMS40LjEuNTg0MzIuMS4xLnNpbXVsYXRlZCIsICJzaWduYXR1cmUiOiAiNzI0MjY0NWY3MmRlYWM4MGE4NmE1ZWQ3MWQxYjFmZjI5MjMwODE5MTgwMWY4ZDIzYjFjM2VlZjA2NjVmMTRjMiIsICJzaWduYXR1cmVfYWxnb3JpdGhtIjogInNpbXVsYXRlZFNoYTI1NkhNQUMiLCAidHNhX25hbWUiOiAidXJuOm1lbGRyYTp0c2E6c2ltdWxhdGVkLWxvY2FsIiwgInZlcnNpb24iOiAxfQ==",
+    "anchor_at": "2026-09-20T23:36:39.749896+00:00",
+    "is_simulated_anchor": true,
+    "status": "ANCHORED"
+  }
+]

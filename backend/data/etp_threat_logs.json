@@ -1,0 +1,13 @@
+[
+  {
+    "event_id": "evt_669f74d0228643c690fda2f1cc2c6c4c",
+    "timestamp": "2026-09-20T23:36:39.686407+00:00",
+    "source_ip": "198.51.100.42",
+    "requested_route": "/api/v1/telemetry",
+    "epoch_window": 1789947399,
+    "honeypot_session_id": "session_1ec1cec54c21",
+    "session_duration_s": 0.0,
+    "payload_sample": "{'mpan': 'MPAN-1200012345678', 'reading_kwh': 0.412, 'timestamp': '2026-09-20T23:36:39.000Z', 'prev_hash': '0000000000000000000000000000000000000000000000000000000000000000', 'nonce': 184291, 'crypto_",
+    "stix_export_status": "PENDING"
+  }
+]

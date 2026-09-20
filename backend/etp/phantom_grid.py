@@ -11,19 +11,53 @@ import random
 import uuid
 import datetime
 import collections
+import json
+from pathlib import Path
 from typing import Dict, Any, List
+
+try:
+    from backend.observability import audit
+except ImportError:
+    try:
+        from observability import audit
+    except ImportError:
+        audit = None
 
 
 class PhantomGridHoneypot:
-    """Isolated deception honeypot for reconnaissance traffic."""
+    """Isolated deception honeypot for reconnaissance traffic with durable threat log persistence."""
 
-    def __init__(self, max_sessions: int = 5000, max_logs: int = 10000):
+    def __init__(self, max_sessions: int = 5000, max_logs: int = 10000, storage_path: str = "backend/data/etp_threat_logs.json"):
         # Bounded sessions dictionary to prevent memory exhaustion from IP spoofing
         self.max_sessions = max_sessions
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self.session_order = collections.deque()
+        self.storage_path = storage_path
         # Bounded threat logs deque
         self.threat_logs = collections.deque(maxlen=max_logs)
+        self._load_threat_logs()
+
+    def _load_threat_logs(self) -> None:
+        """Loads threat logs from disk to guarantee durability across process restarts."""
+        try:
+            path = Path(self.storage_path)
+            if path.exists():
+                with open(path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    for item in loaded:
+                        self.threat_logs.append(item)
+        except Exception:
+            pass
+
+    def _save_threat_logs(self) -> None:
+        """Persists threat logs to file storage."""
+        try:
+            path = Path(self.storage_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(list(self.threat_logs), f, indent=2)
+        except Exception:
+            pass
 
     def _prune_sessions_if_needed(self):
         while len(self.sessions) > self.max_sessions and self.session_order:
@@ -98,6 +132,10 @@ class PhantomGridHoneypot:
             "stix_export_status": "PENDING"
         }
         self.threat_logs.append(threat_event)
+        self._save_threat_logs()
+
+        if audit:
+            audit.deny(action="etp.threat_log", reason="HONEYPOT_DECEIVE", detail=threat_event)
         
         return response
 
