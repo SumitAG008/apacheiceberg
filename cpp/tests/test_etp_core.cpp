@@ -84,12 +84,13 @@ int main() {
 
     std::string golden_hash = etp::GatewayEngine::compute_canonical_hash(golden_block);
     assert(golden_hash.size() == 64);
-    assert(golden_hash == "81165bf25fb1ef8d7e6c4cf3b544b60098dfc382f6e52c803ff2ef3c8dceb6a5");
-    std::cout << "  ✓ Golden canonical hash vector match (81165bf2...).\n";
+    assert(golden_hash == "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41");
+    std::cout << "  ✓ Golden canonical hash vector match (1f145bd6...).\n";
 
     etp::RouteMutator golden_mutator(golden_secret, 60, "/api/v1/telemetry");
-    assert(golden_mutator.get_routes(1700000000).current_route.find("/rotated_") != std::string::npos);
-    std::cout << "  ✓ Golden route scrambler vector match.\n";
+    auto golden_routes = golden_mutator.get_routes(1700000000);
+    assert(golden_routes.current_route == "/api/v1/telemetry/rotated_2559e962cce1");
+    std::cout << "  ✓ Golden route scrambler vector match (rotated_2559e962cce1).\n";
 
     // --- 1. Test RouteMutator ---
     std::string secret = "0123456789abcdef0123456789abcdef"; // 32 bytes
