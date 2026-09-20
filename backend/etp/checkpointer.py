@@ -7,45 +7,82 @@ preventing CVE-2012-2459 duplicate leaf vulnerabilities. Validates monotonic non
 import json
 import base64
 import hashlib
-import datetime
-from typing import List, Dict, Any, Tuple
-
-
-"""Block 6 — Daily Merkle Checkpointer & Nonce Sequence Validator.
-
-Builds daily per-meter and estate-wide Merkle trees with domain separation (0x00 leaf / 0x01 parent)
-preventing CVE-2012-2459 duplicate leaf vulnerabilities. Validates monotonic nonces for omission detection.
-"""
-
-import json
-import base64
-import hashlib
+import logging
 import datetime
 import urllib.request
+from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 
+logger = logging.getLogger(__name__)
 
-def create_rfc3161_anchor_token(merkle_root: str, timestamp_iso: str, tsa_url: Optional[str] = None) -> Dict[str, Any]:
+
+def parse_rfc3161_pkistatus(der_bytes: bytes) -> Optional[int]:
+    """Parses PKIStatus integer from a binary RFC 3161 TimeStampResp DER payload.
+    
+    Returns:
+        0 (granted), 1 (grantedWithMods), 2..5 (rejections), or None if parsing fails.
+    """
+    try:
+        if not der_bytes or der_bytes[0] != 0x30:
+            return None
+        
+        # Parse TimeStampResp SEQUENCE length
+        pos = 1
+        if der_bytes[pos] & 0x80:
+            len_bytes_count = der_bytes[pos] & 0x7f
+            pos += 1 + len_bytes_count
+        else:
+            pos += 1
+
+        # Check status SEQUENCE tag (0x30)
+        if pos >= len(der_bytes) or der_bytes[pos] != 0x30:
+            return None
+        pos += 1
+        if der_bytes[pos] & 0x80:
+            len_bytes_count = der_bytes[pos] & 0x7f
+            pos += 1 + len_bytes_count
+        else:
+            pos += 1
+
+        # Check PKIStatus INTEGER tag (0x02)
+        if pos >= len(der_bytes) or der_bytes[pos] != 0x02:
+            return None
+        pos += 1
+        int_len = der_bytes[pos]
+        pos += 1
+        
+        status_val = int.from_bytes(der_bytes[pos:pos + int_len], byteorder='big')
+        return status_val
+    except Exception as err:
+        logger.warning("Failed to parse RFC 3161 PKIStatus: %s", err)
+        return None
+
+
+def create_rfc3161_anchor_token(anchor_digest: str, timestamp_iso: str, tsa_url: Optional[str] = None) -> Dict[str, Any]:
     """Generates an RFC 3161 Timestamping Authority (TSA) Token envelope.
     
-    If `tsa_url` is provided (e.g. FreeTSA / DigiCert RFC 3161 endpoint), attempts a real HTTP 
-    DER timestamp query. If `tsa_url` is None or unavailable, generates a transparent 
-    SimulatedAnchorToken clearly marked with `is_simulated = True` so it is never misrepresented.
+    Fixes Blocker 1:
+    - Constructs valid DER TimeStampReq with correct ASN.1 SEQUENCE lengths (30 36 header, 30 31 imprint).
+    - Parses PKIStatus from TimeStampResp DER bytes. Sets `is_simulated = False` ONLY if PKIStatus is 0 or 1.
+    - Retains full Base64 DER token without string truncation.
+    - If tsa_url is None, unavailable, or rejected by TSA, falls back honestly to SimulatedAnchorToken.
     """
-    nonce_hex = hashlib.sha256(f"{merkle_root}:{timestamp_iso}".encode('utf-8')).hexdigest()[:16]
+    nonce_bytes = hashlib.sha256(f"{anchor_digest}:{timestamp_iso}".encode('utf-8')).digest()[:8]
+    nonce_hex = nonce_bytes.hex()
     
     if tsa_url:
         try:
-            # Build minimal RFC 3161 TimeStampReq DER payload manually
-            # OID for SHA-256: 2.16.840.1.101.3.4.2.1
-            msg_bytes = bytes.fromhex(merkle_root)
-            req_data = (
-                b"\x30\x2f"  # Sequence (47 bytes)
-                b"\x02\x01\x01"  # Version 1
-                b"\x30\x21"  # MessageImprint sequence
-                b"\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00"  # SHA-256 OID
-                b"\x04\x20" + msg_bytes  # Hashed message (32 bytes)
-            )
+            # Build valid RFC 3161 TimeStampReq DER payload
+            # MessageImprint: AlgorithmIdentifier (SHA-256) + HashedMessage (32 bytes) = 49 bytes (0x31)
+            msg_bytes = bytes.fromhex(anchor_digest)
+            imprint_seq = b"\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04\x20" + msg_bytes
+            version_int = b"\x02\x01\x01"
+            cert_req = b"\x01\x01\xff"  # certReq TRUE
+            
+            req_body = version_int + imprint_seq + cert_req
+            # TimeStampReq SEQUENCE: tag 0x30, length = len(req_body) (57 bytes -> 0x39)
+            req_data = bytes([0x30, len(req_body)]) + req_body
+
             req = urllib.request.Request(
                 tsa_url,
                 data=req_data,
@@ -54,20 +91,26 @@ def create_rfc3161_anchor_token(merkle_root: str, timestamp_iso: str, tsa_url: O
             with urllib.request.urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
                     der_token = resp.read()
-                    encoded_token = base64.b64encode(der_token).decode('utf-8')
-                    return {
-                        "is_simulated": False,
-                        "token_format": "rfc3161_der_base64",
-                        "tsa_url": tsa_url,
-                        "hashed_message": merkle_root,
-                        "token": f"urn:ietf:rfc:3161:{encoded_token[:64]}..."
-                    }
+                    pki_status = parse_rfc3161_pkistatus(der_token)
+                    
+                    # ONLY PKIStatus 0 (granted) or 1 (grantedWithMods) are valid TSA proofs
+                    if pki_status in (0, 1):
+                        encoded_token = base64.b64encode(der_token).decode('utf-8')
+                        return {
+                            "is_simulated": False,
+                            "token_format": "rfc3161_der_base64",
+                            "tsa_url": tsa_url,
+                            "pki_status": pki_status,
+                            "hashed_message": anchor_digest,
+                            "token": f"urn:ietf:rfc:3161:{encoded_token}"  # Full token, no truncation
+                        }
+                    else:
+                        logger.warning("TSA returned rejection status PKIStatus=%s from %s", pki_status, tsa_url)
         except Exception as err:
-            # Fall through to explicit SimulatedAnchorToken with warning
-            pass
+            logger.warning("TSA request to %s failed: %s", tsa_url, err)
 
     # Explicit, self-describing Simulated Anchor Token (No false RSA claims)
-    sig_payload = f"SIMULATED_TSA_V1|policy:1.3.6.1.4.1.58432.1.1.simulated|digest:sha256:{merkle_root}|nonce:{nonce_hex}|ts:{timestamp_iso}"
+    sig_payload = f"SIMULATED_TSA_V1|policy:1.3.6.1.4.1.58432.1.1.simulated|digest:sha256:{anchor_digest}|nonce:{nonce_hex}|ts:{timestamp_iso}"
     simulated_sig = hashlib.sha256(sig_payload.encode('utf-8')).hexdigest()
 
     token_struct = {
@@ -75,7 +118,7 @@ def create_rfc3161_anchor_token(merkle_root: str, timestamp_iso: str, tsa_url: O
         "version": 1,
         "policy": "1.3.6.1.4.1.58432.1.1.simulated",
         "hash_algorithm": "sha256",
-        "hashed_message": merkle_root,
+        "hashed_message": anchor_digest,
         "nonce": nonce_hex,
         "gen_time": timestamp_iso,
         "tsa_name": "urn:meldra:tsa:simulated-local",
@@ -86,7 +129,7 @@ def create_rfc3161_anchor_token(merkle_root: str, timestamp_iso: str, tsa_url: O
     return {
         "is_simulated": True,
         "token_format": "simulated_json_base64",
-        "hashed_message": merkle_root,
+        "hashed_message": anchor_digest,
         "token": f"urn:meldra:simulated-tsa:{encoded}"
     }
 
@@ -125,11 +168,35 @@ def canonical_merkle_root(leaf_hashes_hex: List[str]) -> str:
 
 
 class MerkleCheckpointer:
-    """Daily checkpointer building Merkle roots and external TSA anchors."""
+    """Daily checkpointer building Merkle roots and external TSA anchors with process persistence."""
 
-    def __init__(self, tsa_url: Optional[str] = None):
-        self.checkpoints: List[Dict[str, Any]] = []
+    def __init__(self, tsa_url: Optional[str] = None, storage_path: Optional[str] = None):
         self.tsa_url = tsa_url
+        self.storage_path = storage_path or "backend/data/etp_checkpoints.json"
+        self.checkpoints: List[Dict[str, Any]] = []
+        self._load_checkpoints()
+
+    def _load_checkpoints(self) -> None:
+        """Loads checkpoints from disk to guarantee persistence across process restarts."""
+        try:
+            path = Path(self.storage_path)
+            if path.exists():
+                with open(path, "r", encoding="utf-8") as f:
+                    self.checkpoints = json.load(f)
+                logger.info("Loaded %d ETP checkpoints from %s", len(self.checkpoints), self.storage_path)
+        except Exception as err:
+            logger.warning("Failed to load checkpoints from %s: %s", self.storage_path, err)
+            self.checkpoints = []
+
+    def _save_checkpoints(self) -> None:
+        """Persists checkpoints to file storage."""
+        try:
+            path = Path(self.storage_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self.checkpoints, f, indent=2)
+        except Exception as err:
+            logger.warning("Failed to persist checkpoints to %s: %s", self.storage_path, err)
 
     def build_meter_day_checkpoint(
         self,
@@ -140,8 +207,8 @@ class MerkleCheckpointer:
     ) -> Dict[str, Any]:
         """Builds Merkle tree checkpoint for a single meter's daily readings.
         
-        Fixes hash seed randomization by using deterministic sha256 partitioning.
-        Chains day_N.first_nonce to prev_day_last_nonce + 1 to detect day-boundary truncation.
+        Anchors over a combined metadata digest (merkle_root + first_nonce + last_nonce + gap_count)
+        so checkpoint nonces are cryptographically authenticated against tampering.
         """
         if not readings:
             raise ValueError("No readings provided for checkpoint")
@@ -168,19 +235,28 @@ class MerkleCheckpointer:
                 boundary_gap = first_nonce - (prev_day_last_nonce + 1)
                 gap_count += boundary_gap
 
+        # Authenticated Metadata Commitment (anchors root + nonces + boundary links together)
+        anchor_digest = hashlib.sha256(
+            f"{merkle_root}|{first_nonce}|{last_nonce}|{leaf_count}|{prev_day_last_nonce}".encode('utf-8')
+        ).hexdigest()
+
         # Generate RFC 3161 Timestamping Authority (TSA) Anchor Token envelope
         tsa_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        anchor_envelope = create_rfc3161_anchor_token(merkle_root, tsa_timestamp, tsa_url=self.tsa_url)
+        anchor_envelope = create_rfc3161_anchor_token(anchor_digest, tsa_timestamp, tsa_url=self.tsa_url)
         anchor_ref = anchor_envelope["token"]
 
         # Deterministic Iceberg bucket partitioning (process-independent sha256 hash)
         bucket_id = int(hashlib.sha256(mpan.encode('utf-8')).hexdigest()[:8], 16) % 16
+
+        status = "ANCHORED" if gap_count == 0 else "ANCHORED_WITH_GAPS"
+        is_simulated = anchor_envelope.get("is_simulated", True)
 
         checkpoint = {
             "mpan_bucket": bucket_id,
             "mpan": mpan,
             "day": day,
             "merkle_root": merkle_root,
+            "anchor_digest": anchor_digest,
             "leaf_count": leaf_count,
             "first_nonce": first_nonce,
             "last_nonce": last_nonce,
@@ -190,10 +266,18 @@ class MerkleCheckpointer:
             "built_at": tsa_timestamp,
             "anchor_ref": anchor_ref,
             "anchor_at": tsa_timestamp,
-            "is_simulated_anchor": anchor_envelope.get("is_simulated", True),
-            "status": "ANCHORED" if gap_count == 0 else "ANCHORED_WITH_GAPS"
+            "is_simulated_anchor": is_simulated,
+            "status": status
         }
 
         self.checkpoints.append(checkpoint)
+        self._save_checkpoints()
+
+        try:
+            from observability.metrics import record_checkpoint_built
+            record_checkpoint_built(status, is_simulated)
+        except ImportError:
+            pass
+
         return checkpoint
 

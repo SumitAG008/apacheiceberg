@@ -604,6 +604,20 @@ def get_current_user(request: Request) -> Dict[str, Any]:
         )
 
 # ─────────────────────────────────────────
+# PROMETHEUS METRICS ENDPOINT
+# ─────────────────────────────────────────
+@app.get("/metrics", tags=["Observability"])
+async def metrics_endpoint():
+    """Scraped by Prometheus for ETP telemetry verification counters & latency histograms."""
+    try:
+        from observability.metrics import get_metrics_response
+        content, content_type = get_metrics_response()
+    except Exception as e:
+        content, content_type = f"# Error generating metrics: {e}\n".encode("utf-8"), "text/plain"
+    return Response(content=content, media_type=content_type)
+
+
+# ─────────────────────────────────────────
 # AUTH ENDPOINTS
 # ─────────────────────────────────────────
 

@@ -86,6 +86,19 @@ jobs:
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
 
+      - name: Run ETP security & regression tests
+        working-directory: backend
+        run: |
+          python -m pytest tests/test_etp_suite.py tests/test_etp_gateway_regressions.py tests/test_sec_2026_regressions.py tests/test_sliding_window_tsa_regressions.py \
+            -v \
+            --tb=short \
+            --no-header \
+            -q
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
+          JWT_ALGORITHM: "HS256"
+
       - name: Run original regression suite (auth-flow skipped in CI)
         working-directory: backend
         run: |
