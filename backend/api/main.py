@@ -3240,6 +3240,131 @@ async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)
             
     return results
 
+
+# ── ETP Telemetry & Provenance Endpoints ─────────────────────────────────────
+try:
+    from etp.meter import TelemetryBlock
+    from etp.gateway import ETPGateway
+    from etp.checkpointer import MerkleCheckpointer
+    from etp.verifier import ETPVerifier
+    from etp.phantom_grid import PhantomGridHoneypot
+
+    etp_gateway = ETPGateway(secret_key=b"0123456789abcdef0123456789abcdef", window_s=60)
+    etp_checkpointer = MerkleCheckpointer(storage_path="backend/data/etp_checkpoints.json")
+    etp_verifier = ETPVerifier(etp_checkpointer)
+    etp_honeypot = PhantomGridHoneypot(storage_path="backend/data/etp_threat_logs.jsonl")
+except Exception as _etp_init_err:
+    print(f"[api/main] ETP module init warning: {_etp_init_err}")
+    etp_gateway = None
+    etp_checkpointer = None
+    etp_verifier = None
+    etp_honeypot = None
+
+
+class ETPTelemetryIngestRequest(BaseModel):
+    route: str
+    mpan: str
+    reading_kwh: float
+    timestamp: str
+    prev_hash: str
+    nonce: int
+    signature: str
+    crypto_suite_id: str = "ECDSA-P256-SHA256-v1"
+    key_id: str = "k-test"
+
+
+class ETPCheckpointBuildRequest(BaseModel):
+    mpan: str
+    day: str
+    readings: List[Dict[str, Any]]
+    prev_day_last_nonce: Optional[int] = None
+    expected_daily_readings: Optional[int] = 48
+
+
+class ETPQueryVerifyRequest(BaseModel):
+    query_id: str
+    sql_string: str
+    snapshot_id: int
+    result_set: List[Dict[str, Any]]
+    contributing_readings: List[Dict[str, Any]]
+
+
+@app.post("/v1/etp/ingest", tags=["ETP Telemetry"])
+async def etp_ingest_telemetry(payload: ETPTelemetryIngestRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """Ingests and cryptographically verifies a smart meter telemetry block through ETP Gateway (UC-01)."""
+    if not etp_gateway or not etp_honeypot:
+        raise HTTPException(status_code=503, detail="ETP gateway engine not initialized")
+    block = TelemetryBlock(
+        mpan=payload.mpan,
+        reading_kwh=payload.reading_kwh,
+        timestamp=payload.timestamp,
+        prev_hash=payload.prev_hash,
+        nonce=payload.nonce,
+        signature=payload.signature,
+        crypto_suite_id=payload.crypto_suite_id,
+        key_id=payload.key_id
+    )
+    result = etp_gateway.verify_telemetry_block(
+        requested_route=payload.route,
+        block=block
+    )
+    if result.divert_to_honeypot:
+        honeypot_resp = etp_honeypot.handle_diverted_request(
+            source_ip="127.0.0.1",
+            requested_route=payload.route,
+            epoch_window=int(time.time() // 60),
+            payload=payload.dict()
+        )
+        return JSONResponse(status_code=200, content={"status": "DIVERTED", "honeypot": honeypot_resp})
+    
+    if result.status == "VERIFIED":
+        return {"status": "VERIFIED", "block_hash": block.block_hash, "mpan": payload.mpan, "nonce": payload.nonce}
+    else:
+        raise HTTPException(status_code=400, detail=f"Telemetry verification failed: {result.status}")
+
+
+@app.post("/v1/etp/checkpoint", tags=["ETP Telemetry"])
+async def etp_build_checkpoint(payload: ETPCheckpointBuildRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """Builds a daily Merkle checkpoint with TSA RFC 3161 anchor token & omission gap detection (UC-09)."""
+    if not etp_checkpointer:
+        raise HTTPException(status_code=503, detail="ETP checkpointer not initialized")
+    try:
+        cp = etp_checkpointer.build_meter_day_checkpoint(
+            mpan=payload.mpan,
+            day=payload.day,
+            readings=payload.readings,
+            prev_day_last_nonce=payload.prev_day_last_nonce,
+            expected_daily_readings=payload.expected_daily_readings
+        )
+        return cp
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/v1/etp/query/verify", tags=["ETP Telemetry"])
+async def etp_query_verify(payload: ETPQueryVerifyRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    """Executes a SQL query and emits a Verification-Aware Query Object (UC-02)."""
+    if not etp_verifier:
+        raise HTTPException(status_code=503, detail="ETP verifier not initialized")
+    query_obj = etp_verifier.execute_verification_aware_query(
+        query_id=payload.query_id,
+        sql_string=payload.sql_string,
+        snapshot_id=payload.snapshot_id,
+        result_set=payload.result_set,
+        contributing_readings=payload.contributing_readings
+    )
+    return query_obj.to_dict()
+
+
+@app.get("/v1/etp/honeypot/stix", tags=["ETP Telemetry"])
+async def etp_honeypot_stix(user: Dict[str, Any] = Depends(get_current_user)):
+    """Exports STIX 2.1 threat intelligence bundle from Phantom Grid honeypot (UC-03)."""
+    if not etp_honeypot:
+        raise HTTPException(status_code=503, detail="ETP honeypot not initialized")
+    return etp_honeypot.export_stix_21_bundle()
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+

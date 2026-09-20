@@ -198,3 +198,29 @@ jobs:
           docker build \
             -t meldra/frontend:ci-${{ github.sha }} \
             ./frontend/vite-project
+
+  # ─── 4. C++ NATIVE CORE ENGINE TESTS ─────────────────────────────────────────
+  test-cpp-native:
+    name: Native C++20 Core Engine Tests (libetp_core)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install C++ Build Toolchain & OpenSSL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libssl-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -B cpp/build -S cpp -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build etp_core C++ binaries
+        run: |
+          cmake --build cpp/build --config Release
+
+      - name: Execute C++ Native Core Verification Suite
+        run: |
+          ./cpp/build/etp_core_test
+

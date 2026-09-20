@@ -311,3 +311,27 @@ def test_cim_exporter():
     assert "MPAN-1200012345678" in xml_output
     assert "<etp:TelemetryProvenance" in xml_output
     assert "<etp:verificationStatus>VERIFIED</etp:verificationStatus>" in xml_output
+
+
+def test_end_of_day_truncation_detection(meter):
+    """Test same-day end-of-day truncation detection (e.g. 42 readings instead of expected 48)."""
+    checkpointer = MerkleCheckpointer()
+    readings = []
+    for i in range(42):  # 42 readings out of expected 48
+        blk = meter.generate_block(0.100 + i / 1000.0)
+        readings.append({
+            "mpan": meter.mpan,
+            "etp_nonce": blk.nonce,
+            "etp_block_hash": blk.block_hash
+        })
+    
+    cp = checkpointer.build_meter_day_checkpoint(
+        mpan=meter.mpan,
+        day="2026-09-06",
+        readings=readings,
+        expected_daily_readings=48
+    )
+
+    assert cp["eod_gap"] == 6
+    assert cp["gap_count"] == 6
+    assert cp["status"] == "ANCHORED_WITH_GAPS"

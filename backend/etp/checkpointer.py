@@ -203,12 +203,14 @@ class MerkleCheckpointer:
         mpan: str,
         day: str,
         readings: List[Dict[str, Any]],
-        prev_day_last_nonce: Optional[int] = None
+        prev_day_last_nonce: Optional[int] = None,
+        expected_daily_readings: Optional[int] = None
     ) -> Dict[str, Any]:
         """Builds Merkle tree checkpoint for a single meter's daily readings.
         
         Anchors over a combined metadata digest (merkle_root + first_nonce + last_nonce + gap_count)
-        so checkpoint nonces are cryptographically authenticated against tampering.
+        so checkpoint nonces are cryptographically authenticated against tampering. Includes
+        same-day end-of-day truncation detection for half-hourly smart meter readings (48 readings/day).
         """
         if not readings:
             raise ValueError("No readings provided for checkpoint")
@@ -235,9 +237,15 @@ class MerkleCheckpointer:
                 boundary_gap = first_nonce - (prev_day_last_nonce + 1)
                 gap_count += boundary_gap
 
+        # Same-day End-of-Day Truncation Check: detect omitted trailing readings (e.g. 42 instead of 48)
+        eod_gap = 0
+        if expected_daily_readings is not None and expected_daily_readings > 0 and leaf_count < expected_daily_readings:
+            eod_gap = expected_daily_readings - leaf_count
+            gap_count += eod_gap
+
         # Authenticated Metadata Commitment (anchors root + nonces + boundary links together)
         anchor_digest = hashlib.sha256(
-            f"{merkle_root}|{first_nonce}|{last_nonce}|{leaf_count}|{prev_day_last_nonce}".encode('utf-8')
+            f"{merkle_root}|{first_nonce}|{last_nonce}|{leaf_count}|{prev_day_last_nonce}|{eod_gap}".encode('utf-8')
         ).hexdigest()
 
         # Generate RFC 3161 Timestamping Authority (TSA) Anchor Token envelope
@@ -263,6 +271,7 @@ class MerkleCheckpointer:
             "prev_day_last_nonce": prev_day_last_nonce,
             "gap_count": gap_count,
             "boundary_gap": boundary_gap,
+            "eod_gap": eod_gap,
             "built_at": tsa_timestamp,
             "anchor_ref": anchor_ref,
             "anchor_at": tsa_timestamp,
