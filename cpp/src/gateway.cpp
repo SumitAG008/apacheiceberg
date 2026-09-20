@@ -2,7 +2,8 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/crypto.h>
-#include <cstdio>
+#include <charconv>
+#include <memory>
 #include <sstream>
 #include <iomanip>
 #include <stdexcept>
@@ -13,19 +14,37 @@ namespace etp {
 
 namespace {
 
-std::vector<uint8_t> hex_to_bytes(std::string_view hex) {
-    std::vector<uint8_t> bytes;
-    bytes.reserve(hex.size() / 2);
+// RAII Smart Pointer Aliases for OpenSSL handles (CPP-ARC-001 §2 compliance)
+using EVP_PKEY_ptr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+using EVP_MD_CTX_ptr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
+using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+
+inline bool hex_char_val(char c, uint8_t& val) {
+    if (c >= '0' && c <= '9') { val = static_cast<uint8_t>(c - '0'); return true; }
+    if (c >= 'a' && c <= 'f') { val = static_cast<uint8_t>(c - 'a' + 10); return true; }
+    if (c >= 'A' && c <= 'F') { val = static_cast<uint8_t>(c - 'A' + 10); return true; }
+    return false;
+}
+
+// Zero-throw, zero-allocation hex parser preventing memory leaks or exceptions on corrupt inputs
+inline bool hex_to_bytes(std::string_view hex, std::vector<uint8_t>& out) {
+    if (hex.size() % 2 != 0) return false;
+    out.clear();
+    out.reserve(hex.size() / 2);
     for (size_t i = 0; i < hex.size(); i += 2) {
-        std::string byte_str(hex.substr(i, 2));
-        uint8_t b = static_cast<uint8_t>(std::stoul(byte_str, nullptr, 16));
-        bytes.push_back(b);
+        uint8_t hi = 0, lo = 0;
+        if (!hex_char_val(hex[i], hi) || !hex_char_val(hex[i + 1], lo)) {
+            out.clear();
+            return false;
+        }
+        out.push_back(static_cast<uint8_t>((hi << 4) | lo));
     }
-    return bytes;
+    return true;
 }
 
 std::string bytes_to_hex(const uint8_t* data, size_t len) {
     std::ostringstream oss;
+    oss.imbue(std::locale::classic());
     for (size_t i = 0; i < len; ++i) {
         oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
     }
@@ -151,8 +170,16 @@ void GatewayEngine::register_meter_public_key(std::string_view mpan, std::string
 }
 
 std::string GatewayEngine::compute_canonical_hash(const TelemetryBlock& block) {
-    char formatted_kwh[64];
-    std::snprintf(formatted_kwh, sizeof(formatted_kwh), "%.3f", block.reading_kwh);
+    // Locale-independent float formatting using std::to_chars (prevents LC_NUMERIC European comma bug)
+    char formatted_kwh_buf[64];
+    auto [ptr, ec] = std::to_chars(
+        formatted_kwh_buf,
+        formatted_kwh_buf + sizeof(formatted_kwh_buf),
+        block.reading_kwh,
+        std::chars_format::fixed,
+        3
+    );
+    std::string_view formatted_kwh(formatted_kwh_buf, (ec == std::errc{}) ? (ptr - formatted_kwh_buf) : 0);
 
     std::string nonce_str = std::to_string(block.nonce);
     const uint8_t sep = 0x1F; // ASCII Unit Separator
@@ -179,19 +206,17 @@ std::string GatewayEngine::compute_canonical_hash(const TelemetryBlock& block) {
     std::array<uint8_t, 32> hash{};
     unsigned int out_len = 0;
 
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX_ptr ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
     if (!ctx) {
         throw std::runtime_error("Failed to allocate EVP_MD_CTX");
     }
 
-    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1 ||
-        EVP_DigestUpdate(ctx, payload.data(), payload.size()) != 1 ||
-        EVP_DigestFinal_ex(ctx, hash.data(), &out_len) != 1) {
-        EVP_MD_CTX_free(ctx);
+    if (EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr) != 1 ||
+        EVP_DigestUpdate(ctx.get(), payload.data(), payload.size()) != 1 ||
+        EVP_DigestFinal_ex(ctx.get(), hash.data(), &out_len) != 1) {
         throw std::runtime_error("OpenSSL SHA256 canonical hash failed");
     }
 
-    EVP_MD_CTX_free(ctx);
     return bytes_to_hex(hash.data(), hash.size());
 }
 
@@ -210,40 +235,38 @@ bool GatewayEngine::verify_ecdsa_signature(
         pem = it->second;
     }
 
-    // Load Public Key from PEM string using OpenSSL 3.0 BIO
-    BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
+    // Convert hex inputs safely before allocating OpenSSL handles (zero throw, zero leak)
+    std::vector<uint8_t> hash_bytes;
+    std::vector<uint8_t> sig_bytes;
+    if (!hex_to_bytes(block_hash_hex, hash_bytes) || !hex_to_bytes(signature_hex, sig_bytes)) {
+        return false;
+    }
+
+    // Load Public Key from PEM string using OpenSSL 3.0 BIO with RAII auto-cleanup
+    BIO_ptr bio(BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), BIO_free);
     if (!bio) {
         return false;
     }
 
-    EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
-    BIO_free(bio);
+    EVP_PKEY_ptr pkey(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr), EVP_PKEY_free);
     if (!pkey) {
         return false;
     }
 
-    // Convert block_hash_hex (32 bytes) and signature_hex to raw bytes
-    auto hash_bytes = hex_to_bytes(block_hash_hex);
-    auto sig_bytes = hex_to_bytes(signature_hex);
-
-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX_ptr ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
     if (!ctx) {
-        EVP_PKEY_free(pkey);
         return false;
     }
 
-    bool verified = false;
-    if (EVP_DigestVerifyInit(ctx, nullptr, EVP_sha256(), nullptr, pkey) == 1) {
-        if (EVP_DigestVerifyUpdate(ctx, hash_bytes.data(), hash_bytes.size()) == 1) {
-            if (EVP_DigestVerifyFinal(ctx, sig_bytes.data(), sig_bytes.size()) == 1) {
-                verified = true;
+    if (EVP_DigestVerifyInit(ctx.get(), nullptr, EVP_sha256(), nullptr, pkey.get()) == 1) {
+        if (EVP_DigestVerifyUpdate(ctx.get(), hash_bytes.data(), hash_bytes.size()) == 1) {
+            if (EVP_DigestVerifyFinal(ctx.get(), sig_bytes.data(), sig_bytes.size()) == 1) {
+                return true;
             }
         }
     }
 
-    EVP_MD_CTX_free(ctx);
-    EVP_PKEY_free(pkey);
-    return verified;
+    return false;
 }
 
 VerificationResult GatewayEngine::verify_telemetry_block(

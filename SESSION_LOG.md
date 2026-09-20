@@ -53,3 +53,32 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 ---
 
 *Written at end of session — read this before resuming rather than relying on chat history.*
+
+---
+
+## 📅 Session Log — 2026-09-21T00:34:00Z (ETP Security Engine & Observability Hardening)
+
+### Summary of Production Technical & Business Implementation
+
+1. **C++20 Native Security Engine (`libetp_core`) — RAII & Memory Hardening**
+   - **Zero-Throw Hex Parser:** Replaced `std::stoul` with a zero-allocation, zero-throw `hex_to_bytes` implementation (`cpp/src/gateway.cpp` & `cpp/src/merkle.cpp`) to prevent memory leak exceptions when corrupt or adversarial hex signatures are received.
+   - **RAII OpenSSL Smart Pointers:** Wrapped all OpenSSL handles (`EVP_PKEY*`, `EVP_MD_CTX*`, `BIO*`) in smart pointers with custom deleters (`EVP_PKEY_ptr`, `EVP_MD_CTX_ptr`, `BIO_ptr`), satisfying `CPP-ARC-001 §2` ("no raw pointers, RAII ownership").
+   - **Locale-Independent Formatting:** Replaced `std::snprintf("%.3f")` with `std::to_chars` for `reading_kwh` to prevent `LC_NUMERIC` European comma (`12,345`) canonical hash divergence.
+   - **Sanitizer Coverage:** Updated `cpp/CMakeLists.txt` to apply `-fsanitize=address,leak,undefined` to the `etp_core_cpp` pybind11 module target in Debug mode.
+
+2. **Durable Observability & Structured Audit Log Wiring**
+   - **Gateway Audit Wiring:** Wired `backend/etp/gateway.py` directly to `observability.audit_log.audit` sink (`audit.deny` / `audit.allow`). All security events (`route.diverted`, `malformed`, `replay_rejected`, `tamper_rejected`, `signature_invalid`, `ingest`) now emit append-only JSON lines with millisecond UTC timestamps.
+
+3. **Prometheus Metrics Instrumentation & `/metrics` Endpoint**
+   - **Metrics Module:** Built `backend/observability/metrics.py` exporting `etp_verification_total` counters, `etp_verification_latency_seconds` histograms, `etp_threat_honeypot_diverts_total`, and `etp_checkpoints_total`.
+   - **Endpoint:** Added GET `/metrics` to `backend/api/main.py`.
+
+4. **Checkpoint Process Persistence Across Restarts**
+   - **Persistence:** Updated `MerkleCheckpointer` in `backend/etp/checkpointer.py` to persist daily Merkle checkpoints to disk (`backend/data/etp_checkpoints.json`) and reload them on process startup.
+
+5. **CI Gating & Shared Golden Test Vectors**
+   - **CI Pipeline:** Added all ETP security suites to `.github/workflows/ci-cd.yml`.
+   - **Golden Vectors:** Added `backend/tests/test_golden_vectors.py` and cross-validated in `cpp/tests/test_etp_core.cpp` for canonical block hash `81165bf25fb1ef8d7e6c4cf3b544b60098dfc382f6e52c803ff2ef3c8dceb6a5`.
+
+6. **Git Status:** All changes committed (`705138d` & follow-up) and pushed to remote `main` branch.
+
