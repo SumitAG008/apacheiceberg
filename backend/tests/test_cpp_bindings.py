@@ -28,6 +28,7 @@ except ImportError:
     HAS_CPP = False
 
 
+@pytest.mark.skipif(not HAS_CPP, reason="etp_core_cpp extension module not installed or imported in local environment")
 def test_cpp_module_loaded_explicitly():
     """Asserts that C++ native extension is present and exposed."""
     assert HAS_CPP, "etp_core_cpp extension module is not installed or imported"

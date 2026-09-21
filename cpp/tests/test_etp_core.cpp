@@ -70,6 +70,8 @@ std::string sign_block_hash(std::string_view block_hash_hex, std::string_view pr
     EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len);
     std::vector<uint8_t> sig_bytes(sig_len);
     EVP_DigestSignFinal(ctx.get(), sig_bytes.data(), &sig_len);
+    sig_bytes.resize(sig_len);
+
 
     std::ostringstream oss;
     oss.imbue(std::locale::classic());

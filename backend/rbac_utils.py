@@ -30,6 +30,12 @@ class TableAccessDenied(PermissionError):
 
 # ─── Fetching policies ────────────────────────────────────────────────────
 
+import logging
+import os
+from psycopg2 import errors
+
+logger = logging.getLogger(__name__)
+
 def get_role_policies(role: str) -> List[Dict[str, Any]]:
     """Fetch all column/table policies configured for a given role."""
     from auth_db import _get_conn
@@ -46,8 +52,18 @@ def get_role_policies(role: str) -> List[Dict[str, Any]]:
             return [dict(r) for r in cur.fetchall()]
         finally:
             conn.close()
-    except Exception:
-        return []
+    except errors.UndefinedTable:
+        env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+        if env in ("development", "dev", "local", "test"):
+            logger.warning("auth.rbac_policies table missing in %s — returning empty policy list", env)
+            return []
+        raise RuntimeError("auth.rbac_policies table missing — refusing to serve unrestricted data")
+    except Exception as exc:
+        env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+        if env in ("development", "dev", "local", "test"):
+            logger.warning("Failed fetching rbac_policies (%s) — returning empty list in %s", exc, env)
+            return []
+        raise RuntimeError(f"Database error fetching rbac_policies — refusing to serve data: {exc}")
 
 
 def get_row_filters(role: str) -> List[Dict[str, Any]]:
@@ -66,8 +82,19 @@ def get_row_filters(role: str) -> List[Dict[str, Any]]:
             return [dict(r) for r in cur.fetchall()]
         finally:
             conn.close()
-    except Exception:
-        return []
+    except errors.UndefinedTable:
+        env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+        if env in ("development", "dev", "local", "test"):
+            logger.warning("auth.rbac_row_filters table missing in %s — returning empty filter list", env)
+            return []
+        raise RuntimeError("auth.rbac_row_filters table missing — refusing to serve unrestricted data")
+    except Exception as exc:
+        env = os.environ.get("ENVIRONMENT", "development").strip().lower()
+        if env in ("development", "dev", "local", "test"):
+            logger.warning("Failed fetching rbac_row_filters (%s) — returning empty list in %s", exc, env)
+            return []
+        raise RuntimeError(f"Database error fetching rbac_row_filters — refusing to serve data: {exc}")
+
 
 
 
