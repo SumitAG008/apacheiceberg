@@ -115,6 +115,25 @@ def test_scoped_job_passes_guard(monkeypatch):
     assert_tenant_scoped(job, "sql")  # must not raise
 
 
+def test_graph_and_python_executors_refuse_unscoped_job_in_production(monkeypatch):
+    """Verify that GraphExecutor and PythonExecutor execute calls fail closed when tenant_id is missing."""
+    from query_engine.graph_executor import GraphExecutor
+    from query_engine.python_executor import PythonExecutor
+    from query_engine.models import QueryJob, QueryMode
+
+    monkeypatch.setenv("MELDRA_ENV", "production")
+    monkeypatch.delenv("MELDRA_REQUIRE_TENANT_SCOPE", raising=False)
+
+    graph_job = QueryJob(mode=QueryMode.GRAPH, graph_name="test_graph", cypher="MATCH (n) RETURN n")
+    with pytest.raises(PermissionError):
+        GraphExecutor().execute(graph_job)
+
+    python_job = QueryJob(mode=QueryMode.PYTHON, namespace="default", table_name="ami", python_script="result_df = df")
+    with pytest.raises(PermissionError):
+        PythonExecutor().execute(python_job)
+
+
+
 # ─── PERF-2026-003 — zero-copy fast path ──────────────────────────────────
 
 def test_rbac_noop_probe_fails_closed(monkeypatch):

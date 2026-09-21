@@ -66,7 +66,12 @@ class GraphExecutor:
 
     def execute(self, job: QueryJob) -> QueryResult:
         t0 = time.perf_counter()
-        G = self._load_graph(job.graph_name)
+        from query_engine.sql_executor import assert_tenant_scoped
+        assert_tenant_scoped(job, "graph")
+
+        from tenancy import scope_namespace
+        scoped_graph_name = scope_namespace(job.tenant_id, job.graph_name) if job.tenant_id else job.graph_name
+        G = self._load_graph(scoped_graph_name)
 
         if job.algorithm:
             result = self._run_algorithm(G, job)
@@ -78,7 +83,12 @@ class GraphExecutor:
         return result
 
     def explain(self, job: QueryJob) -> str:
-        G = self._load_graph(job.graph_name)
+        from query_engine.sql_executor import assert_tenant_scoped
+        assert_tenant_scoped(job, "graph_explain")
+
+        from tenancy import scope_namespace
+        scoped_graph_name = scope_namespace(job.tenant_id, job.graph_name) if job.tenant_id else job.graph_name
+        G = self._load_graph(scoped_graph_name)
         node_count = G.number_of_nodes()
         edge_count = G.number_of_edges()
         if job.algorithm:

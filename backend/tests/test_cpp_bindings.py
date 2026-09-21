@@ -12,9 +12,14 @@ Tests byte-for-byte and hash-for-hash parity across boundary conditions:
 import pytest
 import os
 import hashlib
-from backend.etp.meter import compute_canonical_hash
-from backend.etp.route_mutator import RouteMutator
-from backend.etp.checkpointer import canonical_merkle_root, verify_merkle_proof
+import sys
+backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+from etp.meter import compute_canonical_hash
+from etp.route_mutator import RouteMutator
+from etp.checkpointer import canonical_merkle_root, verify_merkle_proof
 
 try:
     import etp_core_cpp
@@ -23,9 +28,9 @@ except ImportError:
     HAS_CPP = False
 
 
-@pytest.mark.skipif(not HAS_CPP, reason="Native etp_core_cpp module is not compiled or installed")
 def test_cpp_module_loaded_explicitly():
     """Asserts that C++ native extension is present and exposed."""
+    assert HAS_CPP, "etp_core_cpp extension module is not installed or imported"
     assert hasattr(etp_core_cpp, "GatewayEngine")
     assert hasattr(etp_core_cpp, "RouteMutator")
     assert hasattr(etp_core_cpp, "MerkleTree")
