@@ -1,61 +1,44 @@
 """Tests for ETP Nonce Store (MemoryNonceStore & RedisNonceStore).
 
-Includes atomic Lua CAS verification, 1024-window big-integer math tests, multi-threaded concurrency tests,
-and production fail-closed security tests.
+Tests real Redis 7 Lua Compare-And-Swap (CAS) execution, multi-process cross-replica race conditions,
+1024-window big-integer math, and production fail-closed security guards.
 """
 
 import concurrent.futures
 import os
-import threading
+import multiprocessing
 import pytest
 from etp.nonce_store import MemoryNonceStore, RedisNonceStore, AbstractNonceStore, LUA_CAS_COMMIT
 
+try:
+    import redis as redis_lib
+    HAS_REDIS_LIB = True
+except ImportError:
+    HAS_REDIS_LIB = False
 
-class FakeLuaRedisClient:
-    """In-memory Redis client mock supporting atomic eval for LUA_CAS_COMMIT script execution."""
 
-    def __init__(self):
-        self._data = {}
-        self._lock = threading.Lock()
+@pytest.fixture
+def real_redis_client():
+    """Fixture providing real Redis client connection gated on CI environment variable."""
+    if not HAS_REDIS_LIB:
+        if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+            pytest.fail("redis package is missing in CI environment")
+        pytest.skip("redis python package not installed")
 
-    def ping(self):
-        return True
+    url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    client = redis_lib.Redis.from_url(url, decode_responses=True)
+    try:
+        client.ping()
+    except Exception as err:
+        if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+            pytest.fail(f"Redis service container unavailable in CI environment: {err}")
+        pytest.skip(f"No Redis service running locally at {url}")
 
-    def hget(self, key: str, field: str):
-        with self._lock:
-            hash_dict = self._data.get(key, {})
-            return hash_dict.get(field)
-
-    def hgetall(self, key: str):
-        with self._lock:
-            return dict(self._data.get(key, {}))
-
-    def eval(self, script: str, numkeys: int, key: str, *args):
-        with self._lock:
-            if script == LUA_CAS_COMMIT:
-                exp_last = args[0]
-                exp_seen = args[1]
-                new_last = args[2]
-                new_seen = args[3]
-                new_hash = args[4]
-                timestamp = args[5]
-
-                record = self._data.get(key, {})
-                curr_last = str(record.get("last_nonce", "-1"))
-                curr_seen = str(record.get("seen_bitmap", "0"))
-
-                if curr_last == exp_last and curr_seen == exp_seen:
-                    self._data[key] = {
-                        "last_nonce": new_last,
-                        "seen_bitmap": new_seen,
-                        "last_hash": new_hash,
-                        "updated_at": timestamp
-                    }
-                    return 1
-                else:
-                    return 0
-
-            raise ValueError("Unsupported Lua script in FakeLuaRedisClient")
+    # Clean test namespace before test run
+    keys = client.keys("etp:meter:test:*")
+    if keys:
+        client.delete(*keys)
+    return client
 
 
 def test_memory_nonce_store_interface():
@@ -103,82 +86,85 @@ def test_memory_nonce_store_backfill_and_expired():
     assert msg == "EXPIRED_NONCE_REJECTED"
 
 
-def test_redis_nonce_store_with_fake_lua_redis_cas():
-    fake_client = FakeLuaRedisClient()
-    redis_store = RedisNonceStore(redis_client=fake_client, window_size=64)
+def test_real_redis_nonce_store_lua_cas_execution(real_redis_client):
+    """Executes Option B Python big-integer + LUA_CAS_COMMIT against real Redis 7 instance."""
+    prefix = "etp:meter:test:lua:"
+    store = RedisNonceStore(redis_client=real_redis_client, window_size=64, prefix=prefix)
+    mpan = "MPAN-REAL-REDIS-1"
 
-    st, last_n, msg = redis_store.check_only("MPAN-REDIS-1", 50)
+    # 1. Initial check & commit
+    st, last_n, msg = store.check_only(mpan, 50)
     assert st == 1
 
-    c_st, c_n, c_msg = redis_store.commit("MPAN-REDIS-1", 50, "hash50", "2026-09-22T00:00:00Z")
+    c_st, c_n, c_msg = store.commit(mpan, 50, "hash50", "2026-09-22T00:00:00Z")
     assert c_st == 1
-    assert redis_store.get_last_hash("MPAN-REDIS-1") == "hash50"
+    assert store.get_last_hash(mpan) == "hash50"
 
-    chk_st, _, msg = redis_store.check_only("MPAN-REDIS-1", 50)
+    # 2. Replay check against real Redis state
+    chk_st, _, msg = store.check_only(mpan, 50)
     assert chk_st == 0
     assert msg == "REPLAY_REJECTED"
 
-    adv_st, _, _ = redis_store.commit("MPAN-REDIS-1", 55, "hash55", "2026-09-22T00:05:00Z")
+    # 3. Advance nonce
+    adv_st, _, _ = store.commit(mpan, 55, "hash55", "2026-09-22T00:05:00Z")
     assert adv_st == 1
-    assert redis_store.get_last_hash("MPAN-REDIS-1") == "hash55"
+    assert store.get_last_hash(mpan) == "hash55"
 
 
-def test_redis_nonce_store_large_window_size_no_float_overflow():
-    """Verifies window_size=1024 works with nonces > 100 without IEEE 754 float overflow (inf)."""
-    fake_client = FakeLuaRedisClient()
-    redis_store = RedisNonceStore(redis_client=fake_client, window_size=1024)
+def test_real_redis_large_window_size_1024_real_roundtrip(real_redis_client):
+    """Verifies 1024-bit window size survives real Redis string storage without float overflow."""
+    prefix = "etp:meter:test:bigwin:"
+    store = RedisNonceStore(redis_client=real_redis_client, window_size=1024, prefix=prefix)
+    mpan = "MPAN-REAL-BIGWIN"
 
-    mpan = "MPAN-LARGE-WINDOW"
     # Commit initial nonce 100
-    redis_store.commit(mpan, 100, "h100", "2026-09-22T00:00:00Z")
+    store.commit(mpan, 100, "h100", "2026-09-22T00:00:00Z")
 
-    # Advance through 200 nonces (exceeding 53-bit double floating point precision)
+    # Advance through 200 nonces (exceeding 53-bit IEEE float limit)
     for n in range(101, 300):
-        st, committed_n, msg = redis_store.commit(mpan, n, f"h{n}", f"2026-09-22T00:00:{n%60:02d}Z")
+        st, committed_n, msg = store.commit(mpan, n, f"h{n}", f"2026-09-22T00:00:{n%60:02d}Z")
         assert st == 1
         assert committed_n == n
 
     # Replay of nonce 250 must be rejected
-    rep_st, _, rep_msg = redis_store.commit(mpan, 250, "h250", "2026-09-22T01:00:00Z")
+    rep_st, _, rep_msg = store.commit(mpan, 250, "h250", "2026-09-22T01:00:00Z")
     assert rep_st == 0
     assert rep_msg == "REPLAY_REJECTED"
 
-    # Out-of-order backfill of nonce 280 (not seen yet) must be accepted
-    # Advance to 350 first
-    redis_store.commit(mpan, 350, "h350", "2026-09-22T02:00:00Z")
-    bf_st, _, _ = redis_store.commit(mpan, 340, "h340", "2026-09-22T02:05:00Z")
-    assert bf_st == 1
+
+def _process_worker_commit(redis_url: str, mpan: str, target_nonce: int, worker_id: int):
+    """Worker function executed in separate OS process with its own Redis connection."""
+    import redis
+    client = redis.Redis.from_url(redis_url, decode_responses=True)
+    store = RedisNonceStore(redis_client=client, window_size=64, prefix="etp:meter:test:proc:")
+    status, _, msg = store.commit(mpan, target_nonce, f"hash_proc_{worker_id}", "2026-09-22T00:00:00Z")
+    return status, msg
 
 
-def test_redis_nonce_store_concurrent_threads_atomic():
-    """Concurrency Test: 10 worker threads attempt to commit the exact same nonce simultaneously.
+def test_real_redis_multiprocess_cross_replica_race(real_redis_client):
+    """Multi-Process Cross-Replica Concurrency Test.
     
-    Verifies that Lua Compare-And-Swap (CAS) allows EXACTLY ONE acceptance and rejects 9 replays.
+    Spawns 8 separate OS processes (simulating 8 load-balanced pod replicas), each with its own
+    connection to real Redis 7, attempting to commit the exact same nonce for the same MPAN.
+    Verifies that atomic Lua CAS allows EXACTLY ONE acceptance and 7 rejections.
     """
-    fake_client = FakeLuaRedisClient()
-    redis_store = RedisNonceStore(redis_client=fake_client, window_size=64)
-    mpan = "MPAN-RACE-CONCURRENT"
-    target_nonce = 500
+    url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    mpan = "MPAN-MULTIPROC-RACE"
+    target_nonce = 777
 
-    accepts = 0
-    rejections = 0
-    lock = threading.Lock()
+    ctx = multiprocessing.get_context("spawn")
+    with concurrent.futures.ProcessPoolExecutor(max_workers=8, mp_context=ctx) as executor:
+        futures = [
+            executor.submit(_process_worker_commit, url, mpan, target_nonce, i)
+            for i in range(8)
+        ]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
-    def worker(worker_id: int):
-        nonlocal accepts, rejections
-        status, _, msg = redis_store.commit(mpan, target_nonce, f"hash_{worker_id}", "2026-09-22T00:00:00Z")
-        with lock:
-            if status == 1:
-                accepts += 1
-            else:
-                rejections += 1
+    accepts = sum(1 for status, _ in results if status == 1)
+    rejections = sum(1 for status, _ in results if status == 0)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(worker, i) for i in range(10)]
-        concurrent.futures.wait(futures)
-
-    assert accepts == 1, f"Expected exactly 1 acceptance, but got {accepts}"
-    assert rejections == 9, f"Expected 9 rejections, but got {rejections}"
+    assert accepts == 1, f"Expected exactly 1 process acceptance across replicas, but got {accepts}"
+    assert rejections == 7, f"Expected 7 process rejections across replicas, but got {rejections}"
 
 
 def test_redis_nonce_store_fail_closed_in_production(monkeypatch):

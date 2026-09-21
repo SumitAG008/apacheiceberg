@@ -111,7 +111,7 @@ jobs:
         working-directory: backend
         run: |
           set -o pipefail
-          if ! python -m pytest tests/test_golden_vectors.py tests/test_etp_endpoints.py tests/test_etp_suite.py tests/test_etp_gateway_regressions.py tests/test_sec_2026_regressions.py tests/test_sliding_window_tsa_regressions.py tests/test_adr_0002_tenancy.py \
+          if ! python -m pytest tests/test_golden_vectors.py tests/test_etp_endpoints.py tests/test_etp_suite.py tests/test_etp_gateway_regressions.py tests/test_sec_2026_regressions.py tests/test_sliding_window_tsa_regressions.py tests/test_adr_0002_tenancy.py tests/test_redis_nonce_store.py tests/test_omission_demo.py \
             -v \
             --tb=short \
             --no-header \
@@ -122,6 +122,7 @@ jobs:
 
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          REDIS_URL: "redis://localhost:6379/0"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
           ENVIRONMENT: "development"
