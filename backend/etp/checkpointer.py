@@ -4,6 +4,7 @@ Builds daily per-meter and estate-wide Merkle trees with domain separation (0x00
 preventing CVE-2012-2459 duplicate leaf vulnerabilities. Validates monotonic nonces for omission detection.
 """
 
+import os
 import json
 import base64
 import hashlib
@@ -14,6 +15,20 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 
 logger = logging.getLogger(__name__)
+
+try:
+    import etp_core_cpp
+    HAS_CPP_CORE = True
+except ImportError as err:
+    HAS_CPP_CORE = False
+    env = os.getenv("ENVIRONMENT", "production")
+    allow_fallback = os.getenv("ETP_ALLOW_PYTHON_FALLBACK", "0") == "1"
+    logger.error("Failed to import native C++ etp_core_cpp engine in checkpointer.py: %s", err)
+    if env != "development" and not allow_fallback:
+        raise RuntimeError(
+            f"Native etp_core_cpp module is required in environment='{env}'. "
+            "Set ETP_ALLOW_PYTHON_FALLBACK=1 to override in non-production environments."
+        ) from err
 
 
 def parse_rfc3161_pkistatus(der_bytes: bytes) -> Optional[int]:
@@ -144,13 +159,18 @@ def canonical_merkle_root(leaf_hashes_hex: List[str]) -> str:
     if not leaf_hashes_hex:
         return ""
 
-    # Level 0: Leaf Nodes with 0x00 domain separation
+    if HAS_CPP_CORE:
+        tree = etp_core_cpp.MerkleTree()
+        for h in leaf_hashes_hex:
+            tree.add_leaf_hex(h)
+        return tree.compute_root()
+
+    # Pure-Python reference fallback
     current_level = [
         hashlib.sha256(b"\x00" + bytes.fromhex(h)).digest()
         for h in leaf_hashes_hex
     ]
 
-    # Tree Building Loop
     while len(current_level) > 1:
         next_level = []
         for i in range(0, len(current_level), 2):
@@ -165,6 +185,28 @@ def canonical_merkle_root(leaf_hashes_hex: List[str]) -> str:
         current_level = next_level
 
     return current_level[0].hex()
+
+
+def verify_merkle_proof(leaf_hash_hex: str, proof: List[Dict[str, Any]], root_hex: str) -> bool:
+    """Verifies a directional Merkle proof against a root digest."""
+    if HAS_CPP_CORE:
+        cpp_proof = []
+        for step in proof:
+            s = etp_core_cpp.MerkleProofStep()
+            s.hash = step["hash"]
+            s.is_left = step["is_left"]
+            cpp_proof.append(s)
+        return etp_core_cpp.MerkleTree.verify_proof(leaf_hash_hex, cpp_proof, root_hex)
+
+    # Pure-Python reference fallback
+    current = hashlib.sha256(b"\x00" + bytes.fromhex(leaf_hash_hex)).digest()
+    for step in proof:
+        sibling = bytes.fromhex(step["hash"])
+        if step["is_left"]:
+            current = hashlib.sha256(b"\x01" + sibling + current).digest()
+        else:
+            current = hashlib.sha256(b"\x01" + current + sibling).digest()
+    return current.hex() == root_hex
 
 
 class MerkleCheckpointer:

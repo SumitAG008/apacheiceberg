@@ -3,13 +3,31 @@
 Owns monotonic nonces, hardware key pair, canonical block hashing, and ECDSA signing.
 """
 
+import os
 import hashlib
 import datetime
+import logging
 from dataclasses import dataclass, asdict
 from typing import Dict, Any, Tuple
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
+
+logger = logging.getLogger(__name__)
+
+try:
+    import etp_core_cpp
+    HAS_CPP_CORE = True
+except ImportError as err:
+    HAS_CPP_CORE = False
+    env = os.getenv("ENVIRONMENT", "production")
+    allow_fallback = os.getenv("ETP_ALLOW_PYTHON_FALLBACK", "0") == "1"
+    logger.error("Failed to import native C++ etp_core_cpp engine in meter.py: %s", err)
+    if env != "development" and not allow_fallback:
+        raise RuntimeError(
+            f"Native etp_core_cpp module is required in environment='{env}'. "
+            "Set ETP_ALLOW_PYTHON_FALLBACK=1 to override in non-production environments."
+        ) from err
 
 
 UNIT_SEPARATOR = b"\x1f"  # ASCII 0x1F unit separator for byte canonicalization
@@ -46,8 +64,18 @@ def compute_canonical_hash(
     PayloadBytes = mpan || 0x1F || reading_kwh (3dp) || 0x1F || timestamp || 0x1F ||
                    prev_hash || 0x1F || nonce || 0x1F || crypto_suite_id || 0x1F || key_id
     """
+    if HAS_CPP_CORE:
+        b = etp_core_cpp.TelemetryBlock()
+        b.mpan = mpan
+        b.reading_kwh = float(reading_kwh)
+        b.timestamp = timestamp
+        b.prev_hash = prev_hash
+        b.nonce = int(nonce)
+        b.crypto_suite_id = crypto_suite_id
+        b.key_id = key_id
+        return etp_core_cpp.GatewayEngine.compute_canonical_hash(b)
+
     formatted_kwh = f"{reading_kwh:.3f}"
-    
     parts = [
         mpan.encode('utf-8'),
         formatted_kwh.encode('utf-8'),
@@ -57,7 +85,6 @@ def compute_canonical_hash(
         crypto_suite_id.encode('utf-8'),
         key_id.encode('utf-8')
     ]
-    
     payload_bytes = UNIT_SEPARATOR.join(parts)
     return hashlib.sha256(payload_bytes).hexdigest()
 

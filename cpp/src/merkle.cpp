@@ -117,8 +117,8 @@ std::string MerkleTree::compute_root() {
             if (i + 1 < current_level.size()) {
                 next_level.push_back(hash_internal(current_level[i], current_level[i + 1]));
             } else {
-                // Duplicate odd leaf/node
-                next_level.push_back(hash_internal(current_level[i], current_level[i]));
+                // Odd node promotion WITHOUT duplication (CVE-2012-2459 fix)
+                next_level.push_back(current_level[i]);
             }
         }
         current_level = std::move(next_level);
@@ -127,12 +127,12 @@ std::string MerkleTree::compute_root() {
     return bytes_to_hex(current_level[0]);
 }
 
-std::vector<std::string> MerkleTree::get_proof(size_t leaf_index) {
+std::vector<MerkleProofStep> MerkleTree::get_proof(size_t leaf_index) {
     if (leaf_index >= leaves_.size()) {
         throw std::out_of_range("Leaf index out of bounds");
     }
 
-    std::vector<std::string> proof;
+    std::vector<MerkleProofStep> proof;
     std::vector<std::vector<uint8_t>> current_level = leaves_;
     size_t idx = leaf_index;
 
@@ -140,11 +140,14 @@ std::vector<std::string> MerkleTree::get_proof(size_t leaf_index) {
         size_t sibling_idx = (idx % 2 == 0) ? (idx + 1) : (idx - 1);
 
         if (sibling_idx < current_level.size()) {
-            proof.push_back(bytes_to_hex(current_level[sibling_idx]));
-        } else {
-            // Sibling is itself when odd length
-            proof.push_back(bytes_to_hex(current_level[idx]));
+            bool is_left = (sibling_idx < idx);
+            proof.push_back(MerkleProofStep{
+                .hash = bytes_to_hex(current_level[sibling_idx]),
+                .is_left = is_left
+            });
         }
+        // If sibling_idx >= current_level.size(), idx is an odd last node being promoted directly.
+        // It has no sibling at this height, so no proof step is added for this level.
 
         std::vector<std::vector<uint8_t>> next_level;
         next_level.reserve((current_level.size() + 1) / 2);
@@ -153,7 +156,8 @@ std::vector<std::string> MerkleTree::get_proof(size_t leaf_index) {
             if (i + 1 < current_level.size()) {
                 next_level.push_back(hash_internal(current_level[i], current_level[i + 1]));
             } else {
-                next_level.push_back(hash_internal(current_level[i], current_level[i]));
+                // Odd node promotion WITHOUT duplication (CVE-2012-2459 fix)
+                next_level.push_back(current_level[i]);
             }
         }
 
@@ -162,6 +166,33 @@ std::vector<std::string> MerkleTree::get_proof(size_t leaf_index) {
     }
 
     return proof;
+}
+
+bool MerkleTree::verify_proof(
+    std::string_view leaf_hash_hex,
+    const std::vector<MerkleProofStep>& proof,
+    std::string_view root_hex
+) {
+    std::vector<uint8_t> raw_leaf;
+    if (!hex_to_bytes(leaf_hash_hex, raw_leaf)) {
+        return false;
+    }
+
+    std::vector<uint8_t> current = sha256_two_inputs(0x00, raw_leaf);
+
+    for (const auto& step : proof) {
+        std::vector<uint8_t> sibling_bytes;
+        if (!hex_to_bytes(step.hash, sibling_bytes)) {
+            return false;
+        }
+        if (step.is_left) {
+            current = hash_internal(sibling_bytes, current);
+        } else {
+            current = hash_internal(current, sibling_bytes);
+        }
+    }
+
+    return bytes_to_hex(current) == root_hex;
 }
 
 } // namespace etp

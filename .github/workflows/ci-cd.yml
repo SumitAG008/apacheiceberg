@@ -216,20 +216,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install C++ Build Toolchain & OpenSSL
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install C++ Toolchain, OpenSSL & pybind11
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libssl-dev
+          sudo apt-get install -y cmake build-essential libssl-dev pybind11-dev
+          python -m pip install --upgrade pip
+          pip install pybind11 pytest -r backend/requirements.txt
 
-      - name: Configure CMake
+      - name: Configure CMake with pybind11
         run: |
-          cmake -B cpp/build -S cpp -DCMAKE_BUILD_TYPE=Release
+          cmake -B cpp/build -S cpp -DCMAKE_BUILD_TYPE=Release -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
 
-      - name: Build etp_core C++ binaries
+      - name: Build etp_core C++ binaries and python module
         run: |
           cmake --build cpp/build --config Release
 
       - name: Execute C++ Native Core Verification Suite
         run: |
           ./cpp/build/test_etp_core
+
+      - name: Install compiled etp_core_cpp module into Python environment
+        run: |
+          cp cpp/build/etp_core_cpp*.so $(python -c "import site; print(site.getsitepackages()[0])") || cp cpp/build/Release/etp_core_cpp*.so $(python -c "import site; print(site.getsitepackages()[0])")
+
+      - name: Assert Native C++ Engine Module Import
+        run: |
+          python -c "
+          import etp_core_cpp
+          assert hasattr(etp_core_cpp, 'GatewayEngine'), 'etp_core_cpp missing GatewayEngine'
+          assert hasattr(etp_core_cpp, 'MerkleTree'), 'etp_core_cpp missing MerkleTree'
+          assert hasattr(etp_core_cpp, 'RouteMutator'), 'etp_core_cpp missing RouteMutator'
+          print('✅ Native C++ etp_core_cpp module successfully imported in CI')
+          "
+
+      - name: Run Differential & Native C++ Pytest Suite
+        run: |
+          python -m pytest backend/tests/test_cpp_bindings.py \
+            -v \
+            --tb=short \
+            --no-header \
+            -q
+        env:
+          ENVIRONMENT: "development"
+          ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
 

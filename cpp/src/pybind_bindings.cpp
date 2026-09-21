@@ -60,6 +60,12 @@ PYBIND11_MODULE(etp_core_cpp, m) {
         .def("verify_telemetry_block", &etp::GatewayEngine::verify_telemetry_block, py::arg("route"), py::arg("block"), py::arg("now_epoch_s"))
         .def_static("compute_canonical_hash", &etp::GatewayEngine::compute_canonical_hash, py::arg("block"));
 
+    // --- MerkleProofStep Binding ---
+    py::class_<etp::MerkleProofStep>(m, "MerkleProofStep")
+        .def(py::init<>())
+        .def_readwrite("hash", &etp::MerkleProofStep::hash)
+        .def_readwrite("is_left", &etp::MerkleProofStep::is_left);
+
     // --- MerkleTree Binding ---
     py::class_<etp::MerkleTree>(m, "MerkleTree")
         .def(py::init<>())
@@ -70,6 +76,7 @@ PYBIND11_MODULE(etp_core_cpp, m) {
         .def("add_leaf_hex", &etp::MerkleTree::add_leaf_hex, py::arg("hex_hash"))
         .def("compute_root", &etp::MerkleTree::compute_root)
         .def("get_proof", &etp::MerkleTree::get_proof, py::arg("leaf_index"))
+        .def_static("verify_proof", &etp::MerkleTree::verify_proof, py::arg("leaf_hash_hex"), py::arg("proof"), py::arg("root_hex"))
         .def("leaf_count", &etp::MerkleTree::leaf_count)
         .def("clear", &etp::MerkleTree::clear);
 }

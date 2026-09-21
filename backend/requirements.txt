@@ -40,6 +40,9 @@ numpy<2.0.0,>=1.26.0
 pytest>=8.0.0
 locust>=2.20.0
 
+# C++ Native Core Bindings
+pybind11>=2.10.0
+
 # Optional distributed-query-engine backends (query_engine/sql_backends.py).
 # Uncomment + set SPARK_MASTER_URL / DORIS_FE_HOST once a real cluster
 # exists to point at -- DuckDB (already required above) is the active
