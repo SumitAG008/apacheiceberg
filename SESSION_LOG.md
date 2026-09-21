@@ -111,3 +111,30 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 6. **Automated Verification:**
    - Ran full ETP test suite (48 test cases across `test_golden_vectors.py`, `test_etp_suite.py`, `test_etp_gateway_regressions.py`, `test_sliding_window_tsa_regressions.py`, `test_sec_2026_regressions.py`) -> **48 passed, 0 failed (100%)**.
 
+---
+
+## 📅 Session Log — 2026-09-21T01:05:00Z (ETPGateway Constructor Fix & Endpoint Verification)
+
+### Summary of Fixes:
+
+1. **ETPGateway Constructor Bug Fixed (503 Elimination):**
+   - Corrected constructor invocation in `backend/api/main.py`:
+     ```python
+     etp_route_mutator = RouteMutator(secret_key=etp_secret.encode('utf-8'), window_s=60)
+     etp_nonce_store = SlidingWindowNonceStore()
+     etp_gateway = ETPGateway(
+         route_mutator=etp_route_mutator,
+         nonce_store=etp_nonce_store,
+         phantom_grid=etp_honeypot
+     )
+     ```
+   - Replaced silent warning swallow with full traceback output & production error escalation.
+   - Updated `etp_ingest_telemetry` to invoke `etp_gateway.process_request(...)`.
+
+2. **MTD Secret Security Hardening:**
+   - ETP route mutation secret key is loaded from `ETP_SECRET_KEY` environment variable with production guard, removing golden-vector test key defaults in production.
+
+3. **Automated Endpoint Testing:**
+   - Created `backend/tests/test_etp_endpoints.py` testing live FastAPI REST endpoints (`/v1/etp/ingest`, `/v1/etp/checkpoint`, `/v1/etp/query/verify`, `/v1/etp/honeypot/stix`).
+   - Verified 3/3 endpoint tests pass cleanly with status 200 (zero 503s). Added `test_etp_endpoints.py` to `.github/workflows/ci-cd.yml`.
+

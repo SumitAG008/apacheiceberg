@@ -3244,17 +3244,35 @@ async def search_studio(q: str, user: Dict[str, Any] = Depends(get_current_user)
 # ── ETP Telemetry & Provenance Endpoints ─────────────────────────────────────
 try:
     from etp.meter import TelemetryBlock
-    from etp.gateway import ETPGateway
+    from etp.route_mutator import RouteMutator
+    from etp.gateway import ETPGateway, SlidingWindowNonceStore
     from etp.checkpointer import MerkleCheckpointer
     from etp.verifier import ETPVerifier
     from etp.phantom_grid import PhantomGridHoneypot
 
-    etp_gateway = ETPGateway(secret_key=b"0123456789abcdef0123456789abcdef", window_s=60)
+    etp_secret = os.environ.get("ETP_SECRET_KEY")
+    if not etp_secret:
+        if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+            raise RuntimeError("ETP_SECRET_KEY environment variable is required in production deployments.")
+        else:
+            etp_secret = "dev-etp-secret-key-change-in-production-environments-32-bytes!"
+
+    etp_honeypot = PhantomGridHoneypot(storage_path="backend/data/etp_threat_logs.jsonl")
+    etp_route_mutator = RouteMutator(secret_key=etp_secret.encode('utf-8'), window_s=60)
+    etp_nonce_store = SlidingWindowNonceStore()
+    etp_gateway = ETPGateway(
+        route_mutator=etp_route_mutator,
+        nonce_store=etp_nonce_store,
+        phantom_grid=etp_honeypot
+    )
     etp_checkpointer = MerkleCheckpointer(storage_path="backend/data/etp_checkpoints.json")
     etp_verifier = ETPVerifier(etp_checkpointer)
-    etp_honeypot = PhantomGridHoneypot(storage_path="backend/data/etp_threat_logs.jsonl")
 except Exception as _etp_init_err:
-    print(f"[api/main] ETP module init warning: {_etp_init_err}")
+    print(f"[api/main] ERROR initializing ETP gateway engine: {_etp_init_err}")
+    import traceback
+    traceback.print_exc()
+    if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+        raise _etp_init_err
     etp_gateway = None
     etp_checkpointer = None
     etp_verifier = None
@@ -3290,37 +3308,24 @@ class ETPQueryVerifyRequest(BaseModel):
 
 
 @app.post("/v1/etp/ingest", tags=["ETP Telemetry"])
-async def etp_ingest_telemetry(payload: ETPTelemetryIngestRequest, user: Dict[str, Any] = Depends(get_current_user)):
+async def etp_ingest_telemetry(payload: ETPTelemetryIngestRequest, request: Request, user: Dict[str, Any] = Depends(get_current_user)):
     """Ingests and cryptographically verifies a smart meter telemetry block through ETP Gateway (UC-01)."""
-    if not etp_gateway or not etp_honeypot:
+    if not etp_gateway:
         raise HTTPException(status_code=503, detail="ETP gateway engine not initialized")
-    block = TelemetryBlock(
-        mpan=payload.mpan,
-        reading_kwh=payload.reading_kwh,
-        timestamp=payload.timestamp,
-        prev_hash=payload.prev_hash,
-        nonce=payload.nonce,
-        signature=payload.signature,
-        crypto_suite_id=payload.crypto_suite_id,
-        key_id=payload.key_id
-    )
-    result = etp_gateway.verify_telemetry_block(
-        requested_route=payload.route,
-        block=block
-    )
-    if result.divert_to_honeypot:
-        honeypot_resp = etp_honeypot.handle_diverted_request(
-            source_ip="127.0.0.1",
-            requested_route=payload.route,
-            epoch_window=int(time.time() // 60),
-            payload=payload.dict()
-        )
-        return JSONResponse(status_code=200, content={"status": "DIVERTED", "honeypot": honeypot_resp})
     
-    if result.status == "VERIFIED":
-        return {"status": "VERIFIED", "block_hash": block.block_hash, "mpan": payload.mpan, "nonce": payload.nonce}
+    source_ip = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip")
+    if source_ip:
+        source_ip = source_ip.split(",")[0].strip()
     else:
-        raise HTTPException(status_code=400, detail=f"Telemetry verification failed: {result.status}")
+        source_ip = request.client.host if request.client else "127.0.0.1"
+
+    status_code, resp_body = etp_gateway.process_request(
+        requested_path=payload.route,
+        payload=payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict(),
+        now_epoch_s=int(time.time()),
+        source_ip=source_ip
+    )
+    return JSONResponse(status_code=status_code, content=resp_body)
 
 
 @app.post("/v1/etp/checkpoint", tags=["ETP Telemetry"])
@@ -3367,4 +3372,5 @@ async def etp_honeypot_stix(user: Dict[str, Any] = Depends(get_current_user)):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+
 
