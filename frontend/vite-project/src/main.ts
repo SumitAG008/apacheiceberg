@@ -143,13 +143,14 @@ function renderHeaderGreeting(email?: string) {
 // ─────────────────────────────────────────
 // UTILS & TOASTS
 // ─────────────────────────────────────────
-function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
+function showToast(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   
   let icon = 'fa-circle-check';
   if (type === 'error') icon = 'fa-circle-xmark';
   if (type === 'info') icon = 'fa-circle-info';
+  if (type === 'warning') icon = 'fa-triangle-exclamation';
   
   toast.innerHTML = `
     <div style="display: flex; gap: 0.75rem; align-items: center;">
@@ -8070,8 +8071,10 @@ navQueryLab?.addEventListener('click', async () => {
 
 // 3. Instance Switcher Engine
 let activeInstance = 'uknorth-prod';
+(window as any).getActiveInstance = () => activeInstance;
 
 (window as any).switchInstance = function(instanceId: string) {
+
   activeInstance = instanceId;
   const labelEl = document.getElementById('active-instance-label');
   const badgeEl = document.getElementById('active-instance-badge');

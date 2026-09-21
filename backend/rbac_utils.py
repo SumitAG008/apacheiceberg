@@ -34,34 +34,41 @@ def get_role_policies(role: str) -> List[Dict[str, Any]]:
     """Fetch all column/table policies configured for a given role."""
     from auth_db import _get_conn
 
-    conn = _get_conn()
     try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT namespace, table_name, column_name, action, masking_pattern "
-            "FROM auth.rbac_policies WHERE role = %s;",
-            (role,),
-        )
-        return [dict(r) for r in cur.fetchall()]
-    finally:
-        conn.close()
+        conn = _get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT namespace, table_name, column_name, action, masking_pattern "
+                "FROM auth.rbac_policies WHERE role = %s;",
+                (role,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except Exception:
+        return []
 
 
 def get_row_filters(role: str) -> List[Dict[str, Any]]:
     """Fetch all row-level filters configured for a given role."""
     from auth_db import _get_conn
 
-    conn = _get_conn()
     try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT namespace, table_name, filter_expression, description "
-            "FROM auth.rbac_row_filters WHERE role = %s;",
-            (role,),
-        )
-        return [dict(r) for r in cur.fetchall()]
-    finally:
-        conn.close()
+        conn = _get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT namespace, table_name, filter_expression, description "
+                "FROM auth.rbac_row_filters WHERE role = %s;",
+                (role,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
 
 
 # ─── Layer 1: table/namespace access ──────────────────────────────────────

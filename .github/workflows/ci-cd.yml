@@ -277,12 +277,17 @@ jobs:
 
       - name: Run Differential & Native C++ Pytest Suite
         run: |
-          python -m pytest backend/tests/test_cpp_bindings.py \
+          set -o pipefail
+          if ! python -m pytest backend/tests/test_cpp_bindings.py \
             -v \
             --tb=short \
             --no-header \
-            -q
+            -q 2>&1 | tee diff.log; then
+            echo "::error::$(grep -m 10 -E 'assert|FAILED|Error' diff.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
         env:
           ENVIRONMENT: "development"
           ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
+
 
