@@ -15,6 +15,8 @@ This document records all defects, security regressions, and build failures iden
 | **DEF-005** | Flakiness | `cpp/tests/test_etp_core.cpp` | Missing `sig_bytes.resize(sig_len)` after `EVP_DigestSignFinal` | DER signature length mismatch (70-72 bytes) caused 75% test failure rate | **RESOLVED** |
 | **DEF-006** | Parity | `cpp/src/merkle.cpp` | `compute_root()` on 0 leaves returned `64 * '0'` instead of `""` | Divergence from Python reference implementation on empty leaf set | **RESOLVED** |
 | **DEF-007** | Security | `backend/rbac_utils.py` | Broad `except Exception: return []` in policy fetchers | Fail-open regression: DB errors silently disabled row-level security | **RESOLVED** |
+| **DEF-008** | Race Condition | `backend/etp/nonce_store.py` | Read-compute-write window in `RedisNonceStore` | Non-atomic check/commit enabled concurrent replay attacks across pods | **RESOLVED** |
+| **DEF-009** | Security | `backend/etp/nonce_store.py` | Fail-open fallback to `MemoryNonceStore` during Redis outage | Disconnected Redis degraded multi-replica cluster to isolated in-memory stores | **RESOLVED** |
 
 ---
 
@@ -54,3 +56,13 @@ This document records all defects, security regressions, and build failures iden
 - **Symptom**: `backend/rbac_utils.py` returned `[]` on any exception in `get_role_policies` and `get_row_filters`.
 - **Root Cause**: Swallowing DB errors caused missing tables or dropped DB connections to silently strip all restrictions, elevating users to unrestricted view.
 - **Resolution**: Updated `rbac_utils.py` to catch `psycopg2.errors.UndefinedTable` explicitly and raise `RuntimeError` (refusing to serve data) when `ENVIRONMENT` is outside `("development", "dev", "local", "test")`.
+
+### DEF-008: Non-Atomic Redis Nonce Store Read-Compute-Write Race
+- **Symptom**: `RedisNonceStore` called plain `hgetall` followed by `hset` without transaction or Lua evaluation.
+- **Root Cause**: Un-serialised read-compute-write window allowed concurrent requests hitting different pods for the same MPAN to read identical nonces and pass replay verification.
+- **Resolution**: Converted `check_only` and `commit` in `backend/etp/nonce_store.py` to execute server-side atomic Redis Lua scripts (`LUA_CHECK_ONLY` and `LUA_COMMIT`).
+
+### DEF-009: Fail-Open Fallback in Non-Development Environments
+- **Symptom**: `RedisNonceStore` silently degraded to `MemoryNonceStore` whenever Redis connection failed.
+- **Root Cause**: In multi-replica production environments (`replicas: 2` to `10`), falling back to process-local memory stores breaks distributed replay protection.
+- **Resolution**: Restricted `MemoryNonceStore` fallback to `ENVIRONMENT` in `("development", "dev", "local", "test")`. In production/staging, connection or command failures raise `RuntimeError`, failing closed and halting un-protected ingestion.
