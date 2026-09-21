@@ -27,7 +27,7 @@ using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
 std::pair<std::string, std::string> generate_test_keypair_pem() {
     EVP_PKEY_CTX* pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr);
     EVP_PKEY_keygen_init(pctx);
-    EVP_PKEY_CTX_set_ec_paramgen_curve_name(pctx, NID_X9_62_prime256v1);
+    EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_X9_62_prime256v1);
 
     EVP_PKEY* raw_key = nullptr;
     EVP_PKEY_keygen(pctx, &raw_key);

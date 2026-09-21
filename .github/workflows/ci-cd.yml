@@ -61,12 +61,16 @@ jobs:
       - name: Run DQE unit tests (no DB required)
         working-directory: backend
         run: |
-          python -m pytest tests/test_query_engine.py \
+          set -o pipefail
+          if ! python -m pytest tests/test_query_engine.py \
             -v \
             -k "TestJobStore or TestQueryJobModel or TestSQLExecutor or TestGraphExecutor or TestPythonExecutor or TestQueryEngineRouter" \
             --tb=short \
             --no-header \
-            -q
+            -q 2>&1 | tee dqe_unit.log; then
+            echo "::error::$(grep -m 10 -E 'Error|assert|FAILED' dqe_unit.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
@@ -77,12 +81,16 @@ jobs:
       - name: Run DQE regression tests
         working-directory: backend
         run: |
-          python -m pytest tests/test_dqe_regression.py \
+          set -o pipefail
+          if ! python -m pytest tests/test_dqe_regression.py \
             -v \
             -k "TestOriginalToolsUnchanged or TestDQEToolsCoexistence or TestDQEToolOutputFormat" \
             --tb=short \
             --no-header \
-            -q
+            -q 2>&1 | tee dqe_reg.log; then
+            echo "::error::$(grep -m 10 -E 'Error|assert|FAILED' dqe_reg.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
@@ -93,11 +101,15 @@ jobs:
       - name: Run ETP security & regression tests
         working-directory: backend
         run: |
-          python -m pytest tests/test_golden_vectors.py tests/test_etp_endpoints.py tests/test_etp_suite.py tests/test_etp_gateway_regressions.py tests/test_sec_2026_regressions.py tests/test_sliding_window_tsa_regressions.py \
+          set -o pipefail
+          if ! python -m pytest tests/test_golden_vectors.py tests/test_etp_endpoints.py tests/test_etp_suite.py tests/test_etp_gateway_regressions.py tests/test_sec_2026_regressions.py tests/test_sliding_window_tsa_regressions.py tests/test_adr_0002_tenancy.py \
             -v \
             --tb=short \
             --no-header \
-            -q
+            -q 2>&1 | tee etp_sec.log; then
+            echo "::error::$(grep -m 10 -E 'Error|assert|FAILED' etp_sec.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
 
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
@@ -165,7 +177,12 @@ jobs:
 
       - name: Type-check (includes DQE client in api.ts)
         working-directory: frontend/vite-project
-        run: npx tsc --noEmit
+        run: |
+          set -o pipefail
+          if ! npx tsc --noEmit 2>&1 | tee tsc.log; then
+            echo "::error::$(grep -m 10 -E 'error TS' tsc.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
 
       - name: Build frontend (production bundle)
         working-directory: frontend/vite-project
@@ -235,8 +252,8 @@ jobs:
       - name: Build etp_core C++ binaries and python module
         run: |
           set -o pipefail
-          if ! cmake --build cpp/build --config Release 2>&1 | tee build.log; then
-            echo "::error::$(grep -m 5 -E 'error:' build.log | tr '\n' ' ~ ')"
+          if ! cmake --build cpp/build --config Release -j 2 -- -k 2>&1 | tee build.log; then
+            echo "::error::$(grep -m 10 -E 'error:' build.log | tr '\n' ' ~ ')"
             exit 1
           fi
 
