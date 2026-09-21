@@ -269,21 +269,22 @@ class MerkleCheckpointer:
         leaf_count = len(sorted_readings)
 
         # Monotonic Nonce Discontinuity / Omission Detection (UC-09)
-        expected_count = last_nonce - first_nonce + 1
-        gap_count = max(0, expected_count - leaf_count)
+        internal_gap = max(0, (last_nonce - first_nonce + 1) - leaf_count)
 
         # Day-boundary omission check: verify first_nonce == prev_day_last_nonce + 1
         boundary_gap = 0
         if prev_day_last_nonce is not None:
             if first_nonce > prev_day_last_nonce + 1:
                 boundary_gap = first_nonce - (prev_day_last_nonce + 1)
-                gap_count += boundary_gap
 
-        # Same-day End-of-Day Truncation Check: detect omitted trailing readings (e.g. 42 instead of 48)
+        # Same-day End-of-Day Truncation Check: detect trailing omitted nonces after last_nonce
         eod_gap = 0
-        if expected_daily_readings is not None and expected_daily_readings > 0 and leaf_count < expected_daily_readings:
-            eod_gap = expected_daily_readings - leaf_count
-            gap_count += eod_gap
+        if expected_daily_readings is not None and expected_daily_readings > 0:
+            expected_end_nonce = first_nonce + expected_daily_readings - 1
+            if expected_end_nonce > last_nonce:
+                eod_gap = expected_end_nonce - last_nonce
+
+        gap_count = internal_gap + boundary_gap + eod_gap
 
         # Authenticated Metadata Commitment (anchors root + nonces + boundary links together)
         anchor_digest = hashlib.sha256(
