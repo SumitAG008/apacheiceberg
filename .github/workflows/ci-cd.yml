@@ -234,7 +234,11 @@ jobs:
 
       - name: Build etp_core C++ binaries and python module
         run: |
-          cmake --build cpp/build --config Release
+          set -o pipefail
+          if ! cmake --build cpp/build --config Release 2>&1 | tee build.log; then
+            echo "::error::$(grep -m 5 -E 'error:' build.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
 
       - name: Execute C++ Native Core Verification Suite
         run: |
