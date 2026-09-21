@@ -1,17 +1,18 @@
 """Tests for ETP Nonce Store (MemoryNonceStore & RedisNonceStore).
 
-Includes atomic Lua script verification, multi-threaded race condition tests, and production fail-closed tests.
+Includes atomic Lua CAS verification, 1024-window big-integer math tests, multi-threaded concurrency tests,
+and production fail-closed security tests.
 """
 
 import concurrent.futures
 import os
 import threading
 import pytest
-from etp.nonce_store import MemoryNonceStore, RedisNonceStore, AbstractNonceStore, LUA_CHECK_ONLY, LUA_COMMIT
+from etp.nonce_store import MemoryNonceStore, RedisNonceStore, AbstractNonceStore, LUA_CAS_COMMIT
 
 
 class FakeLuaRedisClient:
-    """In-memory Redis client mock supporting eval for Lua scripts and atomic lock simulation."""
+    """In-memory Redis client mock supporting atomic eval for LUA_CAS_COMMIT script execution."""
 
     def __init__(self):
         self._data = {}
@@ -25,75 +26,34 @@ class FakeLuaRedisClient:
             hash_dict = self._data.get(key, {})
             return hash_dict.get(field)
 
+    def hgetall(self, key: str):
+        with self._lock:
+            return dict(self._data.get(key, {}))
+
     def eval(self, script: str, numkeys: int, key: str, *args):
         with self._lock:
-            record = self._data.get(key, {})
-            inc_nonce = int(args[0])
+            if script == LUA_CAS_COMMIT:
+                exp_last = args[0]
+                exp_seen = args[1]
+                new_last = args[2]
+                new_seen = args[3]
+                new_hash = args[4]
+                timestamp = args[5]
 
-            if script == LUA_CHECK_ONLY:
-                win_size = int(args[1])
-                if not record or "last_nonce" not in record:
-                    return [1, -1, "OK"]
-                
-                last_nonce = int(record["last_nonce"])
-                seen_bitmap = int(record.get("seen_bitmap", 0))
+                record = self._data.get(key, {})
+                curr_last = str(record.get("last_nonce", "-1"))
+                curr_seen = str(record.get("seen_bitmap", "0"))
 
-                if inc_nonce > last_nonce:
-                    return [1, last_nonce, "OK"]
-
-                diff = last_nonce - inc_nonce
-                if diff < win_size:
-                    is_seen = (seen_bitmap >> diff) & 1
-                    if is_seen == 1:
-                        return [0, last_nonce, "REPLAY_REJECTED"]
-                    return [1, last_nonce, "OK_BACKFILL"]
+                if curr_last == exp_last and curr_seen == exp_seen:
+                    self._data[key] = {
+                        "last_nonce": new_last,
+                        "seen_bitmap": new_seen,
+                        "last_hash": new_hash,
+                        "updated_at": timestamp
+                    }
+                    return 1
                 else:
-                    return [0, last_nonce, "EXPIRED_NONCE_REJECTED"]
-
-            elif script == LUA_COMMIT:
-                inc_hash = args[1]
-                timestamp = args[2]
-                win_size = int(args[3])
-                mask = (1 << win_size) - 1
-
-                if not record or "last_nonce" not in record:
-                    self._data[key] = {
-                        "last_nonce": inc_nonce,
-                        "seen_bitmap": 1,
-                        "last_hash": inc_hash,
-                        "updated_at": timestamp
-                    }
-                    return [1, inc_nonce, "ACCEPT"]
-
-                last_nonce = int(record["last_nonce"])
-                seen_bitmap = int(record.get("seen_bitmap", 0))
-
-                if inc_nonce > last_nonce:
-                    shift = inc_nonce - last_nonce
-                    if shift >= win_size:
-                        new_bitmap = 1
-                    else:
-                        new_bitmap = ((seen_bitmap << shift) | 1) & mask
-
-                    self._data[key] = {
-                        "last_nonce": inc_nonce,
-                        "seen_bitmap": new_bitmap,
-                        "last_hash": inc_hash,
-                        "updated_at": timestamp
-                    }
-                    return [1, inc_nonce, "ACCEPT"]
-
-                diff = last_nonce - inc_nonce
-                if diff < win_size:
-                    if (seen_bitmap >> diff) & 1 == 1:
-                        return [0, last_nonce, "REPLAY_REJECTED"]
-
-                    new_bitmap = seen_bitmap | (1 << diff)
-                    self._data[key]["seen_bitmap"] = new_bitmap
-                    self._data[key]["updated_at"] = timestamp
-                    return [1, inc_nonce, "ACCEPT_BACKFILL"]
-
-                return [0, last_nonce, "EXPIRED_NONCE_REJECTED"]
+                    return 0
 
             raise ValueError("Unsupported Lua script in FakeLuaRedisClient")
 
@@ -143,7 +103,7 @@ def test_memory_nonce_store_backfill_and_expired():
     assert msg == "EXPIRED_NONCE_REJECTED"
 
 
-def test_redis_nonce_store_with_fake_lua_redis():
+def test_redis_nonce_store_with_fake_lua_redis_cas():
     fake_client = FakeLuaRedisClient()
     redis_store = RedisNonceStore(redis_client=fake_client, window_size=64)
 
@@ -163,10 +123,37 @@ def test_redis_nonce_store_with_fake_lua_redis():
     assert redis_store.get_last_hash("MPAN-REDIS-1") == "hash55"
 
 
+def test_redis_nonce_store_large_window_size_no_float_overflow():
+    """Verifies window_size=1024 works with nonces > 100 without IEEE 754 float overflow (inf)."""
+    fake_client = FakeLuaRedisClient()
+    redis_store = RedisNonceStore(redis_client=fake_client, window_size=1024)
+
+    mpan = "MPAN-LARGE-WINDOW"
+    # Commit initial nonce 100
+    redis_store.commit(mpan, 100, "h100", "2026-09-22T00:00:00Z")
+
+    # Advance through 200 nonces (exceeding 53-bit double floating point precision)
+    for n in range(101, 300):
+        st, committed_n, msg = redis_store.commit(mpan, n, f"h{n}", f"2026-09-22T00:00:{n%60:02d}Z")
+        assert st == 1
+        assert committed_n == n
+
+    # Replay of nonce 250 must be rejected
+    rep_st, _, rep_msg = redis_store.commit(mpan, 250, "h250", "2026-09-22T01:00:00Z")
+    assert rep_st == 0
+    assert rep_msg == "REPLAY_REJECTED"
+
+    # Out-of-order backfill of nonce 280 (not seen yet) must be accepted
+    # Advance to 350 first
+    redis_store.commit(mpan, 350, "h350", "2026-09-22T02:00:00Z")
+    bf_st, _, _ = redis_store.commit(mpan, 340, "h340", "2026-09-22T02:05:00Z")
+    assert bf_st == 1
+
+
 def test_redis_nonce_store_concurrent_threads_atomic():
     """Concurrency Test: 10 worker threads attempt to commit the exact same nonce simultaneously.
     
-    Verifies that server-side Lua atomicity allows EXACTLY ONE acceptance and rejects 9 replays.
+    Verifies that Lua Compare-And-Swap (CAS) allows EXACTLY ONE acceptance and rejects 9 replays.
     """
     fake_client = FakeLuaRedisClient()
     redis_store = RedisNonceStore(redis_client=fake_client, window_size=64)
@@ -201,7 +188,6 @@ def test_redis_nonce_store_fail_closed_in_production(monkeypatch):
     with pytest.raises(RuntimeError, match="Refusing to fall back to process-local memory store"):
         RedisNonceStore(redis_client=None, redis_url="redis://invalid.host:6379/0", window_size=32)
 
-    # In development mode, fallback is permitted
     monkeypatch.setenv("ENVIRONMENT", "development")
     dev_store = RedisNonceStore(redis_client=None, redis_url=None, window_size=32)
     assert dev_store.redis is None

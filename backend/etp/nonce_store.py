@@ -1,7 +1,8 @@
 """Block 3b — Production ETP Nonce Store.
 
-Provides multi-replica atomic sliding-window nonce validation and persistence using Redis Lua scripts,
-with fail-closed security guards in production environments.
+Provides multi-replica atomic sliding-window nonce validation and persistence using Python
+arbitrary-precision big-integers paired with server-side Redis Lua Compare-And-Swap (CAS),
+eliminating floating-point precision overflow while guaranteeing multi-replica atomicity.
 """
 
 from abc import ABC, abstractmethod
@@ -12,75 +13,25 @@ from typing import Dict, Any, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
-LUA_CHECK_ONLY = """
+# Atomic Compare-And-Swap (CAS) Lua Script
+LUA_CAS_COMMIT = """
 local key = KEYS[1]
-local inc_nonce = tonumber(ARGV[1])
-local win_size = tonumber(ARGV[2])
+local exp_last = ARGV[1]
+local exp_seen = ARGV[2]
+local new_last = ARGV[3]
+local new_seen = ARGV[4]
+local new_hash = ARGV[5]
+local timestamp = ARGV[6]
 
-local last_nonce = redis.call('HGET', key, 'last_nonce')
-if not last_nonce then
-    return {1, -1, "OK"}
-end
+local curr_last = redis.call('HGET', key, 'last_nonce') or "-1"
+local curr_seen = redis.call('HGET', key, 'seen_bitmap') or "0"
 
-last_nonce = tonumber(last_nonce)
-local seen_bitmap = tonumber(redis.call('HGET', key, 'seen_bitmap') or '0')
-
-if inc_nonce > last_nonce then
-    return {1, last_nonce, "OK"}
-end
-
-local diff = last_nonce - inc_nonce
-if diff < win_size then
-    local is_seen = math.floor(seen_bitmap / (2^diff)) % 2
-    if is_seen == 1 then
-        return {0, last_nonce, "REPLAY_REJECTED"}
-    end
-    return {1, last_nonce, "OK_BACKFILL"}
+if curr_last == exp_last and curr_seen == exp_seen then
+    redis.call('HMSET', key, 'last_nonce', new_last, 'seen_bitmap', new_seen, 'last_hash', new_hash, 'updated_at', timestamp)
+    return 1
 else
-    return {0, last_nonce, "EXPIRED_NONCE_REJECTED"}
+    return 0
 end
-"""
-
-LUA_COMMIT = """
-local key = KEYS[1]
-local inc_nonce = tonumber(ARGV[1])
-local inc_hash = ARGV[2]
-local timestamp = ARGV[3]
-local win_size = tonumber(ARGV[4])
-local mask_mod = 2^win_size
-
-local last_nonce = redis.call('HGET', key, 'last_nonce')
-if not last_nonce then
-    redis.call('HMSET', key, 'last_nonce', inc_nonce, 'seen_bitmap', 1, 'last_hash', inc_hash, 'updated_at', timestamp)
-    return {1, inc_nonce, "ACCEPT"}
-end
-
-last_nonce = tonumber(last_nonce)
-local seen_bitmap = tonumber(redis.call('HGET', key, 'seen_bitmap') or '0')
-
-if inc_nonce > last_nonce then
-    local shift = inc_nonce - last_nonce
-    local new_bitmap = 1
-    if shift < win_size then
-        new_bitmap = ((seen_bitmap * (2^shift)) + 1) % mask_mod
-    end
-    redis.call('HMSET', key, 'last_nonce', inc_nonce, 'seen_bitmap', tostring(new_bitmap), 'last_hash', inc_hash, 'updated_at', timestamp)
-    return {1, inc_nonce, "ACCEPT"}
-end
-
-local diff = last_nonce - inc_nonce
-if diff < win_size then
-    local is_seen = math.floor(seen_bitmap / (2^diff)) % 2
-    if is_seen == 1 then
-        return {0, last_nonce, "REPLAY_REJECTED"}
-    end
-    local new_bitmap = seen_bitmap + (2^diff)
-    redis.call('HSET', key, 'seen_bitmap', tostring(new_bitmap))
-    redis.call('HSET', key, 'updated_at', timestamp)
-    return {1, inc_nonce, "ACCEPT_BACKFILL"}
-end
-
-return {0, last_nonce, "EXPIRED_NONCE_REJECTED"}
 """
 
 
@@ -191,10 +142,10 @@ SlidingWindowNonceStore = MemoryNonceStore
 
 
 class RedisNonceStore(AbstractNonceStore):
-    """Multi-replica production Nonce Store backed by Redis and server-side Lua scripts.
+    """Multi-replica production Nonce Store backed by Redis optimistic Compare-And-Swap (CAS) Lua scripts.
     
-    Executes atomic server-side Lua scripts to eliminate read-compute-write race conditions
-    across multi-replica load-balanced deployments (2 to 10+ instances).
+    Uses Python arbitrary-precision big-integers for window bitwise math paired with atomic server-side Lua CAS,
+    preventing both double precision truncation (`inf` at >53 nonces) and multi-replica race conditions.
     Refuses fallback in non-development environments to prevent silent fail-open security bypass.
     """
 
@@ -240,25 +191,91 @@ class RedisNonceStore(AbstractNonceStore):
             return self.fallback_store.check_only(mpan, incoming_nonce)
 
         try:
-            key = self._key(mpan)
-            res = self.redis.eval(LUA_CHECK_ONLY, 1, key, str(incoming_nonce), str(self.window_size))
-            return int(res[0]), int(res[1]), str(res[2])
+            data = self.redis.hgetall(self._key(mpan))
+            if not data:
+                return 1, -1, "OK"
+
+            last_nonce = int(data.get("last_nonce", -1))
+            seen_bitmap = int(data.get("seen_bitmap", 0))
+
+            if incoming_nonce > last_nonce:
+                return 1, last_nonce, "OK"
+
+            diff = last_nonce - incoming_nonce
+            if diff < self.window_size:
+                if (seen_bitmap >> diff) & 1 == 1:
+                    return 0, last_nonce, "REPLAY_REJECTED"
+                return 1, last_nonce, "OK_BACKFILL"
+            else:
+                return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
         except Exception as err:
             self._assert_or_fallback("check_only", err)
             return self.fallback_store.check_only(mpan, incoming_nonce)
 
-    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
+    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str, max_retries: int = 5) -> Tuple[int, int, str]:
         if self.redis is None:
             self._assert_or_fallback("connection", RuntimeError("No Redis client available"))
             return self.fallback_store.commit(mpan, incoming_nonce, incoming_hash, timestamp)
 
-        try:
-            key = self._key(mpan)
-            res = self.redis.eval(LUA_COMMIT, 1, key, str(incoming_nonce), incoming_hash, timestamp, str(self.window_size))
-            return int(res[0]), int(res[1]), str(res[2])
-        except Exception as err:
-            self._assert_or_fallback("commit", err)
-            return self.fallback_store.commit(mpan, incoming_nonce, incoming_hash, timestamp)
+        key = self._key(mpan)
+        mask = (1 << self.window_size) - 1
+
+        for _ in range(max_retries):
+            try:
+                data = self.redis.hgetall(key)
+                if not data:
+                    exp_last_str = "-1"
+                    exp_seen_str = "0"
+                    last_nonce = None
+                    seen_bitmap = 0
+                else:
+                    exp_last_str = str(data.get("last_nonce", "-1"))
+                    exp_seen_str = str(data.get("seen_bitmap", "0"))
+                    last_nonce = int(exp_last_str)
+                    seen_bitmap = int(exp_seen_str)
+
+                if last_nonce is None:
+                    new_last = incoming_nonce
+                    new_seen = 1
+                    new_hash = incoming_hash
+                    res = self.redis.eval(LUA_CAS_COMMIT, 1, key, exp_last_str, exp_seen_str, str(new_last), str(new_seen), new_hash, timestamp)
+                    if int(res) == 1:
+                        return 1, incoming_nonce, "ACCEPT"
+                    continue
+
+                if incoming_nonce > last_nonce:
+                    shift = incoming_nonce - last_nonce
+                    if shift >= self.window_size:
+                        new_seen = 1
+                    else:
+                        new_seen = ((seen_bitmap << shift) | 1) & mask
+                    new_last = incoming_nonce
+                    new_hash = incoming_hash
+                    res = self.redis.eval(LUA_CAS_COMMIT, 1, key, exp_last_str, exp_seen_str, str(new_last), str(new_seen), new_hash, timestamp)
+                    if int(res) == 1:
+                        return 1, incoming_nonce, "ACCEPT"
+                    continue
+
+                diff = last_nonce - incoming_nonce
+                if diff < self.window_size:
+                    if (seen_bitmap >> diff) & 1 == 1:
+                        return 0, last_nonce, "REPLAY_REJECTED"
+
+                    new_seen = seen_bitmap | (1 << diff)
+                    new_last = last_nonce
+                    new_hash = str(data.get("last_hash", incoming_hash))
+                    res = self.redis.eval(LUA_CAS_COMMIT, 1, key, exp_last_str, exp_seen_str, str(new_last), str(new_seen), new_hash, timestamp)
+                    if int(res) == 1:
+                        return 1, incoming_nonce, "ACCEPT_BACKFILL"
+                    continue
+
+                return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
+
+            except Exception as err:
+                self._assert_or_fallback("commit", err)
+                return self.fallback_store.commit(mpan, incoming_nonce, incoming_hash, timestamp)
+
+        return self.check_only(mpan, incoming_nonce)
 
     def get_last_hash(self, mpan: str) -> Optional[str]:
         if self.redis is None:
