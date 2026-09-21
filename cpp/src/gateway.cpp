@@ -6,6 +6,8 @@
 #include <memory>
 #include <sstream>
 #include <iomanip>
+#include <locale>
+#include <system_error>
 #include <stdexcept>
 #include <algorithm>
 #include <cstring>

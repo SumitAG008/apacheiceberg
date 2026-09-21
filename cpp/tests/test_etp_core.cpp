@@ -4,6 +4,10 @@
 #include <iostream>
 #include <cassert>
 #include <memory>
+#include <sstream>
+#include <iomanip>
+#include <locale>
+#include <vector>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>

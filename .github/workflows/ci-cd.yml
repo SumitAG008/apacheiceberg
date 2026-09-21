@@ -71,6 +71,8 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
+          ENVIRONMENT: "development"
+          ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
 
       - name: Run DQE regression tests
         working-directory: backend
@@ -85,6 +87,8 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
+          ENVIRONMENT: "development"
+          ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
 
       - name: Run ETP security & regression tests
         working-directory: backend
@@ -99,6 +103,8 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
+          ENVIRONMENT: "development"
+          ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
 
       - name: Run original regression suite (auth-flow skipped in CI)
         working-directory: backend
@@ -113,6 +119,8 @@ jobs:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
           JWT_SECRET_KEY: "ci-test-secret-key-32-chars-minimum-length-here"
           JWT_ALGORITHM: "HS256"
+          ENVIRONMENT: "development"
+          ETP_SECRET_KEY: "dev-etp-secret-key-change-in-production-environments-32-bytes!"
 
       - name: Security scan — blocked imports in DQE
         working-directory: backend
@@ -223,5 +231,5 @@ jobs:
 
       - name: Execute C++ Native Core Verification Suite
         run: |
-          ./cpp/build/etp_core_test
+          ./cpp/build/test_etp_core
 

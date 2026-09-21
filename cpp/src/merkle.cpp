@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iomanip>
 #include <sstream>
+#include <locale>
 #include <algorithm>
 
 namespace etp {
