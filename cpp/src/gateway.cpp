@@ -1,7 +1,9 @@
 #include "etp/gateway.hpp"
+#include <array>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/crypto.h>
+
 #include <charconv>
 #include <memory>
 #include <sstream>
