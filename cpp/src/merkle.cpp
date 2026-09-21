@@ -104,7 +104,7 @@ void MerkleTree::add_leaf_hex(std::string_view hex_hash) {
 
 std::string MerkleTree::compute_root() {
     if (leaves_.empty()) {
-        return std::string(64, '0');
+        return std::string();
     }
 
     std::vector<std::vector<uint8_t>> current_level = leaves_;
