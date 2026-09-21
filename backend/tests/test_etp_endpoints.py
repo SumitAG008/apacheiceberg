@@ -21,6 +21,8 @@ if str(root_dir) not in sys.path:
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
+os.environ.setdefault("ENVIRONMENT", "development")
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -101,3 +103,27 @@ def test_etp_query_verify_endpoint(client, auth_headers):
     assert query_obj["query_id"] == "q_test_123"
     assert "verification_proof" in query_obj
     assert query_obj["verification_proof"]["total_rows_scanned"] == 1
+
+
+def test_etp_ingest_endpoint(client, auth_headers):
+    """Verifies POST /v1/etp/ingest exercises full security pipeline (route validation, schema check, signature verification, state commit)."""
+    from backend.api.main import etp_gateway, etp_route_mutator
+    assert etp_gateway is not None, "ETP Gateway engine not initialized"
+
+    meter = SmartMeterSimulator(mpan="MPAN-INGEST-TEST-001")
+    etp_gateway.register_meter_public_key(meter.mpan, meter.public_key)
+
+    now_epoch_s = int(time.time())
+    route = etp_route_mutator.active_routes(now_epoch_s)["current"]
+
+    block = meter.generate_block(reading_kwh=15.678)
+    block_dict = block.to_dict()
+    block_dict["route"] = route
+
+    response = client.post("/v1/etp/ingest", json=block_dict, headers=auth_headers)
+    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}: {response.json()}"
+    resp_data = response.json()
+    assert resp_data.get("status") == "accepted"
+    assert resp_data.get("verify_status") == "VERIFIED"
+    assert resp_data.get("block_hash") == block.block_hash
+

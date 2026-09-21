@@ -29,6 +29,8 @@ backend/api/audit_logs.db
 # ── Local data lake / Warehouse ───────────────────────
 backend/warehouse/
 backend/data/uploaded_*
+backend/data/*.json
+backend/data/*.jsonl
 
 # ── Frontend build ────────────────────────────────────
 frontend/vite-project/dist/

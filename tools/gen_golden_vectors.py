@@ -83,12 +83,17 @@ def generate_golden_vectors() -> dict:
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     vectors = generate_golden_vectors()
     out_path = backend_dir / "tests" / "golden_vectors.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(vectors, f, indent=2)
-    print(f"✅ Generated golden test vectors saved to {out_path}")
+    print(f"[OK] Generated golden test vectors saved to {out_path}")
     print(f"   Canonical Hash : {vectors['expected_outputs']['canonical_hash']}")
     print(f"   Route Scramble : {vectors['expected_outputs']['route_scramble']}")
     print(f"   Merkle Root    : {vectors['expected_outputs']['merkle_root']}")

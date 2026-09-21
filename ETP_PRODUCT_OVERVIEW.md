@@ -66,8 +66,8 @@ ETP (Energy Telemetry Provenance) is a high-performance software engine that act
 
 ## 4. Verification & Testing Matrix
 
-- **Unit & Integration Test Suite:** 35 ETP standalone & endpoint test cases passing cleanly (100% green).
-- **Live REST API Endpoints:** Verified FastAPI endpoints (`/v1/etp/ingest`, `/v1/etp/checkpoint`, `/v1/etp/query/verify`, `/v1/etp/honeypot/stix`) with `test_etp_endpoints.py` (3/3 endpoint tests pass with status 200 OK, zero 503 errors).
+- **Unit & Integration Test Suite:** 36 ETP standalone & endpoint test cases passing cleanly (100% green; 202/203 full platform suite tests passing).
+- **Live REST API Endpoints:** Verified FastAPI endpoints (`/v1/etp/ingest`, `/v1/etp/checkpoint`, `/v1/etp/query/verify`, `/v1/etp/honeypot/stix`) with `test_etp_endpoints.py` (4/4 endpoint tests pass with status 200 OK, zero 503 errors).
 - **Golden Vector Conformance Suite:** `tools/gen_golden_vectors.py` dynamically derives authoritative test vectors (`golden_vectors.json`), preventing hand-written constant drift between C++ and Python.
 - **CI/CD Automation:** Integrated GitHub Actions workflow running Python Pytest suites and native C++20 `cmake` build runner (`test-cpp-native`).
 

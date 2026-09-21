@@ -3252,10 +3252,10 @@ try:
 
     etp_secret = os.environ.get("ETP_SECRET_KEY")
     if not etp_secret:
-        if os.environ.get("ENVIRONMENT", "development").lower() == "production":
-            raise RuntimeError("ETP_SECRET_KEY environment variable is required in production deployments.")
-        else:
+        if os.environ.get("ENVIRONMENT", "").strip().lower() == "development":
             etp_secret = "dev-etp-secret-key-change-in-production-environments-32-bytes!"
+        else:
+            raise RuntimeError("ETP_SECRET_KEY environment variable is required unless ENVIRONMENT='development'.")
 
     etp_honeypot = PhantomGridHoneypot(storage_path="backend/data/etp_threat_logs.jsonl")
     etp_route_mutator = RouteMutator(secret_key=etp_secret.encode('utf-8'), window_s=60)
@@ -3271,7 +3271,7 @@ except Exception as _etp_init_err:
     print(f"[api/main] ERROR initializing ETP gateway engine: {_etp_init_err}")
     import traceback
     traceback.print_exc()
-    if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+    if os.environ.get("ENVIRONMENT", "").strip().lower() != "development":
         raise _etp_init_err
     etp_gateway = None
     etp_checkpointer = None
@@ -3286,6 +3286,7 @@ class ETPTelemetryIngestRequest(BaseModel):
     timestamp: str
     prev_hash: str
     nonce: int
+    block_hash: str
     signature: str
     crypto_suite_id: str = "ECDSA-P256-SHA256-v1"
     key_id: str = "k-test"
@@ -3319,9 +3320,12 @@ async def etp_ingest_telemetry(payload: ETPTelemetryIngestRequest, request: Requ
     else:
         source_ip = request.client.host if request.client else "127.0.0.1"
 
+    block_payload = payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict()
+    route = block_payload.pop("route")
+
     status_code, resp_body = etp_gateway.process_request(
-        requested_path=payload.route,
-        payload=payload.model_dump() if hasattr(payload, 'model_dump') else payload.dict(),
+        requested_path=route,
+        payload=block_payload,
         now_epoch_s=int(time.time()),
         source_ip=source_ip
     )

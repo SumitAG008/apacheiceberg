@@ -181,7 +181,23 @@ class ETPGateway:
         """Processes an incoming HTTP POST request following strict verification order."""
         t0 = time.perf_counter()
         
-        # 1. Route Check (Constant-Time MTD Validation)
+        # 1. Structure & Schema Validation (enforced first to prevent honeypot oracle scanning via malformed payloads)
+        try:
+            block = TelemetryBlock(**payload)
+        except Exception as e:
+            evt = {
+                "action": "telemetry.malformed",
+                "source_ip": source_ip,
+                "path": requested_path,
+                "outcome": "MALFORMED_REJECTED"
+            }
+            self.audit_log.append(evt)
+            if audit:
+                audit.deny(action="etp.schema_invalid", reason=str(e), detail=evt)
+            record_verification("MALFORMED", "SCHEMA_INVALID", time.perf_counter() - t0)
+            return 400, {"status": "error", "message": f"Malformed block schema: {str(e)}"}
+
+        # 2. Route Check (Constant-Time MTD Validation)
         if not self.route_mutator.validate_route(requested_path, now_epoch_s):
             # Invalid or expired route -> divert silently to Phantom Grid (UC-03)
             synthetic_response = self.phantom_grid.handle_diverted_request(
@@ -202,22 +218,6 @@ class ETPGateway:
             record_honeypot_divert(requested_path, source_ip)
             record_verification("INVALID_ROUTE", "ROUTE_MISMATCH", time.perf_counter() - t0)
             return 200, synthetic_response  # Return plausible HTTP 200 OK
-
-        # 2. Structure & Schema Validation
-        try:
-            block = TelemetryBlock(**payload)
-        except Exception as e:
-            evt = {
-                "action": "telemetry.malformed",
-                "source_ip": source_ip,
-                "path": requested_path,
-                "outcome": "MALFORMED_REJECTED"
-            }
-            self.audit_log.append(evt)
-            if audit:
-                audit.deny(action="etp.schema_invalid", reason=str(e), detail=evt)
-            record_verification("MALFORMED", "SCHEMA_INVALID", time.perf_counter() - t0)
-            return 400, {"status": "error", "message": f"Malformed block schema: {str(e)}"}
 
         # 3. Fast Nonce Check (PEEK only, zero state mutation before ECDSA verification)
         cas_status, last_nonce, cas_msg = self.nonce_store.check_only(block.mpan, block.nonce)

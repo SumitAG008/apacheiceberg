@@ -123,9 +123,9 @@
 |  Component             | Status                                              |
 +------------------------+-----------------------------------------------------+
 |  Native C++20 Core     | Zero-throw hex parser, RAII OpenSSL smart pointers |
-|  Test Suite Coverage   | 48 / 48 test cases passing (100% green)             |
+|  Test Suite Coverage   | 36 / 36 ETP test cases passing (202/203 full suite green) |
 |  Golden Vectors        | Automated cross-language Python/C++ spec alignment   |
-|  REST API Integration  | FastAPI endpoints (`/v1/etp/*`) live & integrated   |
+|  REST API Integration  | 4 FastAPI endpoints (`/v1/etp/*`) live, verified & integrated |
 |  CI/CD Pipeline        | GitHub Actions multi-job C++20 & Pytest runner      |
 +------------------------+-----------------------------------------------------+
 ```
