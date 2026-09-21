@@ -66,7 +66,7 @@ std::string RouteMutator::scramble_hex(uint64_t window) const {
     std::array<uint8_t, 32> digest{};
     size_t out_len = 0;
 
-    int res = EVP_Q_mac(
+    unsigned char* res = EVP_Q_mac(
         nullptr,                    // OSSL_LIB_CTX
         "HMAC",                     // Algorithm
         nullptr,                    // Property query
@@ -74,10 +74,10 @@ std::string RouteMutator::scramble_hex(uint64_t window) const {
         nullptr,                    // Parameters
         secret_key_.data(), secret_key_.size(),
         msg_bytes.data(), msg_bytes.size(),
-        digest.data(), &out_len, digest.size()
+        digest.data(), digest.size(), &out_len
     );
 
-    if (res != 1 || out_len != 32) {
+    if (res == nullptr || out_len != 32) {
         throw std::runtime_error("OpenSSL EVP_Q_mac failed to compute HMAC-SHA256");
     }
 
