@@ -30,109 +30,7 @@ except ImportError:
         record_honeypot_divert = lambda *a, **k: None
 
 
-class SlidingWindowNonceStore:
-    """Atomic sliding-window nonce store implementing IPsec RFC 6479 anti-replay design.
-    
-    Supports out-of-order backfill during network comms loss while preventing replay attacks 
-    and maintaining thread safety across workers.
-    
-    Window Size W = configurable (default 1024 nonces ≈ 3 weeks of half-hourly readings).
-    - Nonces N > N_max: Accepted; shifts window and bitmap.
-    - Nonces in range [N_max - (W - 1), N_max]: Accepted if bit in seen_bitmap is 0; sets bit to 1.
-    - Nonces N < N_max - (W - 1): Rejected as expired/too old (EXPIRED_NONCE_REJECTED).
-    """
-
-    def __init__(self, window_size: int = 1024):
-        if window_size < 1:
-            raise ValueError("window_size must be >= 1")
-        self.window_size = window_size
-        self.mask = (1 << window_size) - 1
-        # mpan -> {"last_nonce": int, "seen_bitmap": int, "last_hash": str, "updated_at": str}
-        self._store: Dict[str, Dict[str, Any]] = {}
-        self._lock = threading.Lock()
-
-    def check_only(self, mpan: str, incoming_nonce: int) -> Tuple[int, int, str]:
-        """Non-committal replay check using sliding window bitmap. NEVER mutates state."""
-        with self._lock:
-            record = self._store.get(mpan)
-            if record is None:
-                return 1, -1, "OK"
-            
-            last_nonce = record["last_nonce"]
-            seen_bitmap = record["seen_bitmap"]
-            
-            if incoming_nonce > last_nonce:
-                return 1, last_nonce, "OK"
-            
-            diff = last_nonce - incoming_nonce
-            if diff < self.window_size:
-                # Inside sliding window: check if already seen
-                is_seen = (seen_bitmap >> diff) & 1
-                if is_seen == 1:
-                    return 0, last_nonce, "REPLAY_REJECTED"
-                return 1, last_nonce, "OK_BACKFILL"
-            else:
-                # Too old (below sliding window)
-                return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
-
-    def commit(self, mpan: str, incoming_nonce: int, incoming_hash: str, timestamp: str) -> Tuple[int, int, str]:
-        """Advance counter or set bit in sliding window for a FULLY VERIFIED block under lock.
-        
-        Fixes Blocker 2: Backfilling an older nonce (incoming_nonce <= last_nonce) marks the 
-        bitmap bit but NEVER updates last_hash, preserving the chain head of last_nonce.
-        Fixes Blocker 3: Dynamically masks bitmask using (1 << window_size) - 1.
-        """
-        with self._lock:
-            record = self._store.get(mpan)
-            if record is None:
-                self._store[mpan] = {
-                    "last_nonce": incoming_nonce,
-                    "seen_bitmap": 1,
-                    "last_hash": incoming_hash,
-                    "updated_at": timestamp
-                }
-                return 1, incoming_nonce, "ACCEPT"
-            
-            last_nonce = record["last_nonce"]
-            seen_bitmap = record["seen_bitmap"]
-            
-            if incoming_nonce > last_nonce:
-                shift = incoming_nonce - last_nonce
-                if shift >= self.window_size:
-                    new_bitmap = 1
-                else:
-                    new_bitmap = ((seen_bitmap << shift) | 1) & self.mask
-                
-                self._store[mpan] = {
-                    "last_nonce": incoming_nonce,
-                    "seen_bitmap": new_bitmap,
-                    "last_hash": incoming_hash,
-                    "updated_at": timestamp
-                }
-                return 1, incoming_nonce, "ACCEPT"
-            
-            diff = last_nonce - incoming_nonce
-            if diff < self.window_size:
-                if (seen_bitmap >> diff) & 1 == 1:
-                    return 0, last_nonce, "REPLAY_REJECTED"
-                
-                new_bitmap = seen_bitmap | (1 << diff)
-                self._store[mpan]["seen_bitmap"] = new_bitmap
-                # CRITICAL (Blocker 2 Fix): Do NOT update last_hash here! 
-                # The chain head is still last_nonce's block hash.
-                self._store[mpan]["updated_at"] = timestamp
-                return 1, incoming_nonce, "ACCEPT_BACKFILL"
-            
-            return 0, last_nonce, "EXPIRED_NONCE_REJECTED"
-
-    def get_last_hash(self, mpan: str) -> Optional[str]:
-        with self._lock:
-            record = self._store.get(mpan)
-            return record["last_hash"] if record else None
-
-
-# Retain alias MemoryNonceStore for backward compatibility
-MemoryNonceStore = SlidingWindowNonceStore
+from .nonce_store import AbstractNonceStore, MemoryNonceStore, RedisNonceStore, SlidingWindowNonceStore
 
 
 class ETPGateway:
@@ -141,7 +39,7 @@ class ETPGateway:
     def __init__(
         self,
         route_mutator: RouteMutator,
-        nonce_store: SlidingWindowNonceStore,
+        nonce_store: AbstractNonceStore,
         phantom_grid: PhantomGridHoneypot,
         security_manager: ETPSecurityManager = None
     ):
