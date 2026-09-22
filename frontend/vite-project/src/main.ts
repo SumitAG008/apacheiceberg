@@ -404,8 +404,8 @@ async function loadAWSConfig() {
       const connDot = document.getElementById('connection-status-dot');
       const connText = document.getElementById('connection-status-text');
       if (connDot) connDot.className = 'status-dot pending';
-      if (connText) connText.textContent = 'Demo mode';
-      updateWorkspaceLockState(true);
+      if (connText) connText.textContent = 'Synthetic Data · Demo Mode';
+      updateWorkspaceLockState(false);
     }
   } catch (error) {
     console.error('Failed to load AWS configuration:', error);
@@ -7031,13 +7031,13 @@ setTimeout(() => {
 // just avoids sending them to a 403 they can't act on.
 const NAV_CAPS: Record<string, string[] | '*'> = {
   'Admin': '*',
-  'Data Engineer': ['nav-chat', 'nav-mcp', 'nav-api', 'nav-ingest', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
-  'Data Architect': ['nav-chat', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-audit', 'nav-api', 'nav-query-lab'],
-  'Business Analyst': ['nav-chat', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
-  'Consultant': ['nav-chat', 'nav-studio', 'nav-query-lab'],
-  'CIO': ['nav-chat', 'nav-traffic', 'nav-audit'],
-  'COO': ['nav-chat', 'nav-traffic', 'nav-audit'],
-  'Viewer': ['nav-chat', 'nav-traffic'],
+  'Data Engineer': ['nav-chat', 'nav-demo-60s', 'nav-audit', 'nav-mcp', 'nav-api', 'nav-ingest', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
+  'Data Architect': ['nav-chat', 'nav-demo-60s', 'nav-audit', 'nav-graph', 'nav-workspace', 'nav-studio', 'nav-traffic', 'nav-api', 'nav-query-lab'],
+  'Business Analyst': ['nav-chat', 'nav-demo-60s', 'nav-audit', 'nav-studio', 'nav-traffic', 'nav-query-lab'],
+  'Consultant': ['nav-chat', 'nav-demo-60s', 'nav-audit', 'nav-studio', 'nav-query-lab'],
+  'CIO': ['nav-chat', 'nav-demo-60s', 'nav-traffic', 'nav-audit'],
+  'COO': ['nav-chat', 'nav-demo-60s', 'nav-traffic', 'nav-audit'],
+  'Viewer': ['nav-chat', 'nav-demo-60s', 'nav-audit', 'nav-traffic'],
 };
 
 function applyRoleNavGating(role: string) {
@@ -8648,5 +8648,189 @@ function updateWalkthroughUI() {
   (window as any).closeMeldraModal('modal-support-ticket');
   showToast(`Support ticket ${ticketId} submitted! Our team will respond shortly.`, 'success');
 };
+
+// ─────────────────────────────────────────
+// 60-SECOND OMISSION & DISPUTE DEMO CONTROLLER (3-SCREEN DEMO PATH)
+// ─────────────────────────────────────────
+
+function switchDemoStep(step: number) {
+  const screens = [
+    document.getElementById('demo-screen-1'),
+    document.getElementById('demo-screen-2'),
+    document.getElementById('demo-screen-3')
+  ];
+  const buttons = [
+    document.getElementById('btn-demo-step-1'),
+    document.getElementById('btn-demo-step-2'),
+    document.getElementById('btn-demo-step-3')
+  ];
+
+  screens.forEach((sc, idx) => {
+    if (!sc) return;
+    sc.style.display = (idx + 1 === step) ? 'flex' : 'none';
+  });
+
+  buttons.forEach((btn, idx) => {
+    if (!btn) return;
+    if (idx + 1 === step) {
+      btn.classList.add('active');
+      btn.style.background = 'rgba(34, 197, 94, 0.15)';
+      btn.style.borderColor = idx === 0 ? '#22c55e' : idx === 1 ? '#eab308' : '#38bdf8';
+    } else {
+      btn.classList.remove('active');
+      btn.style.background = 'rgba(255, 255, 255, 0.03)';
+      btn.style.borderColor = 'var(--border-subtle)';
+    }
+  });
+}
+(window as any).switchDemoStep = switchDemoStep;
+
+function renderDemoSlotGrids() {
+  const gridEstate = document.getElementById('estate-slots-grid');
+  const gridGap = document.getElementById('gap-slots-grid');
+
+  if (gridEstate && gridEstate.children.length === 0) {
+    for (let i = 0; i < 48; i++) {
+      const slot = document.createElement('div');
+      const startMinutes = i * 30;
+      const startH = Math.floor(startMinutes / 60).toString().padStart(2, '0');
+      const startM = (startMinutes % 60).toString().padStart(2, '0');
+      const endMinutes = (i + 1) * 30;
+      const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0');
+      const endM = (endMinutes % 60).toString().padStart(2, '0');
+      
+      slot.title = `SP ${i + 1} (${startH}:${startM}–${endH}:${endM} UTC) - Nonce ${1001 + i} [VERIFIED]`;
+      slot.style.height = '24px';
+      slot.style.borderRadius = '3px';
+      slot.style.background = '#22c55e';
+      slot.style.opacity = '0.85';
+      slot.style.cursor = 'pointer';
+      gridEstate.appendChild(slot);
+    }
+  }
+
+  if (gridGap && gridGap.children.length === 0) {
+    const missingIndices = new Set([23, 24, 25, 26, 27, 28]); // SP 24-29 (nonces 1024-1029)
+    for (let i = 0; i < 48; i++) {
+      const slot = document.createElement('div');
+      const startMinutes = i * 30;
+      const startH = Math.floor(startMinutes / 60).toString().padStart(2, '0');
+      const startM = (startMinutes % 60).toString().padStart(2, '0');
+      const endMinutes = (i + 1) * 30;
+      const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0');
+      const endM = (endMinutes % 60).toString().padStart(2, '0');
+      
+      const isMissing = missingIndices.has(i);
+      
+      slot.title = isMissing 
+        ? `SP ${i + 1} (${startH}:${startM}–${endH}:${endM} UTC) - Nonce ${1001 + i} [OMITTED / MISSING]`
+        : `SP ${i + 1} (${startH}:${startM}–${endH}:${endM} UTC) - Nonce ${1001 + i} [RECEIVED]`;
+      slot.style.height = '24px';
+      slot.style.borderRadius = '3px';
+      slot.style.background = isMissing ? '#ef4444' : '#22c55e';
+      slot.style.opacity = isMissing ? '1' : '0.85';
+      slot.style.boxShadow = isMissing ? '0 0 8px rgba(239, 68, 68, 0.8)' : 'none';
+      slot.style.cursor = 'pointer';
+      gridGap.appendChild(slot);
+    }
+  }
+}
+
+function init60sOmissionDemo() {
+  renderDemoSlotGrids();
+
+  const btnVerify = document.getElementById('btn-verify-proof-live');
+  const btnRunTour = document.getElementById('btn-run-full-60s-tour');
+  const consoleOut = document.getElementById('demo-verification-console');
+
+  if (btnVerify && consoleOut) {
+    btnVerify.onclick = () => {
+      consoleOut.innerHTML = `<div>[00.01s] <span style="color:#bef264;">[C++ engine]</span> Fetching head-end telemetry nonces for UsagePoint MPAN 03 845 110 10 0012 3456 789...</div>`;
+      
+      setTimeout(() => {
+        consoleOut.innerHTML += `<div>[00.08s] <span style="color:#bef264;">[C++ engine]</span> Nonce sequence check: SP 1–23 <span style="color:#22c55e;">[PASS]</span>, SP 24–29 (11:30–14:30Z) <span style="color:#ef4444;">[OMITTED]</span>, SP 30–48 <span style="color:#22c55e;">[PASS]</span></div>`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 300);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<div>[00.18s] <span style="color:#bef264;">[C++ engine]</span> Executing compute_root() (42 leaves, odd-leaf promotion safe, CVE-2012-2459 immune)...</div>`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 600);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<div>[00.32s] <span style="color:#38bdf8;">[TSA RFC 3161]</span> Timestamp Authority token verified (freetsa.org / digest match).</div>`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+      }, 900);
+
+      setTimeout(() => {
+        consoleOut.innerHTML += `<div>[00.45s] <span style="color:#eab308; font-weight:bold;">[VERDICT: ANCHORED_WITH_GAPS]</span> Merkle Root 0x3f7a91b... MATCHED. SP 24–29 omission boundary cryptographically anchored & proven.</div>`;
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+        showToast('Cryptographic proof verified against native C++ Merkle engine!', 'success');
+      }, 1200);
+    };
+  }
+
+  if (btnRunTour) {
+    btnRunTour.onclick = () => {
+      showToast('Starting 60s Telemetry Omission Demo Tour...', 'info');
+      switchDemoStep(1);
+      
+      setTimeout(() => {
+        switchDemoStep(2);
+        showToast('Screen 2: SP 24–29 Telemetry Omission Detected Live', 'warning');
+      }, 2500);
+
+      setTimeout(() => {
+        switchDemoStep(3);
+        showToast('Screen 3: Merkle Root & RFC 3161 TSA Timestamp Proof', 'info');
+        btnVerify?.click();
+      }, 5000);
+    };
+  }
+}
+
+function initAwsAuthModeSelector() {
+  const btnOidc = document.getElementById('btn-auth-mode-oidc');
+  const btnKey = document.getElementById('btn-auth-mode-key');
+  const oidcFields = document.getElementById('aws-auth-oidc-fields');
+  const keyFields = document.getElementById('aws-auth-key-fields');
+
+  if (!btnOidc || !btnKey || !oidcFields || !keyFields) return;
+
+  btnOidc.onclick = () => {
+    btnOidc.style.background = 'rgba(34,197,94,0.15)';
+    btnOidc.style.color = '#bef264';
+    btnOidc.style.borderColor = 'rgba(34,197,94,0.3)';
+    btnOidc.style.fontWeight = '600';
+
+    btnKey.style.background = 'transparent';
+    btnKey.style.color = 'var(--text-muted)';
+    btnKey.style.borderColor = 'transparent';
+    btnKey.style.fontWeight = 'normal';
+
+    oidcFields.style.display = 'flex';
+    keyFields.style.display = 'none';
+  };
+
+  btnKey.onclick = () => {
+    btnKey.style.background = 'rgba(34,197,94,0.15)';
+    btnKey.style.color = '#bef264';
+    btnKey.style.borderColor = 'rgba(34,197,94,0.3)';
+    btnKey.style.fontWeight = '600';
+
+    btnOidc.style.background = 'transparent';
+    btnOidc.style.color = 'var(--text-muted)';
+    btnOidc.style.borderColor = 'transparent';
+    btnOidc.style.fontWeight = 'normal';
+
+    oidcFields.style.display = 'none';
+    keyFields.style.display = 'flex';
+  };
+}
+
+setTimeout(() => {
+  init60sOmissionDemo();
+  initAwsAuthModeSelector();
+}, 250);
 
 

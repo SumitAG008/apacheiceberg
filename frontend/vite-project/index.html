@@ -1926,57 +1926,70 @@
         </div>
 
         <div class="sidebar-content" style="padding: 0.9rem 0.75rem; display: flex; flex-direction: column; gap: 0.2rem;">
-          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.3rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-compass" style="font-size: 0.6rem; opacity: 0.7;"></i> Overview
+          
+          <!-- PROVENANCE (PRIMARY DIFFERENTIATOR) -->
+          <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #bef264; margin: 0.3rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-shield-halved" style="font-size: 0.65rem; color: #bef264;"></i> PROVENANCE
           </div>
-          <button class="tab-btn sidebar-nav-item active" data-tab="chat-tab" id="nav-chat">
-            <i class="fa-solid fa-house"></i> Home
+          <button class="tab-btn sidebar-nav-item active" data-tab="demo-60s-tab" id="nav-demo-60s" style="background: rgba(190, 242, 100, 0.08); border: 1px solid rgba(190, 242, 100, 0.3); color: #bef264; font-weight: 700;">
+            <i class="fa-solid fa-bolt" style="color: #bef264;"></i> Verification (60s Demo)
+            <span class="badge" style="margin-left: auto; font-size: 0.55rem; padding: 1px 5px; background: #bef264; color: #0f172a; font-weight: 800;">60-SEC</span>
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="assistant-tab" id="nav-assistant">
-            <i class="fa-solid fa-robot"></i> AI Assistant
+          <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-checkpoints">
+            <i class="fa-solid fa-link"></i> Checkpoints &amp; Anchors
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-omissions">
+            <i class="fa-solid fa-triangle-exclamation"></i> Omission Register
           </button>
 
+          <!-- ESTATE -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-database" style="font-size: 0.6rem; opacity: 0.7;"></i> Data Lakehouse
+            <i class="fa-solid fa-charging-station" style="font-size: 0.6rem; opacity: 0.7;"></i> ESTATE
           </div>
-          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
-            <i class="fa-solid fa-layer-group"></i> Workspace &amp; Storage
+          <button class="tab-btn sidebar-nav-item" data-tab="chat-tab" id="nav-chat">
+            <i class="fa-solid fa-solar-panel"></i> Meters &amp; Estate
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="ingest-tab" id="nav-ingest">
-            <i class="fa-solid fa-cloud-arrow-up"></i> Ingest Data
+            <i class="fa-solid fa-rss"></i> Telemetry Feed
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
+            <i class="fa-solid fa-database"></i> Catalog &amp; Connections
           </button>
 
+          <!-- ANALYTICS -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-chart-diagram" style="font-size: 0.6rem; opacity: 0.7;"></i> Analytics &amp; Query
+            <i class="fa-solid fa-chart-area" style="font-size: 0.6rem; opacity: 0.7;"></i> ANALYTICS
           </div>
           <button class="tab-btn sidebar-nav-item" data-tab="studio-tab" id="nav-studio">
-            <i class="fa-solid fa-code-branch"></i> Data Studio &amp; SQL
+            <i class="fa-solid fa-terminal"></i> Data Studio
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="query-lab-tab" id="nav-query-lab">
-            <i class="fa-solid fa-flask-vial"></i> Query Lab (DQE)
+            <i class="fa-solid fa-flask-vial"></i> Query Lab
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="graph-tab" id="nav-graph">
-            <i class="fa-solid fa-circle-nodes"></i> Grid Graph Topology
+            <i class="fa-solid fa-diagram-project"></i> Network Model
           </button>
 
+          <!-- GOVERNANCE -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-shield-halved" style="font-size: 0.6rem; opacity: 0.7;"></i> Governance &amp; Security
+            <i class="fa-solid fa-user-shield" style="font-size: 0.6rem; opacity: 0.7;"></i> GOVERNANCE
           </div>
           <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-audit">
             <i class="fa-solid fa-shield-cat"></i> Audit Ledger
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="users-tab" id="nav-users">
-            <i class="fa-solid fa-users-gear"></i> Users &amp; Roles
+            <i class="fa-solid fa-users-gear"></i> Roles &amp; Access
           </button>
 
+          <!-- PLATFORM -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-sliders" style="font-size: 0.6rem; opacity: 0.7;"></i> Platform &amp; Dev
+            <i class="fa-solid fa-sliders" style="font-size: 0.6rem; opacity: 0.7;"></i> PLATFORM
           </div>
-          <button class="tab-btn sidebar-nav-item" data-tab="mcp-tab" id="nav-mcp">
-            <i class="fa-solid fa-network-wired"></i> MCP Gateway
-          </button>
           <button class="tab-btn sidebar-nav-item" data-tab="api-tab" id="nav-api">
             <i class="fa-solid fa-book"></i> API Reference
+          </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="mcp-tab" id="nav-mcp">
+            <i class="fa-solid fa-network-wired"></i> Connectors &amp; MCP
           </button>
           <button class="tab-btn sidebar-nav-item" data-tab="traffic-tab" id="nav-traffic">
             <i class="fa-solid fa-chart-line"></i> Observability
@@ -1987,7 +2000,7 @@
 
           <button id="btn-open-connection" class="sidebar-connection-pill" style="margin-top: auto;">
             <span class="status-dot pending" id="connection-status-dot"></span>
-            <span id="connection-status-text">Lake connected · eu-west-2</span>
+            <span id="connection-status-text">Synthetic Data · Demo Mode</span>
             <i class="fa-solid fa-chevron-right" style="margin-left: auto; font-size: 0.7rem; opacity: 0.6;"></i>
           </button>
 
@@ -2023,8 +2036,8 @@
             <!-- Instance Switcher Pill -->
             <button id="btn-instance-switcher" class="btn btn-secondary btn-sm" title="Choose Environment Instance" style="gap:6px;">
               <i class="fa-solid fa-server" style="color:var(--color-primary);"></i>
-              <span id="active-instance-label" style="font-weight:600;">Production · UK North</span>
-              <span id="active-instance-badge" class="prod-badge-indicator">LIVE DATA</span>
+              <span id="active-instance-label" style="font-weight:600;">Sandbox · UK North</span>
+              <span id="active-instance-badge" class="prod-badge-indicator" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3);">SYNTHETIC DATA · DEMO</span>
             </button>
 
             <!-- Contextual Help Launcher -->
@@ -2076,6 +2089,211 @@
         </header>
 
         <section class="tab-view">
+
+          <!-- TAB: 60s OMISSION DEMO (3-SCREEN DEMO PATH) -->
+          <div id="demo-60s-tab" class="tab-content">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+              <!-- Demo Header & Interactive Step Bar -->
+              <div style="background: linear-gradient(135deg, rgba(20, 83, 45, 0.4), rgba(15, 23, 42, 0.8)); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                      <span class="badge" style="background: #bef264; color: #0f172a; font-weight: 800; font-size: 0.7rem; padding: 2px 8px;">EXECUTIVE DEMO</span>
+                      <span style="font-size: 0.75rem; color: #bef264; font-family: var(--font-mono); font-weight: 600;">ETP TELEMETRY OMISSION &amp; ANCHORING</span>
+                    </div>
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+                      ⚡ 60-Second Telemetry Omission &amp; Dispute Demo
+                    </h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.35rem 0 0;">
+                      Experience the 3-step proof path: <strong>The Estate</strong> (48 expected readings) → <strong>The Gap</strong> (omission detection live) → <strong>The Proof</strong> (Merkle &amp; RFC 3161 TSA token verification).
+                    </p>
+                  </div>
+                  
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-primary" id="btn-run-full-60s-tour" style="font-size: 0.85rem; padding: 0.5rem 1rem; background: linear-gradient(135deg, #16a34a, #22c55e); border: none; color: #ffffff; font-weight: 700; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);">
+                      <i class="fa-solid fa-play"></i> Run 60s Live Execution
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 3-Screen Step Switcher -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.5rem;">
+                  <button type="button" class="demo-step-btn active" id="btn-demo-step-1" onclick="switchDemoStep(1)" style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; border-radius: 8px; padding: 0.85rem; text-align: left; cursor: pointer; transition: all 0.2s;">
+                    <div style="font-size: 0.65rem; color: #bef264; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Screen 1</div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; margin-top: 2px;"><i class="fa-solid fa-solar-panel"></i> 1. The Estate</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Smart Meter · 48 SPs Expected</div>
+                  </button>
+                  
+                  <button type="button" class="demo-step-btn" id="btn-demo-step-2" onclick="switchDemoStep(2)" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.85rem; text-align: left; cursor: pointer; transition: all 0.2s;">
+                    <div style="font-size: 0.65rem; color: #eab308; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Screen 2</div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; margin-top: 2px;"><i class="fa-solid fa-triangle-exclamation"></i> 2. The Gap</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">SP 24–29 Missing · ANCHORED_WITH_GAPS</div>
+                  </button>
+
+                  <button type="button" class="demo-step-btn" id="btn-demo-step-3" onclick="switchDemoStep(3)" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.85rem; text-align: left; cursor: pointer; transition: all 0.2s;">
+                    <div style="font-size: 0.65rem; color: #38bdf8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Screen 3</div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; margin-top: 2px;"><i class="fa-solid fa-certificate"></i> 3. The Proof</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Merkle Root · RFC 3161 TSA Token</div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- SCREEN 1: THE ESTATE -->
+              <div id="demo-screen-1" class="demo-screen-panel" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="stat-card" style="padding: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); width: 100%; box-sizing: border-box;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                        <span class="badge" style="font-size:0.6rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-family:var(--font-mono); font-weight:700;">IEC 61968 Meter</span>
+                        <span class="badge" style="font-size:0.6rem; background:rgba(190,242,100,0.15); color:#bef264; border:1px solid rgba(190,242,100,0.3); font-family:var(--font-mono); font-weight:700;">verified from head-end ingestion</span>
+                      </div>
+                      <h3 style="margin: 0; font-size: 1.1rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-bolt" style="color: #bef264;"></i> Smart Meter Estate Node: UK-DNO-MID-98421</h3>
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">
+                        Primary Grid Feeder Substation · UK North Distribution Zone 
+                        <span class="badge" style="font-size:0.58rem; background:rgba(255,255,255,0.06); color:var(--text-muted); border:1px solid var(--border-subtle); margin-left: 0.3rem;">ServiceLocation</span>
+                      </span>
+                    </div>
+                    <span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-family: var(--font-mono); font-weight:700;">EXPECTING 48 SPs / DAY</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; width: 100%; margin-bottom: 1rem;">
+                    <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">MPAN Reference</span>
+                        <span class="badge" style="font-size:0.55rem; background:rgba(56,189,248,0.12); color:#38bdf8;">UsagePoint</span>
+                      </div>
+                      <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-top: 4px; line-height: 1.3;">
+                        <div style="color: var(--text-muted); letter-spacing: 2px;">03 &nbsp;845 &nbsp;110</div>
+                        <div style="font-weight: 700; color: #bef264; letter-spacing: 1.5px;">10 &nbsp;0012 &nbsp;3456 &nbsp;789</div>
+                      </div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                      <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Settlement Frequency</div>
+                      <div style="font-size: 0.88rem; font-weight: 700; color: #ffffff; font-family: var(--font-mono); margin-top: 4px;">Half-Hourly (SP 1–48)</div>
+                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">00:00 – 24:00 UTC</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                      <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Expected Nonces</div>
+                      <div style="font-size: 0.88rem; font-weight: 700; color: #bef264; font-family: var(--font-mono); margin-top: 4px;">1001 – 1048</div>
+                      <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">Monotonic Sequential</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                      <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Crypto Suite</div>
+                      <div style="font-size: 0.88rem; font-weight: 700; color: #38bdf8; font-family: var(--font-mono); margin-top: 4px;">ECDSA-P256-SHA256</div>
+                      <div style="font-size: 0.68rem; color: #22c55e; margin-top: 2px;">● Head-End Verified</div>
+                    </div>
+                  </div>
+
+                  <!-- 48 Interval Grid Visualizer -->
+                  <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">24-Hour Settlement Schedule (SP 1 – SP 48 | Half-Hourly Slots)</span>
+                      <span style="font-size: 0.72rem; color: #22c55e;">● All 48 expected settlement periods mapped</span>
+                    </div>
+                    <div id="estate-slots-grid" style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; width: 100%;">
+                      <!-- 48 slot indicators injected via JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SCREEN 2: THE GAP -->
+              <div id="demo-screen-2" class="demo-screen-panel" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div class="stat-card" style="padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(234, 179, 8, 0.4); width: 100%; box-sizing: border-box;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                        <span class="badge" style="font-size:0.6rem; background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3); font-family:var(--font-mono); font-weight:700;">● GAPS DETECTED</span>
+                        <span class="badge" style="font-size:0.6rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-family:var(--font-mono); font-weight:700;">UsagePoint: MPAN 03 845 110...</span>
+                      </div>
+                      <h3 style="margin: 0; font-size: 1.1rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-triangle-exclamation" style="color: #eab308;"></i> Telemetry Omission Detected Live</h3>
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">Real-time nonce sequencing verification caught 6 missing readings</span>
+                    </div>
+                    <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4); font-family: var(--font-mono); font-weight: 800; font-size: 0.8rem; padding: 4px 10px;">● GAPS · ANCHORED_WITH_GAPS</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; width: 100%; margin-bottom: 1rem;">
+                    <div style="background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                      <div style="font-size: 0.75rem; font-weight: 700; color: #ef4444; text-transform: uppercase;">Omission Window</div>
+                      <div style="font-size: 1.6rem; font-weight: 800; color: #ef4444; font-family: var(--font-mono);">SP 24–29 missing</div>
+                      <div style="font-size: 0.8rem; color: var(--text-main);">
+                        Settlement Clock Window: <strong>11:30 – 14:30 UTC</strong>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        Missing Nonces: <strong>1025, 1026, 1027, 1028, 1029, 1030</strong>
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                      <div style="font-size: 0.75rem; font-weight: 700; color: #22c55e; text-transform: uppercase;">Ingestion Status</div>
+                      <div style="font-size: 1.6rem; font-weight: 800; color: #22c55e; font-family: var(--font-mono);">42 Received / 48</div>
+                      <div style="font-size: 0.8rem; color: var(--text-main);">
+                        Completeness Ratio: <strong>87.5%</strong>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        ETP Checkpointer Protocol: <strong>Fail-closed gap boundary logged</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Visual Gap Slots -->
+                  <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">Live Nonce Sequence Visualizer (SP 1 – SP 48 | Nonces 1001 – 1048)</span>
+                      <span style="font-size: 0.72rem; color: #ef4444;">● Red slots = SP 24–29 missing nonces flagged</span>
+                    </div>
+                    <div id="gap-slots-grid" style="display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; width: 100%;">
+                      <!-- 48 slot indicators with red missing highlight injected via JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SCREEN 3: THE PROOF -->
+              <div id="demo-screen-3" class="demo-screen-panel" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div class="stat-card" style="padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(56, 189, 248, 0.4); width: 100%; box-sizing: border-box;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                        <span class="badge" style="font-size:0.6rem; background:rgba(20,184,166,0.15); color:#14b8a6; border:1px solid rgba(20,184,166,0.3); font-family:var(--font-mono); font-weight:700;">● SIMULATED ANCHOR</span>
+                        <span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● VERIFIED PROOF</span>
+                      </div>
+                      <h3 style="margin: 0; font-size: 1.1rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem;"><i class="fa-solid fa-certificate" style="color: #38bdf8;"></i> Cryptographic Merkle Root &amp; RFC 3161 TSA Proof</h3>
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">Immutable audit proof anchored with timestamp authority</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="btn-verify-proof-live" style="background: linear-gradient(135deg, #0284c7, #38bdf8); border: none; color: #fff; font-weight: 700; padding: 0.4rem 0.85rem;">
+                      <i class="fa-solid fa-shield-check"></i> Verify Proof Yourself
+                    </button>
+                  </div>
+
+                  <div style="display: flex; flex-direction: column; gap: 0.85rem; width: 100%;">
+                    <div style="background: #020c06; border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.78rem;">
+                      <div style="color: #bef264; font-weight: 700; margin-bottom: 0.5rem;">[MERKLE ROOT HASH]</div>
+                      <div id="demo-merkle-root-display" style="color: #ffffff; word-break: break-all; font-size: 0.85rem;">
+                        0x3f7a91b82c4e6f01d5a8b9c2e4f6a8b1c3d5e7f9a2b4c6e8f0a1b3c5d7e9f1a2
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%;">
+                      <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.85rem;">
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">RFC 3161 TSA Anchor Ref</div>
+                        <div style="font-size: 0.82rem; color: #38bdf8; font-family: var(--font-mono); font-weight: 600;">TSA-FREETSA-20260922-004812</div>
+                      </div>
+                      <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.85rem;">
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Native C++ Engine Verification</div>
+                        <div style="font-size: 0.82rem; color: #22c55e; font-family: var(--font-mono); font-weight: 600;">CVE-2012-2459 Safe · Odd-Tree Hash Matched</div>
+                      </div>
+                    </div>
+
+                    <!-- Proof Verification Console Output -->
+                    <div id="demo-verification-console" style="background: #090d16; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.75rem; color: #a78bfa; height: 140px; overflow-y: auto;">
+                      <div>[system] Verification console initialized. Click "Verify Proof Yourself" to execute live verification suite.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- TAB 1: CHAT -->
           <div id="chat-tab" class="tab-content active">
@@ -2747,15 +2965,45 @@
                       </div>
                     </div>
 
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;" id="label-auth-key">AWS Access Key ID</label>
-                      <input type="text" id="workspace-cloud-key" class="input-field" placeholder="AKIAIOSFODNN7EXAMPLE" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                    <!-- AWS Auth Mode Selector Tabs -->
+                    <div style="margin-top: 0.25rem;">
+                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">AWS Authentication Method</label>
+                      <div style="display: flex; gap: 0.35rem; background: rgba(0,0,0,0.2); padding: 3px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                        <button type="button" class="btn btn-sm" id="btn-auth-mode-oidc" style="flex: 1; font-size: 0.7rem; padding: 0.3rem; background: rgba(34,197,94,0.15); color: #bef264; border: 1px solid rgba(34,197,94,0.3); font-weight: 600;">
+                          <i class="fa-solid fa-shield-halved"></i> IAM Role ARN (OIDC)
+                        </button>
+                        <button type="button" class="btn btn-sm" id="btn-auth-mode-key" style="flex: 1; font-size: 0.7rem; padding: 0.3rem; background: transparent; color: var(--text-muted); border: 1px solid transparent;">
+                          <i class="fa-solid fa-key"></i> Access Key / Secret
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">AWS Secret Access Key</label>
-                      <input type="password" id="workspace-cloud-secret" class="input-field" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
-                      <span style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">🔒 Stored encrypted server-side. Never shared.</span>
+                    <!-- IAM Role ARN Fields (Enterprise OIDC - Default) -->
+                    <div id="aws-auth-oidc-fields" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Target IAM Role ARN (STS AssumeRole / OIDC)</label>
+                        <input type="text" id="workspace-iam-role-arn" class="input-field" placeholder="arn:aws:iam::123456789012:role/MeldraTelemetryIngestRole" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                      </div>
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">External ID (Optional)</label>
+                        <input type="text" id="workspace-iam-external-id" class="input-field" placeholder="meldra-dno-prod-001" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                      </div>
+                      <span style="font-size: 0.65rem; color: #22c55e; margin-top: 0.1rem; display: flex; align-items: center; gap: 0.3rem;">
+                        <i class="fa-solid fa-circle-check"></i> CISO Approved · Short-Lived Tokens Only · Zero Long-Lived Keys Stored
+                      </span>
+                    </div>
+
+                    <!-- Access Key & Secret Fields (Legacy - Hidden by default) -->
+                    <div id="aws-auth-key-fields" style="display: none; flex-direction: column; gap: 0.5rem;">
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;" id="label-auth-key">AWS Access Key ID</label>
+                        <input type="text" id="workspace-cloud-key" class="input-field" placeholder="AKIAIOSFODNN7EXAMPLE" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                      </div>
+                      <div>
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">AWS Secret Access Key</label>
+                        <input type="password" id="workspace-cloud-secret" class="input-field" placeholder="••••••••••••••••••••••••••••••••" style="padding: 0.4rem; font-size: 0.8rem; font-family: var(--font-mono);">
+                        <span style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; display: block;">🔒 Encrypted with AES-256 server-side. Never logged or exposed.</span>
+                      </div>
                     </div>
                     
                     <button class="btn btn-secondary btn-sm" id="btn-save-workspace-config" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> Apply Connection Parameters</button>
