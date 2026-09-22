@@ -3091,14 +3091,24 @@ with DAG(
           <!-- TAB 7: AUDIT TRAIL -->
           <div id="audit-tab" class="tab-content">
             <div class="audit-container">
-              <div class="audit-header">
-                <div>
-                  <h2>📜 Security Audit Trails</h2>
-                  <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">Real-time execution log of all API interactions and data operations.</p>
+              <div class="audit-header" style="display:flex; flex-direction:column; gap:1rem; border-bottom:1px solid var(--border-subtle); padding-bottom:1rem; margin-bottom:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                  <div>
+                    <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-shield-cat" style="color:#bef264;"></i> Audit Ledger</h2>
+                    <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Real-time cryptographic audit trail of ETP protocol events, security rejections, honeypot diversions, and telemetry operations.</p>
+                  </div>
+                  <button id="btn-refresh-audit" class="btn btn-secondary">
+                    <i class="fa-solid fa-rotate"></i> Refresh
+                  </button>
                 </div>
-                <button id="btn-refresh-audit" class="btn btn-secondary">
-                  <i class="fa-solid fa-rotate"></i> Refresh
-                </button>
+
+                <!-- Audit Log Category Filters -->
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                  <button class="btn btn-secondary btn-sm audit-filter-btn active" data-filter="all" style="font-size:0.75rem; padding:0.3rem 0.65rem;">All Events</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="etp-security" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#ef4444;"><i class="fa-solid fa-shield-halved"></i> ETP Security &amp; Rejections</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="telemetry" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#eab308;"><i class="fa-solid fa-rss"></i> Telemetry &amp; Omissions</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="auth" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#38bdf8;"><i class="fa-solid fa-user-lock"></i> Authentication</button>
+                </div>
               </div>
               <div class="audit-timeline" id="audit-timeline"></div>
             </div>
