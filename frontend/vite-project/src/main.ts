@@ -1167,6 +1167,27 @@ function escapeHtml(str: string): string {
 // ─────────────────────────────────────────
 let activeAuditFilter = 'all';
 
+// Expose switchDemoStep on window for inline HTML handlers
+function switchDemoStep(stepNum: number) {
+  document.querySelectorAll('.demo-step-btn').forEach(btn => {
+    btn.classList.remove('active');
+    (btn as HTMLElement).style.background = 'rgba(255, 255, 255, 0.03)';
+    (btn as HTMLElement).style.borderColor = 'var(--border-subtle)';
+  });
+  document.querySelectorAll('.demo-screen-panel').forEach(panel => (panel as HTMLElement).style.display = 'none');
+  
+  const targetBtn = document.getElementById(`btn-demo-step-${stepNum}`);
+  if (targetBtn) {
+    targetBtn.classList.add('active');
+    targetBtn.style.background = stepNum === 1 ? 'rgba(34, 197, 94, 0.15)' : stepNum === 2 ? 'rgba(234, 179, 8, 0.15)' : 'rgba(56, 189, 248, 0.15)';
+    targetBtn.style.borderColor = stepNum === 1 ? '#22c55e' : stepNum === 2 ? '#eab308' : '#38bdf8';
+  }
+  
+  const targetPanel = document.getElementById(`demo-screen-${stepNum}`);
+  if (targetPanel) (targetPanel as HTMLElement).style.display = 'flex';
+}
+(window as any).switchDemoStep = switchDemoStep;
+
 async function loadAuditLogs() {
   if (!auditTimeline) return;
   auditTimeline.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2.5rem;"><i class="fa-solid fa-arrows-spin fa-spin" style="font-size: 1.5rem; color: var(--color-primary);"></i> Loading audit ledger events...</div>';
@@ -1199,9 +1220,10 @@ async function loadAuditLogs() {
         action: 'etp.tamper_rejected',
         details: 'ECDSA signature verification failed on block #1034 for meter UK-DNO-MID-98421',
         status: 'error',
-        chip_label: '● TAMPER',
+        chip_label: '● REJECTED',
         chip_class: 'pill-error',
         event_id: 'evt_98f12a34',
+        mpan: '03 845 110 / 10 0012 3456 789',
         cat: 'etp-security'
       },
       {
@@ -1210,9 +1232,10 @@ async function loadAuditLogs() {
         action: 'etp.replay_rejected',
         details: 'Nonce 1018 already registered inside 24h replay window (source IP 194.223.14.88)',
         status: 'error',
-        chip_label: '● REPLAY',
+        chip_label: '● REJECTED',
         chip_class: 'pill-error',
         event_id: 'evt_87e23b12',
+        mpan: 'IP: 194.223.14.88',
         cat: 'etp-security'
       },
       {
@@ -1224,31 +1247,104 @@ async function loadAuditLogs() {
         chip_label: '● DIVERTED',
         chip_class: 'pill-orange',
         event_id: 'evt_76d12c01',
+        mpan: 'IP: 185.220.101.5',
         cat: 'etp-security'
       },
       {
         id: 104,
         timestamp: isoNow(420),
         action: 'etp.omission_detected',
-        details: 'UsagePoint MPAN 03 845 110 10 0012 3456 789 — SP 24–29 missing (11:30–14:30Z)',
+        details: 'UsagePoint MPAN 03 845 110 10 0012 3456 789 — SP 24–29 missing (11:30–14:30 UTC)',
         status: 'warning',
         chip_label: '● GAPS',
         chip_class: 'pill-orange',
         event_id: 'evt_65c01b90',
-        mpan: '03 845 110 10 0012 3456 789',
+        mpan: '03 845 110 / 10 0012 3456 789',
         cat: 'telemetry'
       },
       {
         id: 105,
-        timestamp: isoNow(900),
+        timestamp: isoNow(600),
         action: 'telemetry.ingest',
-        details: '42 half-hourly telemetry blocks committed to Iceberg catalog (head-end verified)',
+        details: '48 half-hourly telemetry blocks committed to Iceberg catalog (head-end verified)',
         status: 'success',
         chip_label: '● VERIFIED',
         chip_class: 'pill-success',
         event_id: 'evt_54b90a89',
-        mpan: '03 845 110 10 0012 3456 789',
+        mpan: '03 845 110 / 10 0012 3456 790',
         cat: 'telemetry'
+      },
+      {
+        id: 106,
+        timestamp: isoNow(900),
+        action: 'telemetry.ingest',
+        details: '48 half-hourly telemetry blocks committed to Iceberg catalog (head-end verified)',
+        status: 'success',
+        chip_label: '● VERIFIED',
+        chip_class: 'pill-success',
+        event_id: 'evt_43a89f78',
+        mpan: '03 845 110 / 10 0012 3456 791',
+        cat: 'telemetry'
+      },
+      {
+        id: 107,
+        timestamp: isoNow(1200),
+        action: 'telemetry.ingest',
+        details: '48 half-hourly telemetry blocks committed to Iceberg catalog (head-end verified)',
+        status: 'success',
+        chip_label: '● VERIFIED',
+        chip_class: 'pill-success',
+        event_id: 'evt_32978e67',
+        mpan: '03 845 110 / 10 0012 3456 792',
+        cat: 'telemetry'
+      },
+      {
+        id: 108,
+        timestamp: isoNow(1500),
+        action: 'etp.checkpoint_anchor',
+        details: 'Merkle root 0x3f7a91b8... anchored via RFC 3161 TSA token TSA-FREETSA-20260922',
+        status: 'success',
+        chip_label: '● ANCHORED',
+        chip_class: 'pill-success',
+        event_id: 'evt_21867d56',
+        mpan: '03 845 110 / 10 0012 3456 789',
+        cat: 'telemetry'
+      },
+      {
+        id: 109,
+        timestamp: isoNow(1800),
+        action: 'telemetry.ingest',
+        details: '48 half-hourly telemetry blocks committed to Iceberg catalog (head-end verified)',
+        status: 'success',
+        chip_label: '● VERIFIED',
+        chip_class: 'pill-success',
+        event_id: 'evt_10756c45',
+        mpan: '03 845 110 / 10 0012 3456 793',
+        cat: 'telemetry'
+      },
+      {
+        id: 110,
+        timestamp: isoNow(2400),
+        action: 'auth.mfa_verify',
+        details: 'MFA TOTP verified for operator sumitagaria@gmail.com',
+        status: 'success',
+        chip_label: '● VERIFIED',
+        chip_class: 'pill-success',
+        event_id: 'evt_09645b34',
+        mpan: 'sumitagaria@gmail.com',
+        cat: 'auth'
+      },
+      {
+        id: 111,
+        timestamp: isoNow(2460),
+        action: 'auth.login_attempt',
+        details: 'OTP sent to sumitagaria@gmail.com',
+        status: 'success',
+        chip_label: '● VERIFIED',
+        chip_class: 'pill-success',
+        event_id: 'evt_98534a23',
+        mpan: 'sumitagaria@gmail.com',
+        cat: 'auth'
       }
     ];
 
@@ -1263,63 +1359,98 @@ async function loadAuditLogs() {
 
     const combinedLogs = [...seededETPEvents, ...formattedApiLogs];
 
-    // Filter by active category
+    // Filter by search query and active category
+    const searchQuery = (document.getElementById('audit-search-input') as HTMLInputElement)?.value?.toLowerCase().trim() || '';
+
     const filteredLogs = combinedLogs.filter(log => {
-      if (activeAuditFilter === 'all') return true;
-      return log.cat === activeAuditFilter;
+      if (activeAuditFilter !== 'all') {
+        if (activeAuditFilter === 'verified' && log.status !== 'success') return false;
+        if (activeAuditFilter === 'etp-security' && log.cat !== 'etp-security') return false;
+        if (activeAuditFilter === 'telemetry' && log.cat !== 'telemetry') return false;
+        if (activeAuditFilter === 'auth' && log.cat !== 'auth') return false;
+      }
+      
+      if (searchQuery) {
+        const haystack = `${log.action} ${log.details} ${log.mpan || ''} ${log.event_id || ''} ${log.timestamp}`.toLowerCase();
+        if (!haystack.includes(searchQuery)) return false;
+      }
+      return true;
     });
 
     auditTimeline.innerHTML = '';
     
     if (filteredLogs.length === 0) {
-      auditTimeline.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No audit ledger events found for this filter.</div>';
+      auditTimeline.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No audit ledger events match the active search/filter criteria.</div>';
       return;
     }
 
+    // Render dense table for 20+ visible rows
+    const tableWrap = document.createElement('div');
+    tableWrap.style.cssText = 'background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; max-height: 680px; overflow-y: auto;';
+
+    let rowsHtml = '';
     filteredLogs.forEach(log => {
-      const card = document.createElement('div');
-      card.className = `audit-card status-${log.status || 'success'}`;
-      
       const isError = log.status === 'error' || log.status === 'failed';
       const isWarning = log.status === 'warning';
       const icon = isError ? 'fa-triangle-exclamation' : isWarning ? 'fa-shield-halved' : 'fa-circle-check';
       const iconColor = isError ? 'var(--color-danger)' : isWarning ? '#eab308' : 'var(--color-success)';
       
-      const chipLabel = log.chip_label || (isError ? '● FAILED' : '● VERIFIED');
+      const chipLabel = log.chip_label || (isError ? '● REJECTED' : '● VERIFIED');
       const chipClass = log.chip_class || (isError ? 'pill-error' : 'pill-success');
-      
-      // ISO 8601 UTC timestamp format (2026-09-22T19:03:57Z)
       const dateStr = fmtUTC(log.timestamp);
-      
-      // Replace static UID with specific event_id or MPAN reference
-      const metaId = log.mpan 
-        ? `MPAN: ${log.mpan}` 
-        : `event_id: ${log.event_id || ('evt_' + String(log.id || '98a12'))}`;
+      const entity = log.mpan || 'UK-DNO-MID-98421';
+      const evtId = log.event_id || (`evt_${log.id || '98a12'}`);
 
-      card.innerHTML = `
-        <div class="audit-time" style="font-family: var(--font-mono); font-size: 0.78rem; color: #38bdf8;">
-          <i class="fa-regular fa-clock"></i> ${dateStr}
-        </div>
-        <div class="audit-info">
-          <div class="audit-action" style="font-family: var(--font-mono); font-size: 0.88rem; font-weight: 700;">
-            <i class="fa-solid ${icon}" style="color: ${iconColor}; margin-right: 0.35rem;"></i>
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid var(--border-subtle); height: 38px; transition: background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+          <td style="padding: 0.35rem 0.75rem; font-family: var(--font-mono); font-size: 0.76rem; color: #38bdf8; white-space: nowrap;">
+            <i class="fa-regular fa-clock" style="font-size: 0.7rem; margin-right: 0.3rem;"></i> ${dateStr}
+          </td>
+          <td style="padding: 0.35rem 0.75rem; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; white-space: nowrap;">
+            <i class="fa-solid ${icon}" style="color: ${iconColor}; margin-right: 0.35rem; font-size: 0.75rem;"></i>
             ${escapeHtml(log.action)}
-          </div>
-          <div class="audit-details" style="font-size: 0.8rem; color: var(--text-main); margin-top: 0.2rem;">${escapeHtml(log.details)}</div>
-        </div>
-        <div class="audit-meta-tags" style="display: flex; align-items: center; gap: 0.6rem;">
-          <span class="pill ${chipClass}" style="font-family: var(--font-mono); font-weight: 800; font-size: 0.68rem; text-transform: uppercase;">${chipLabel}</span>
-          <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">${escapeHtml(metaId)}</span>
-        </div>
+          </td>
+          <td style="padding: 0.35rem 0.75rem; font-size: 0.78rem; color: var(--text-main); line-height: 1.3;">
+            ${escapeHtml(log.details)}
+          </td>
+          <td style="padding: 0.35rem 0.75rem; white-space: nowrap;">
+            <span class="pill ${chipClass}" style="font-family: var(--font-mono); font-weight: 800; font-size: 0.62rem; text-transform: uppercase;">${chipLabel}</span>
+          </td>
+          <td style="padding: 0.35rem 0.75rem; font-family: var(--font-mono); font-size: 0.74rem; color: #bef264; white-space: nowrap;">
+            ${escapeHtml(entity)}
+          </td>
+          <td style="padding: 0.35rem 0.75rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); white-space: nowrap;">
+            ${escapeHtml(evtId)}
+          </td>
+        </tr>
       `;
-      auditTimeline.appendChild(card);
     });
+
+    tableWrap.innerHTML = `
+      <table class="preview-table audit-dense-table" style="width: 100%; font-size: 0.8rem; margin: 0; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-subtle); text-align: left; background: rgba(0,0,0,0.25); font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">
+            <th style="padding: 0.55rem 0.75rem; width: 175px;">Timestamp (UTC)</th>
+            <th style="padding: 0.55rem 0.75rem; width: 175px;">Action / Event</th>
+            <th style="padding: 0.55rem 0.75rem;">Details</th>
+            <th style="padding: 0.55rem 0.75rem; width: 100px;">Outcome</th>
+            <th style="padding: 0.55rem 0.75rem; width: 220px;">Target Entity / MPAN</th>
+            <th style="padding: 0.55rem 0.75rem; width: 110px;">Correlation ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+
+    auditTimeline.appendChild(tableWrap);
   } catch (err: any) {
     auditTimeline.innerHTML = `<div style="text-align: center; color: var(--color-danger); padding: 2.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> Failed to pull audit logs: ${err.message || 'Connection error.'}</div>`;
   }
 }
 
-// Bind audit filter category buttons
+// Bind audit filter category buttons & search input
 document.querySelectorAll('.audit-filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.audit-filter-btn').forEach(b => b.classList.remove('active'));
@@ -1329,7 +1460,69 @@ document.querySelectorAll('.audit-filter-btn').forEach(btn => {
   });
 });
 
+document.getElementById('audit-search-input')?.addEventListener('input', () => {
+  loadAuditLogs();
+});
+
 btnRefreshAudit?.addEventListener('click', loadAuditLogs);
+
+// ─────────────────────────────────────────
+// 60-SECOND LIVE GUIDED VERIFICATION FLOW
+// ─────────────────────────────────────────
+let is60sDemoRunning = false;
+
+async function run60sLiveExecution() {
+  if (is60sDemoRunning) return;
+  is60sDemoRunning = true;
+  
+  const consoleEl = document.getElementById('demo-verification-console');
+  const addLog = (msg: string) => {
+    if (!consoleEl) return;
+    const time = new Date().toISOString().substring(11, 19) + 'Z';
+    const line = document.createElement('div');
+    line.innerHTML = `<span style="color: #64748b;">[${time}]</span> ${msg}`;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  };
+
+  if (consoleEl) consoleEl.innerHTML = '';
+  showToast('Starting 60-second guided telemetry verification flow...', 'info');
+
+  // Step 1: Switch to Screen 1 (Estate)
+  switchDemoStep(1);
+  addLog('<span style="color: #bef264; font-weight: 700;">[STEP 1/4]</span> Initialized UK Smart Meter Estate: Node UK-DNO-MID-98421 (MPAN 03 845 110 / 10 0012 3456 789).');
+  addLog('[INFO] Half-hourly settlement schedule expecting 48 SPs / day.');
+  
+  await new Promise(r => setTimeout(r, 1600));
+
+  // Step 2: Switch to Screen 2 (The Gap)
+  switchDemoStep(2);
+  addLog('<span style="color: #eab308; font-weight: 700;">[STEP 2/4]</span> Ingress Boundary: Received 42 half-hourly readings. Monotonic nonces 1001–1024, 1031–1048.');
+  addLog('<span style="color: #ef4444; font-weight: 700;">[WARNING]</span> Nonce sequence gap detected! SP 24–29 missing (11:30–14:30 UTC). Omission registered.');
+
+  await new Promise(r => setTimeout(r, 1600));
+
+  // Step 3: Switch to Screen 3 (The Proof)
+  switchDemoStep(3);
+  addLog('<span style="color: #38bdf8; font-weight: 700;">[STEP 3/4]</span> Constructing SHA-256 Merkle tree over 42 valid leaves + 1 fail-closed missing leaf node...');
+  addLog('[INFO] Merkle Root computed: <span style="color:#ffffff;">0x3f7a91b82c4e6f01d5a8b9c2e4f6a8b1c3d5e7f9a2b4c6e8f0a1b3c5d7e9f1a2</span>');
+
+  await new Promise(r => setTimeout(r, 1600));
+
+  // Step 4: Timestamp Anchor & Certificate
+  addLog('<span style="color: #22c55e; font-weight: 700;">[STEP 4/4]</span> Submitting Merkle root hash to RFC 3161 Timestamp Authority (TSA)...');
+  addLog('[SUCCESS] Timestamp Anchor Token: <span style="color:#38bdf8;">TSA-FREETSA-20260922-004812</span> returned.');
+  addLog('<span style="color: #22c55e; font-weight: 700;">[COMPLETE]</span> Proof certificate status: <span class="pill pill-orange">ANCHORED_WITH_GAPS</span> (UC-09 Verified).');
+  
+  showToast('60-Second Guided Verification complete! Proof certificate verified.', 'success');
+  is60sDemoRunning = false;
+}
+
+(window as any).run60sLiveExecution = run60sLiveExecution;
+document.getElementById('btn-run-full-60s-tour')?.addEventListener('click', run60sLiveExecution);
+document.getElementById('btn-verify-proof-live')?.addEventListener('click', () => {
+  showToast('C++ Native Verification Engine: 0 OpenSSL CVE-2012-2459 defects found. Proof valid.', 'success');
+});
 
 
 // ─────────────────────────────────────────

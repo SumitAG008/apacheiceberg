@@ -1935,10 +1935,10 @@
             <i class="fa-solid fa-bolt" style="color: #bef264;"></i> Verification (60s Demo)
             <span class="badge" style="margin-left: auto; font-size: 0.55rem; padding: 1px 5px; background: #bef264; color: #0f172a; font-weight: 800;">60-SEC</span>
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-checkpoints">
+          <button class="tab-btn sidebar-nav-item" data-tab="checkpoints-tab" id="nav-checkpoints">
             <i class="fa-solid fa-link"></i> Checkpoints &amp; Anchors
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="audit-tab" id="nav-omissions">
+          <button class="tab-btn sidebar-nav-item" data-tab="omissions-tab" id="nav-omissions">
             <i class="fa-solid fa-triangle-exclamation"></i> Omission Register
           </button>
 
@@ -2102,7 +2102,7 @@
                       <span style="font-size: 0.75rem; color: #bef264; font-family: var(--font-mono); font-weight: 600;">ETP TELEMETRY OMISSION &amp; ANCHORING</span>
                     </div>
                     <h2 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
-                      ⚡ 60-Second Telemetry Omission &amp; Dispute Demo
+                      ⚡ Verification (60s Demo)
                     </h2>
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.35rem 0 0;">
                       Experience the 3-step proof path: <strong>The Estate</strong> (48 expected readings) → <strong>The Gap</strong> (omission detection live) → <strong>The Proof</strong> (Merkle &amp; RFC 3161 TSA token verification).
@@ -3097,20 +3097,146 @@ with DAG(
                     <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-shield-cat" style="color:#bef264;"></i> Audit Ledger</h2>
                     <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Real-time cryptographic audit trail of ETP protocol events, security rejections, honeypot diversions, and telemetry operations.</p>
                   </div>
-                  <button id="btn-refresh-audit" class="btn btn-secondary">
-                    <i class="fa-solid fa-rotate"></i> Refresh
-                  </button>
+                  <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="text" id="audit-search-input" class="input-field" placeholder="Search action, MPAN, IP..." style="padding:0.4rem 0.75rem; font-size:0.78rem; width:220px;" />
+                    <button id="btn-refresh-audit" class="btn btn-secondary btn-sm">
+                      <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
+                  </div>
                 </div>
 
-                <!-- Audit Log Category Filters -->
-                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                  <button class="btn btn-secondary btn-sm audit-filter-btn active" data-filter="all" style="font-size:0.75rem; padding:0.3rem 0.65rem;">All Events</button>
-                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="etp-security" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#ef4444;"><i class="fa-solid fa-shield-halved"></i> ETP Security &amp; Rejections</button>
-                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="telemetry" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#eab308;"><i class="fa-solid fa-rss"></i> Telemetry &amp; Omissions</button>
-                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="auth" style="font-size:0.75rem; padding:0.3rem 0.65rem; color:#38bdf8;"><i class="fa-solid fa-user-lock"></i> Authentication</button>
+                <!-- Audit Log Category & Outcome Filters -->
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                  <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-right:0.25rem;">Filter:</span>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn active" data-filter="all" style="font-size:0.75rem; padding:0.25rem 0.65rem;">All Events</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="verified" style="font-size:0.75rem; padding:0.25rem 0.65rem; color:#22c55e;"><i class="fa-solid fa-circle-check"></i> Verified Only</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="etp-security" style="font-size:0.75rem; padding:0.25rem 0.65rem; color:#ef4444;"><i class="fa-solid fa-shield-halved"></i> ETP Security &amp; Rejections</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="telemetry" style="font-size:0.75rem; padding:0.25rem 0.65rem; color:#eab308;"><i class="fa-solid fa-rss"></i> Telemetry &amp; Omissions</button>
+                  <button class="btn btn-secondary btn-sm audit-filter-btn" data-filter="auth" style="font-size:0.75rem; padding:0.25rem 0.65rem; color:#38bdf8;"><i class="fa-solid fa-user-lock"></i> Authentication</button>
                 </div>
               </div>
               <div class="audit-timeline" id="audit-timeline"></div>
+            </div>
+          </div>
+
+          <!-- TAB: CHECKPOINTS & ANCHORS -->
+          <div id="checkpoints-tab" class="tab-content">
+            <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                <div>
+                  <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link" style="color:#38bdf8;"></i> Checkpoints &amp; Anchors</h2>
+                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Immutable Merkle tree checkpoints and RFC 3161 Timestamp Authority proofs (C++ native engine verified).</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Merkle checkpoints', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+              </div>
+
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
+                <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
+                      <th style="padding: 0.75rem 1rem;">Anchored At (UTC)</th>
+                      <th style="padding: 0.75rem 1rem;">UsagePoint (MPAN)</th>
+                      <th style="padding: 0.75rem 1rem;">Merkle Root Hash</th>
+                      <th style="padding: 0.75rem 1rem;">Leaves</th>
+                      <th style="padding: 0.75rem 1rem;">Status</th>
+                      <th style="padding: 0.75rem 1rem;">Anchor Type</th>
+                      <th style="padding: 0.75rem 1rem;">TSA Token Ref</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22T14:31:00Z</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x3f7a91b8...e9f1a2</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">42</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS</span></td>
+                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(20,184,166,0.15); color:#14b8a6; border:1px solid rgba(20,184,166,0.3); font-family:var(--font-mono); font-weight:700;">● SIMULATED ANCHOR</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIS8...</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22T14:01:00Z</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 790</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x8c2e4f6a...1b3c5d</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
+                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIT9...</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x7a8b1c3d...a2b4c6</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
+                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIU1...</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 790</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x5e7f9a2b...f0a1b3</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
+                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIV2...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: OMISSION REGISTER -->
+          <div id="omissions-tab" class="tab-content">
+            <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+                <div>
+                  <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> Omission Register</h2>
+                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Cryptographically proven telemetry interval gaps and BSC settlement dispute records (UC-09).</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Omission Register', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+              </div>
+
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
+                <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
+                      <th style="padding: 0.75rem 1rem;">UsagePoint (MPAN)</th>
+                      <th style="padding: 0.75rem 1rem;">Date (UTC)</th>
+                      <th style="padding: 0.75rem 1rem;">Missing Settlement Window</th>
+                      <th style="padding: 0.75rem 1rem;">Gap Count</th>
+                      <th style="padding: 0.75rem 1rem;">State Chip</th>
+                      <th style="padding: 0.75rem 1rem;">Dispute Case ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22</td>
+                      <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 24–29 missing (11:30–14:30Z)</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">6 SPs</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS · ANCHORED_WITH_GAPS</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary);">DSP-2026-09842</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-subtle);">
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 791</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-20</td>
+                      <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 14–16 missing (06:30–08:00Z)</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">3 SPs</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS · ANCHORED_WITH_GAPS</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary);">DSP-2026-09710</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 788</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-18</td>
+                      <td style="padding:0.75rem 1rem; color:#22c55e; font-family:var(--font-mono);">SP 38–41 resolved (18:30–20:30Z)</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">4 SPs</td>
+                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● RECONCILED</span></td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">DSP-2026-09412</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
