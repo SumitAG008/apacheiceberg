@@ -3578,12 +3578,6 @@ function bootstrapApp() {
   try { initFabricSaaS(); } catch (e) { console.error("Error initializing Fabric SaaS:", e); }
 }
 
-function escapeHtml(s: string): string {
-  const div = document.createElement('div');
-  div.textContent = s;
-  return div.innerHTML;
-}
-
 // ─────────────────────────────────────────
 // HOME DASHBOARD — real data only: table/namespace counts from the
 // catalog API, connection state from the AWS config check, and recent
@@ -8970,38 +8964,6 @@ function updateWalkthroughUI() {
 // ─────────────────────────────────────────
 // 60-SECOND OMISSION & DISPUTE DEMO CONTROLLER (3-SCREEN DEMO PATH)
 // ─────────────────────────────────────────
-
-function switchDemoStep(step: number) {
-  const screens = [
-    document.getElementById('demo-screen-1'),
-    document.getElementById('demo-screen-2'),
-    document.getElementById('demo-screen-3')
-  ];
-  const buttons = [
-    document.getElementById('btn-demo-step-1'),
-    document.getElementById('btn-demo-step-2'),
-    document.getElementById('btn-demo-step-3')
-  ];
-
-  screens.forEach((sc, idx) => {
-    if (!sc) return;
-    sc.style.display = (idx + 1 === step) ? 'flex' : 'none';
-  });
-
-  buttons.forEach((btn, idx) => {
-    if (!btn) return;
-    if (idx + 1 === step) {
-      btn.classList.add('active');
-      btn.style.background = 'rgba(34, 197, 94, 0.15)';
-      btn.style.borderColor = idx === 0 ? '#22c55e' : idx === 1 ? '#eab308' : '#38bdf8';
-    } else {
-      btn.classList.remove('active');
-      btn.style.background = 'rgba(255, 255, 255, 0.03)';
-      btn.style.borderColor = 'var(--border-subtle)';
-    }
-  });
-}
-(window as any).switchDemoStep = switchDemoStep;
 
 function renderDemoSlotGrids() {
   const gridEstate = document.getElementById('estate-slots-grid');
