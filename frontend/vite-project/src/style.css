@@ -36,6 +36,11 @@
   --text-dim:          #64748b;       /* Muted label text */
   --text-dark:         #ffffff;
 
+  /* WCAG AA Data Tokens — Light Surface Ratios (4.5:1+ Compliant) */
+  --data-id:           #15803d;       /* 5.5:1  MPAN, Nonces (Light) */
+  --data-time:         #0369a1;       /* 6.0:1  Timestamps (Light) */
+  --data-hash:         #6d28d9;       /* 7.8:1  Hashes, Roots (Light) */
+
   /* Fonts */
   --font-sans:         'Space Grotesk', 'Inter', sans-serif;
   --font-body:         'Inter', sans-serif;
