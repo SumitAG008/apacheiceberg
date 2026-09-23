@@ -41,6 +41,39 @@ gantt
   3. RFC 3161 TSA timestamp verification certificates.
   4. Feeder topology graph snapshot proving grid-level vs meter-level anomaly classification.
 
+### 2.3 The Core Business Process: "The Settlement Gap Dispute" (10 Steps)
+Instead of spreading engineering across 12 partial screens, November launch focuses 100% on delivering **one complete, flawless end-to-end business process**:
+
+```
+[1] INGEST      Signed reading arrives → Verified → Persisted to bronze_ami_readings (Iceberg)
+[2] CHECKPOINT  Nightly Merkle per meter-day → Anchored to RFC 3161 TSA
+[3] DETECT      gap_count > 0 opens an omission_case in PostgreSQL
+[4] CLASSIFY    Outage or anomaly? (LV Feeder siblings via AGE graph)
+[5] ALERT       Webhook / email alert above customer threshold
+[6] TRIAGE      Prioritised queue, assign owner
+[7] INVESTIGATE Which SPs missing, how many siblings affected, estimated £ loss
+[8] DISPUTE     State -> Disputed, proof pack ZIP generated server-side
+[9] VERIFY      Counterparty verifies independently without an account (public portal)
+[10] CLOSE      Reconciled or written off, recorded in immutable audit ledger
+```
+
+#### Automated End-to-End Playwright Spec Requirement
+The 10-step process must pass cleanly in automated CI:
+`Seed estate` $\rightarrow$ `Post 42/48 signed readings` $\rightarrow$ `Run checkpoint job` $\rightarrow$ `Assert omission_case appears (gap_count=6)` $\rightarrow$ `Assert alert fired` $\rightarrow$ `Move case to Disputed` $\rightarrow$ `Download proof pack` $\rightarrow$ `Verify in clean browser context with no session` $\rightarrow$ `Assert audit ledger records all 6 transitions`.
+
+### 2.4 The Four "Wow" Readiness Criteria (Definition of Ready)
+Launch conviction is measured against four objective criteria:
+1. **The Laptop Hand-off Test:** Hand the laptop to a stranger mid-flow and let them click anywhere—every screen renders live persisted data, not browser constants.
+2. **The Counterparty Portal Test:** Generate a proof pack, open an unauthenticated browser window with no session, and verify the proof independently.
+3. **The Tamper Test:** Manually alter 1 reading byte, watch the Merkle verification fail cleanly, and verify cryptographic integrity in real time.
+4. **The User Reaction Test:** Show the 60-second live flow to an external person and watch their reaction at the exact moment the missing gap is caught.
+
+### 2.5 Scope Discipline ("What NOT to Build for November")
+To guarantee 100% completion of the 10-step Settlement Gap Dispute:
+* ❌ **Skip:** Standalone Phantom Grid polish, standalone Data Studio, standalone Query Lab.
+* ❌ **Skip:** Standalone Network Model screen (fold topology traversal directly into Step 4 classification).
+* ❌ **Skip:** Unnecessary AI models beyond gap cause classification.
+
 ---
 
 ## 3. Enterprise Branding & Visual Identity Strategy

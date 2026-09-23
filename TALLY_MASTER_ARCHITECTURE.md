@@ -65,20 +65,43 @@ Every record written to PostgreSQL or Apache Iceberg tables MUST carry:
 
 ---
 
-## 4. Four-Layer Security & RBAC Model
+## 4. Four-Layer Security & Database-Enforced Tenant Isolation
 
+### 4.1 Four Security Layers
 1. **Layer 1 — Object & Action Grant (`rbac_object_grant`):**
    Gates access to screens and endpoints (`UsagePoint`, `OmissionCase`, `Reading`, `Checkpoint`).
 2. **Layer 2 — Row Filter (`rbac_row_filter`):**
-   Applies row-level predicates (e.g., `estate_id = ANY(:user_estates)`).
+   Applies row-level predicates per role (`estate_id = ANY(:user_estates)`).
 3. **Layer 3 — Column Mask (`rbac_column_mask`):**
    Redacts or hashes sensitive PII fields (`hidden`, `partial`, `hashed`).
-4. **Layer 4 — HARD TENANT SCOPE (JWT Context):**
-   Extracted from the cryptographically signed JWT token on every HTTP request and appended to **all database queries**.
+4. **Layer 4 — HARD TENANT SCOPE (PostgreSQL Row Level Security):**
+   Database-level Row Level Security (RLS) policy bound to verified JWT session variables.
 
-> [!CAUTION]
-> **Tenant Scope Isolation Rule:**
-> Tenant scope is **never** expressed as a policy row filter. A misconfigured policy row filter risks leaking cross-tenant data. `tenant_id` is enforced below every query as an un-bypassable context condition.
+### 4.2 Database-Enforced Multi-Tenant Partitioning Rules
+
+```sql
+-- PostgreSQL Row Level Security (RLS) — Database Guarantee, NOT Application Code
+ALTER TABLE omission_case ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON omission_case
+  USING (tenant_id = current_setting('app.tenant_id')::uuid);
+
+-- Executed once per connection/request from verified JWT:
+SET LOCAL app.tenant_id = 'a1b2c3d4-e5f6-7890-abcd-1234567890ab';
+```
+
+| Data Store | Partitioning & Isolation Strategy | Rationale & Enterprise Benefit |
+| :--- | :--- | :--- |
+| **PostgreSQL** | **Row Level Security (RLS)** (`ENABLE ROW LEVEL SECURITY`) | Gated at database engine level. Query omissions in application code can **never** leak cross-tenant data. |
+| **Apache Iceberg** | **Namespace per Tenant** (`<tenant_id>__bronze.bronze_ami_readings`) | Supports "Bring Your Own Bucket" (BYOB) & Polaris Credential Vending for customer data sovereignty. |
+| **Redis** | **Prefixed Keys** (`etp:{tenant_id}:meter:{mpan}`) | Eliminates key collisions across global meter identifiers (e.g. AU NMI vs GB MPAN). |
+| **Apache AGE** | **Graph per Tenant** (`<tenant_id>__topology_graph`) | Prevents mandatory-filter graph traversal leaks across customer utility boundaries. |
+
+### 4.3 Two-Level Tenant vs. Estate Hierarchy (Analytics ISV Model)
+For Analytics ISVs (e.g. Amperon, Grid4C) serving multiple utility clients:
+* `tenant_id` = **Who pays you** (the Analytics ISV account).
+* `estate_id` = **Whose meters these are** (individual utility clients of the ISV).
+* **RBAC Rule:** An ISV super-user sees all estates under their tenant; a utility user sees strictly their assigned `estate_id`.
 
 ---
 
