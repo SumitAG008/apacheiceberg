@@ -16,6 +16,7 @@ Cryptographic security layer for smart meter telemetry ingestion, with an Apache
 | 4 | **[LLD-001 Low-Level Design](LLD-001-low-level-design.md)** | What are the exact cryptographic formulas, code contracts, and test matrices? | HMAC-SHA256 MTD route scrambling, byte canonicalization standards, production Python code contracts, Redis Lua atomic CAS script, domain-separated Merkle algorithms, T1–T25 test matrix. |
 | 5 | **[DD-001 Data Design](DD-001-data-design.md)** | How are Apache Iceberg tables, Apache AGE graphs, and IEC CIM profiles structured? | Executable Iceberg DDLs (`bronze_ami_readings`, `_etp_checkpoints`, `_etp_threat_log`), Medallion SQL pipelines, Apache AGE Cypher graph queries, IEC CIM (IEC 61970/61968) mapping, proposed `cim:TelemetryProvenance` extension RDF schema. |
 | 6 | **[MSG-001 Messaging Pack](MSG-001-messaging-pack.md)** | How to communicate ETP to Business, Technical, Security, AI, Partner, and Investor audiences without unmeasured claims? | Verified benchmark metrics (0.108 ms/block, 9,254/sec), audience-tailored narratives (CFO, CISO, Data Architect, Siemens, Investors), 60-second demo script, words to avoid vocabulary rules. |
+| 7 | **[ARC-002 Stack & Jobs](ARC-002-technology-stack-and-jobs.md)** | What is the end-to-end architecture, job pathways, stack map, and UI/UX framework specification? | Background Job Registry (JOB-01–JOB-05), Apache Family Stack (Iceberg, Polaris, Arrow, AGE, Kafka), C++20 / Go / FastAPI pathways, AI/ML Graph RAG engine, REST + WebSockets + Arrow Flight UI/UX standards. |
 
 ---
 

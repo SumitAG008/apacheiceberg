@@ -138,3 +138,44 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
    - Created `backend/tests/test_etp_endpoints.py` testing live FastAPI REST endpoints (`/v1/etp/ingest`, `/v1/etp/checkpoint`, `/v1/etp/query/verify`, `/v1/etp/honeypot/stix`).
    - Verified 3/3 endpoint tests pass cleanly with status 200 (zero 503s). Added `test_etp_endpoints.py` to `.github/workflows/ci-cd.yml`.
 
+---
+
+## 📅 Session Log — 2026-09-23T21:58:00Z (Zero-Trust Counterparty Evidence & Reframing Strategy)
+
+### Strategic Realignment & Business Case Update (v2.2)
+
+1. **Strategic Shift (Reports vs. Receipts):**
+   - Incumbent category analysis integrated into `BC-002-etp-business-case.md`: MDM VEE (Landis+Gyr/Itron), Data Quality (Monte Carlo/Soda), and Lakehouse platforms (Databricks/Snowflake) produce **internal self-assertions (reports)** that counterparties reject with *"that's your system saying so"*.
+   - ETP reframed as the **Zero-Trust Counterparty Evidence Layer (receipts)**—independent mathematical proofs verifiable without trusting the utility's software or database.
+
+2. **Sales Qualification Question:**
+   - Integrated the single qualifying objection-handling question: *"Which of your current tools produces something the counterparty can verify without trusting your system?"*
+
+3. **5 Product Differentiation Pillars Defined & Documented:**
+   - **Pillar 1:** Counterparty Zero-Login Verification Page (Public validator).
+   - **Pillar 2:** VEE Boundary Proof (*"Keep your VEE. We prove which figures it estimated"*).
+   - **Pillar 3:** Ingestion-Time Temporal Commitment (Catching post-hoc warehouse edits).
+   - **Pillar 4:** Multi-Organizational Chain of Custody (Supplier → DNO → Elexon).
+   - **Pillar 5:** Official Regulator & Settlement Bundle Exporter (Elexon BSC & Ofgem schemas).
+
+4. **Artifacts Updated:**
+   - `BC-002-etp-business-case.md` updated to **Version 2.2**.
+   - `implementation_plan.md` created to map strategic pillars to product roadmap.
+
+---
+
+## 📅 Session Log — 2026-09-23T22:31:00Z (Technical Architecture, Jobs Registry & UI/UX Standards Specification)
+
+### Documentation & Specification Additions
+
+1. **Created Specification `ARC-002-technology-stack-and-jobs.md`:**
+   - **End-to-End Architectural Data Pathways:** Detailed edge/ingestion layer, lakehouse persistence, graph/topology store, AI query layer, and UI control plane.
+   - **Background Job Registry (JOB-01–JOB-05):** Documented the 5 core background execution pathways (Micro-batch Lakehouse Writer, Daily Merkle Checkpointer, Kafka Telemetry Consumer, Arrow Flight SQL Data Server, Live Traffic & Audit Bus).
+   - **UI & UX Framework Standards:** Defined why REST + WebSockets + Arrow Flight SQL replaces legacy OData v2 / Fiori for high-volume data lakehouses. Documented design system tokens (HSL dark/light palette) and typography rules (IBM Plex Mono for machine tokens vs Archivo for prose).
+   - **Full Technology Stack Map:** Mapped Apache Iceberg, Apache Polaris, Apache Arrow, Apache AGE, Apache Kafka, C++20 `libetp_core`, Python FastAPI, Redis Nonce CAS, DuckDB, AI/ML Graph RAG engine, React Vite, and Docker/Kubernetes/CI-CD infrastructure.
+
+2. **Updated Master Documentation Index:**
+   - Added `ARC-002` as Specification #7 in [README.md](file:///c:/Users/sumit/Documents/icebergAgent/README.md).
+
+
+
