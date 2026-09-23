@@ -259,7 +259,13 @@ jobs:
         run: |
           cmake -B cpp/build -S cpp -DCMAKE_BUILD_TYPE=Release -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
 
-      - name: Build etp_core C++ binaries and python module
+      - name: Configure and Execute Sanitizer Suite (ASan, LSan, UBSan in Debug)
+        run: |
+          cmake -B cpp/build-asan -S cpp -DCMAKE_BUILD_TYPE=Debug -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
+          cmake --build cpp/build-asan --config Debug -j 2
+          ./cpp/build-asan/test_etp_core
+
+      - name: Build etp_core C++ binaries and python module (Release)
         run: |
           set -o pipefail
           if ! cmake --build cpp/build --config Release -j 2 -- -k 2>&1 | tee build.log; then

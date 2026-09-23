@@ -177,5 +177,29 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 2. **Updated Master Documentation Index:**
    - Added `ARC-002` as Specification #7 in [README.md](file:///c:/Users/sumit/Documents/icebergAgent/README.md).
 
+---
+
+## 📅 Session Log — 2026-09-23T23:02:00Z (Tally Rebranding, AI Ground-Truth Architecture & C++ Sanitizers)
+
+### Architecture Specification Upgrade (ARC-002 v2.0) & CI Pipeline Hardening
+
+1. **Product Rebranding to Tally / Tally Protocol:**
+   - Introduced **Tally** as the company & platform brand (derived from historical medieval tally sticks—split wood records where grain patterns proved neither side altered their record).
+   - Preserved **Tally Protocol** as the open cryptographic protocol name for industry adoption.
+
+2. **AI-Era Architecture Reframing ("We Are the Ground Truth Autonomous Agents Run On"):**
+   - **MCP Server (`backend/mcp_server.py`):** Elevated to headline agent interface.
+   - **W3C PROV-O JSON-LD Outputs:** Query response objects emit `prov:wasDerivedFrom`, `observedLeafCount`, and `expectedPeriodCount` for machine-verifiable data provenance.
+   - **Agent Auth & Credentials:** Scoped, short-lived API tokens (`_create_api_token`) distinct from human sessions.
+   - **Model Training Data Provenance:** EU AI Act compliance anchoring Iceberg snapshot IDs used for model training/fine-tuning.
+
+3. **C++ Native Core Hardening Implemented:**
+   - **Sanitizers in CI:** Added ASan (AddressSanitizer), LSan (LeakSanitizer), and UBSan (UndefinedBehaviorSanitizer) Debug step to `.github/workflows/ci-cd.yml` (`test-cpp-native` job).
+   - Documented `libFuzzer` target (`cpp/fuzz/fuzz_gateway.cpp`), Google Microbenchmarks (`cpp/bench/bench_etp_core.cpp`), and OEM wheel packaging roadmap in `ARC-002`.
+
+4. **UI Modularization & Playwright CI Plan:**
+   - Documented 4-screen modularization plan (`src/screens/omissions.ts`, `checkpoints.ts`, `verification.ts`, `audit.ts`, `telemetry.ts`), typed `src/api.ts`, and Playwright CI workflow integration.
+
+
 
 
