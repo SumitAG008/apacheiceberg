@@ -263,7 +263,10 @@ jobs:
         run: |
           set -o pipefail
           cmake -B cpp/build-asan -S cpp -DCMAKE_BUILD_TYPE=Debug -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
-          cmake --build cpp/build-asan --config Debug -j 2
+          if ! cmake --build cpp/build-asan --config Debug -j 2 2>&1 | tee asanbuild.log; then
+            echo "::error::$(grep -m 10 -E 'error:' asanbuild.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
           if ! ./cpp/build-asan/test_etp_core 2>&1 | tee asan.log; then
             echo "::error::$(grep -m 10 -E 'ERROR|SUMMARY|runtime error|LeakSanitizer|AddressSanitizer' asan.log | tr '\n' ' ~ ')"
             exit 1

@@ -75,6 +75,12 @@ CREATE TABLE <tenant>__bronze.bronze_ami_readings (
     substation_id           STRING,
     gsp_group               STRING,
 
+    -- Spatial Geolocation & GMT Runtime Timestamp Columns
+    runtime_saved_at        TIMESTAMPTZ   NOT NULL,  -- System saving timestamp in GMT / UTC ISO-8601
+    latitude                DECIMAL(9,6),            -- Spatial coordinate latitude (e.g. 51.507400)
+    longitude               DECIMAL(9,6),            -- Spatial coordinate longitude (e.g. -0.127800)
+    geo_h3_index            STRING,                  -- Uber H3 spatial index (Resolution 8)
+
     -- ETP Verification Provenance Columns (First-Class Schema Citizens)
     etp_block_hash          STRING        NOT NULL,
     etp_prev_hash           STRING,
@@ -152,6 +158,94 @@ PARTITIONED BY (days(timestamp))
 TBLPROPERTIES (
     'layer'                        = 'security',
     'meldra.retention.min_days'    = '400'
+```
+
+---
+
+### 3.4 PostgreSQL Master Data & RBAC Work Queue DDLs
+
+```sql
+-- 1. Master Usage Point (MPAN/MPRN/NMI - Pivot Object)
+CREATE TABLE usage_point (
+  usage_point_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identifier          VARCHAR(64) NOT NULL,            -- MPAN / MPRN / NMI
+  identifier_scheme   VARCHAR(24) NOT NULL,            -- gb-mpan | gb-mprn | au-nmi
+  estate_id           UUID NOT NULL,
+  tenant_id           UUID NOT NULL,
+  latitude            DECIMAL(9,6),                    -- Spatial coordinates (e.g. 51.507400)
+  longitude           DECIMAL(9,6),                    -- Spatial coordinates (e.g. -0.127800)
+  service_location_id UUID,
+  network_asset_id    UUID,
+  profile_class       CHAR(2),
+  energised_from      DATE NOT NULL,
+  energised_to        DATE,
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC') -- GMT / UTC
+);
+
+-- 2. Physical Meter Device (SCD Type 2)
+CREATE TABLE meter (
+  meter_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usage_point_id      UUID NOT NULL REFERENCES usage_point(usage_point_id),
+  serial_number       TEXT NOT NULL,
+  device_class        TEXT NOT NULL,                   -- electricity | gas | water | generic-iot
+  generation          TEXT,                            -- SMETS1 | SMETS2 | DLMS | ANSI-C12
+  installed_at        TIMESTAMPTZ NOT NULL,
+  removed_at          TIMESTAMPTZ,
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC') -- GMT / UTC
+);
+
+-- 3. Meter Cryptographic Keys (Append-Only)
+CREATE TABLE meter_key (
+  key_id              TEXT PRIMARY KEY,
+  meter_id            UUID NOT NULL REFERENCES meter(meter_id),
+  public_key_pem      TEXT NOT NULL,
+  crypto_suite_id     TEXT NOT NULL,                   -- ECDSA-P256-SHA256-v1
+  valid_from          TIMESTAMPTZ NOT NULL,
+  valid_to            TIMESTAMPTZ,                     -- NULL = active key
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC') -- GMT / UTC
+);
+
+-- 4. Omission Dispute Case Work Queue (Triage Table Read by UI)
+CREATE TABLE omission_case (
+  case_id             TEXT PRIMARY KEY,                -- DSP-2026-09842
+  tenant_id           UUID NOT NULL,
+  usage_point_id      UUID NOT NULL REFERENCES usage_point(usage_point_id),
+  settlement_date     DATE NOT NULL,
+  first_period        SMALLINT,
+  last_period         SMALLINT,
+  gap_count           SMALLINT NOT NULL,
+  merkle_root         CHAR(64) NOT NULL,               -- Points into _etp_checkpoints in Iceberg
+  lifecycle_state     TEXT NOT NULL,                   -- new | investigating | disputed | reconciled | written_off
+  owner_user_id       UUID,
+  estimated_kwh       NUMERIC(12,3),
+  opened_at           TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+  closed_at           TIMESTAMPTZ,
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC') -- GMT / UTC
+);
+CREATE INDEX idx_omission_case_triage ON omission_case (tenant_id, lifecycle_state, opened_at DESC);
+
+-- 5. Four-Layer RBAC Security Specifications
+CREATE TABLE rbac_object_grant (
+  role_id             UUID NOT NULL,
+  object_name         TEXT NOT NULL,                   -- UsagePoint | OmissionCase | Reading | Checkpoint
+  action              TEXT NOT NULL,                   -- read | update | assign | close | export
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+  PRIMARY KEY (role_id, object_name, action)
+);
+
+CREATE TABLE rbac_row_filter (
+  role_id             UUID NOT NULL,
+  object_name         TEXT NOT NULL,
+  predicate           TEXT NOT NULL,                   -- "estate_id = ANY(:user_estates)"
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
+);
+
+CREATE TABLE rbac_column_mask (
+  role_id             UUID NOT NULL,
+  object_name         TEXT NOT NULL,
+  column_name         TEXT NOT NULL,
+  mask_style          TEXT NOT NULL,                   -- hidden | partial | hashed
+  runtime_saved_at    TIMESTAMPTZ NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')
 );
 ```
 
