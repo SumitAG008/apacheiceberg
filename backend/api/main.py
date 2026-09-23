@@ -3373,6 +3373,18 @@ async def etp_honeypot_stix(user: Dict[str, Any] = Depends(get_current_user)):
     return etp_honeypot.export_stix_21_bundle()
 
 
+@app.get("/ns/etp", tags=["ETP Ontology"])
+@app.get("/ns/etp.ttl", tags=["ETP Ontology"])
+async def etp_ontology_ttl():
+    """Dereferences the official ETP W3C Turtle (.ttl) Ontology definition (CIM + SOSA + PROV-O + etp: completeness extension)."""
+    ttl_path = "backend/data/etp.ttl"
+    if os.path.exists(ttl_path):
+        with open(ttl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return Response(content=content, media_type="text/turtle")
+    raise HTTPException(status_code=404, detail="ETP Ontology definition file not found")
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})

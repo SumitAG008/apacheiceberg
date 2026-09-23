@@ -1941,6 +1941,9 @@
           <button class="tab-btn sidebar-nav-item" data-tab="omissions-tab" id="nav-omissions">
             <i class="fa-solid fa-triangle-exclamation"></i> Omission Register
           </button>
+          <button class="tab-btn sidebar-nav-item" data-tab="ontology-tab" id="nav-ontology">
+            <i class="fa-solid fa-sitemap"></i> ETP Ontology
+          </button>
 
           <!-- ESTATE -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
@@ -2301,6 +2304,314 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- TAB: ETP ONTOLOGY (W3C + CIM SEMANTIC SPECIFICATION) -->
+          <div id="ontology-tab" class="tab-content">
+            <div style="display: flex; flex-direction: column; gap: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; font-family: system-ui, -apple-system, sans-serif;">
+              
+              <!-- Hero Header -->
+              <div style="background: #0f172a; border: 1.5px solid #1e293b; border-radius: 12px; padding: 2rem; color: #ffffff; position: relative; overflow: hidden;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.72rem; color: #bef264; font-family: var(--font-mono); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">MELDRA AI · ENERGYTRUST PROTOCOL</span>
+                  <span class="badge" style="background: rgba(190, 242, 100, 0.15); color: #bef264; border: 1px solid rgba(190, 242, 100, 0.3); font-size: 0.65rem; font-weight: 700;">W3C / IEC STANDARDS ALIGNED</span>
+                </div>
+                
+                <h1 style="font-size: 2.2rem; font-weight: 800; color: #ffffff; margin: 0 0 0.75rem 0; letter-spacing: -0.02em;">
+                  ETP Ontology
+                </h1>
+                
+                <p style="font-size: 1.05rem; color: #94a3b8; max-width: 800px; margin: 0 0 1.5rem 0; line-height: 1.6;">
+                  Reuse four W3C and IEC standards, extend in exactly one place. The semantic layer that turns "IEC CIM aligned" from a claim in a deck into something an integrator can dereference and check.
+                </p>
+
+                <div style="display: flex; gap: 0.85rem; flex-wrap: wrap; align-items: center;">
+                  <a href="/ns/etp.ttl" target="_blank" class="btn" style="background: rgba(190,242,100,0.15); border: 1.5px solid #bef264; color: #bef264; font-weight: 700; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-code-branch"></i> Dereference URI: https://meldra.ai/ns/etp#
+                  </a>
+                  <a href="/ns/etp.ttl" download="etp.ttl" class="btn" style="background: #1e293b; border: 1px solid #334155; color: #ffffff; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-download"></i> Download Turtle (.ttl)
+                  </a>
+                  <button type="button" onclick="navigator.clipboard.writeText('https://meldra.ai/ns/etp#'); if (window.showToast) showToast('Namespace URI copied to clipboard!', 'success');" class="btn" style="background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-weight: 600; font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-copy"></i> Copy Namespace
+                  </button>
+                </div>
+              </div>
+
+              <!-- SECTION 01: BORROW ALMOST EVERYTHING (ARCHITECTURE GRAPH DIAGRAM) -->
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.75rem; color: var(--text-main);">
+                <div style="margin-bottom: 1.25rem;">
+                  <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #38bdf8; margin-bottom: 0.25rem;">01</div>
+                  <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0 0 0.5rem 0; color: var(--text-main);">Borrow almost everything</h2>
+                  <p style="font-size: 0.92rem; color: var(--text-secondary); max-width: 850px; margin: 0; line-height: 1.6;">
+                    An ontology's credibility comes from what it reuses, not what it invents. Four established vocabularies already describe most of ETP. One thing they cannot express is precisely your differentiator — and that is the only place a new namespace is justified.
+                  </p>
+                </div>
+
+                <!-- Interactive Visual Architecture Diagram matching the user screenshot -->
+                <div style="background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 1.75rem; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">
+                  
+                  <!-- TOP BOX: etp: the only new namespace -->
+                  <div style="background: rgba(192, 38, 211, 0.12); border: 2px solid #e879f9; border-radius: 10px; padding: 1.25rem; text-align: center; max-width: 650px; margin: 0 auto; width: 100%; box-shadow: 0 0 20px rgba(232, 121, 249, 0.25);">
+                    <div style="font-family: var(--font-mono); font-weight: 800; font-size: 1.1rem; color: #f472b6; margin-bottom: 0.35rem;">
+                      etp: — the only new namespace
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.85rem; color: #fbcfe8; font-weight: 600;">
+                      SequenceCommitment &nbsp;·&nbsp; OmissionAssertion &nbsp;·&nbsp; VerificationActivity &nbsp;·&nbsp; TimestampAnchor
+                    </div>
+                  </div>
+
+                  <!-- REUSES ARROWS -->
+                  <div style="text-align: center; color: #64748b; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;">
+                    ▲ reuses &nbsp; ▲ reuses &nbsp; ▲ reuses &nbsp; ▲ reuses
+                  </div>
+
+                  <!-- 4 STANDARD VOCABULARY BOXES -->
+                  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; width: 100%;">
+                    
+                    <!-- IEC CIM -->
+                    <div style="background: #0f172a; border: 1px solid #818cf8; border-radius: 8px; padding: 1rem; text-align: center;">
+                      <div style="font-weight: 800; font-size: 0.95rem; color: #a5b4fc; margin-bottom: 0.2rem;">IEC CIM</div>
+                      <div style="font-size: 0.7rem; color: #64748b; font-family: var(--font-mono); margin-bottom: 0.5rem;">61970 / 61968</div>
+                      <div style="font-size: 0.78rem; color: #e0e7ff; font-family: var(--font-mono); font-weight: 600;">
+                        UsagePoint · Meter<br>ACLineSegment
+                      </div>
+                    </div>
+
+                    <!-- SOSA / SSN -->
+                    <div style="background: #0f172a; border: 1px solid #fb923c; border-radius: 8px; padding: 1rem; text-align: center;">
+                      <div style="font-weight: 800; font-size: 0.95rem; color: #fdba74; margin-bottom: 0.2rem;">SOSA / SSN</div>
+                      <div style="font-size: 0.7rem; color: #64748b; font-family: var(--font-mono); margin-bottom: 0.5rem;">W3C</div>
+                      <div style="font-size: 0.78rem; color: #ffedd5; font-family: var(--font-mono); font-weight: 600;">
+                        Observation · Sensor<br>FeatureOfInterest
+                      </div>
+                    </div>
+
+                    <!-- PROV-O -->
+                    <div style="background: #0f172a; border: 1px solid #2dd4bf; border-radius: 8px; padding: 1rem; text-align: center;">
+                      <div style="font-weight: 800; font-size: 0.95rem; color: #5eead4; margin-bottom: 0.2rem;">PROV-O</div>
+                      <div style="font-size: 0.7rem; color: #64748b; font-family: var(--font-mono); margin-bottom: 0.5rem;">W3C</div>
+                      <div style="font-size: 0.78rem; color: #ccfbf1; font-family: var(--font-mono); font-weight: 600;">
+                        Entity · Activity · Agent<br>wasDerivedFrom
+                      </div>
+                    </div>
+
+                    <!-- QUDT / TIME -->
+                    <div style="background: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; text-align: center;">
+                      <div style="font-weight: 800; font-size: 0.95rem; color: #f1f5f9; margin-bottom: 0.2rem;">QUDT · TIME</div>
+                      <div style="font-size: 0.7rem; color: #64748b; font-family: var(--font-mono); margin-bottom: 0.5rem;">units &amp; intervals</div>
+                      <div style="font-size: 0.78rem; color: #e2e8f0; font-family: var(--font-mono); font-weight: 600;">
+                        unit:KiloW-HR<br>time:Interval
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- BOTTOM CALLOUT: The gap none of them fill -->
+                  <div style="background: rgba(2, 6, 23, 0.8); border: 2px dashed #c084fc; border-radius: 10px; padding: 1.25rem; text-align: center; max-width: 650px; margin: 0.5rem auto 0; width: 100%;">
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #f1f5f9; margin-bottom: 0.25rem;">The gap none of them fill</div>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">
+                      PROV-O states what a thing came from. <strong style="color: #f472b6;">It cannot state that nothing else existed.</strong>
+                    </div>
+                  </div>
+
+                  <!-- Legend -->
+                  <div style="display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.75rem; color: #94a3b8;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span style="width: 10px; height: 10px; background: #818cf8; border-radius: 2px; display: inline-block;"></span> IEC CIM – grid &amp; metering
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span style="width: 10px; height: 10px; background: #fb923c; border-radius: 2px; display: inline-block;"></span> SOSA/SSN – observations
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span style="width: 10px; height: 10px; background: #2dd4bf; border-radius: 2px; display: inline-block;"></span> PROV-O – derivation
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <span style="width: 10px; height: 10px; background: #e879f9; border-radius: 2px; display: inline-block;"></span> etp: – completeness
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- SECTION 02: CLASS MAPPING TABLE -->
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1.75rem; color: var(--text-main);">
+                <div style="margin-bottom: 1.25rem;">
+                  <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #38bdf8; margin-bottom: 0.25rem;">02</div>
+                  <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0 0 0.5rem 0; color: var(--text-main);">Class mapping</h2>
+                  <p style="font-size: 0.92rem; color: var(--text-secondary); margin: 0;">
+                    Every ETP entity maps onto existing classes except the last three. Anything an integrator already understands stays in their vocabulary.
+                  </p>
+                </div>
+
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                    <thead>
+                      <tr style="border-bottom: 2px solid var(--border-subtle); color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase;">
+                        <th style="padding: 0.75rem;">ETP Entity</th>
+                        <th style="padding: 0.75rem;">IEC CIM</th>
+                        <th style="padding: 0.75rem;">SOSA / SSN</th>
+                        <th style="padding: 0.75rem;">PROV-O</th>
+                      </tr>
+                    </thead>
+                    <tbody style="font-family: var(--font-mono);">
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">UsagePoint</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:UsagePoint</td>
+                        <td style="padding: 0.75rem; color: #f97316;">sosa:FeatureOfInterest</td>
+                        <td style="padding: 0.75rem; color: #14b8a6;">prov:Entity</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Meter</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:Meter</td>
+                        <td style="padding: 0.75rem; color: #f97316;">sosa:Sensor</td>
+                        <td style="padding: 0.75rem; color: #14b8a6;">prov:Agent</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Register</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:ReadingType</td>
+                        <td style="padding: 0.75rem; color: #f97316;">sosa:ObservableProperty</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">IntervalReading</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:IntervalReading</td>
+                        <td style="padding: 0.75rem; color: #f97316;">sosa:Observation</td>
+                        <td style="padding: 0.75rem; color: #14b8a6;">prov:Entity</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Feeder</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:ACLineSegment</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Substation</td>
+                        <td style="padding: 0.75rem; color: #6366f1;">cim:Substation</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Gateway verify</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: #f97316;">sosa:Procedure</td>
+                        <td style="padding: 0.75rem; color: #14b8a6;">prov:Activity</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: var(--text-main);">Timestamp authority</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: #14b8a6;">prov:Agent</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle); background: rgba(232, 121, 249, 0.05);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: #c084fc;">TelemetryBlock</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: #e879f9; font-weight: 700;">prov:Entity †</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle); background: rgba(232, 121, 249, 0.05);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: #c084fc;">SequenceCommitment</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: #e879f9; font-weight: 700;">prov:Entity †</td>
+                      </tr>
+                      <tr style="border-bottom: 1px solid var(--border-subtle); background: rgba(232, 121, 249, 0.05);">
+                        <td style="padding: 0.75rem; font-weight: 700; color: #c084fc;">OmissionAssertion</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: var(--text-muted);">—</td>
+                        <td style="padding: 0.75rem; color: #e879f9; font-weight: 700;">prov:Entity †</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem; font-style: italic;">
+                  † Subclassed in the <code style="color: #e879f9;">etp:</code> namespace because no existing vocabulary carries the semantics.
+                </div>
+              </div>
+
+              <!-- SECTION 03: TURTLE SPECIFICATION & WORKED INSTANCE -->
+              <div style="background: #0f172a; border: 1.5px solid #1e293b; border-radius: 12px; padding: 1.75rem; color: #ffffff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                  <div>
+                    <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #38bdf8; margin-bottom: 0.25rem;">03</div>
+                    <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0; color: #ffffff;">Formal W3C Turtle Specification &amp; Worked Instance</h2>
+                  </div>
+                  <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('ontology-code-block').innerText); if (window.showToast) showToast('Turtle specification copied to clipboard!', 'success');" class="btn btn-sm" style="background: #1e293b; border: 1px solid #334155; color: #bef264; font-weight: 700;">
+                    <i class="fa-solid fa-copy"></i> Copy .ttl
+                  </button>
+                </div>
+
+                <pre id="ontology-code-block" style="background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 1.25rem; font-family: var(--font-mono); font-size: 0.82rem; color: #f1f5f9; overflow-x: auto; line-height: 1.6; margin: 0;">
+@prefix etp:  &lt;https://meldra.ai/ns/etp#&gt; .
+@prefix cim:  &lt;http://iec.ch/TC57/CIM100#&gt; .
+@prefix sosa: &lt;http://www.w3.org/ns/sosa/&gt; .
+@prefix prov: &lt;http://www.w3.org/ns/prov#&gt; .
+@prefix owl:  &lt;http://www.w3.org/2002/07/owl#&gt; .
+@prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+@prefix xsd:  &lt;http://www.w3.org/2001/XMLSchema#&gt; .
+
+# ── A signed reading ──────────────────────────────────────────
+etp:TelemetryBlock  a owl:Class ;
+    rdfs:subClassOf prov:Entity , sosa:Observation ;
+    rdfs:label "Telemetry Block" ;
+    rdfs:comment "A single interval reading bound to a monotonic sequence number and an ECDSA signature." .
+
+etp:hasNonce       a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:long .
+etp:blockHash      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:previousHash   a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:signature      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+
+# ── The novel assertion: completeness over an interval ────────
+etp:SequenceCommitment  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Sequence Commitment" ;
+    rdfs:comment "A cryptographic commitment that the observations over a closed nonce interval are exactly those enumerated — asserting completeness, not merely integrity. PROV-O has no equivalent." .
+
+etp:merkleRoot          a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:anchorDigest        a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:firstNonce          a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:lastNonce           a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:observedLeafCount   a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:expectedPeriodCount a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:previousCommitment  a owl:ObjectProperty ;
+    rdfs:domain etp:SequenceCommitment ;
+    rdfs:range  etp:SequenceCommitment ;
+    rdfs:comment "Chains day N to day N-1, closing the boundary." .
+
+# ── A positive assertion that data is absent ──────────────────
+etp:OmissionAssertion  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Omission Assertion" ;
+    rdfs:comment "Asserts that identified members of a committed sequence are absent. The assertion is itself evidence, and is anchored alongside the root." .
+
+etp:missingFrom     a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:missingTo       a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:gapCount        a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:omissionClass   a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+# ── External time attestation ─────────────────────────────────
+etp:TimestampAnchor  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment "An RFC 3161 token attributed to a timestamp authority acting as a prov:Agent." .
+
+etp:isSimulated  a owl:DatatypeProperty ; rdfs:range xsd:boolean ;
+    rdfs:comment "True when locally generated rather than issued by an external authority. Always asserted, never omitted." .
+etp:pkiStatus    a owl:DatatypeProperty ; rdfs:range xsd:int .
+
+# ── The act of verifying ──────────────────────────────────────
+etp:VerificationActivity  a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "Route validation, replay check, canonical hash recomputation and signature verification, performed at the ingestion boundary." .
+
+etp:verificationStatus a owl:DatatypeProperty ; rdfs:range xsd:string .
+</pre>
+              </div>
+
             </div>
           </div>
 

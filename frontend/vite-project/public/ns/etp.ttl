@@ -1,0 +1,68 @@
+@prefix etp:  <https://meldra.ai/ns/etp#> .
+@prefix cim:  <http://iec.ch/TC57/CIM100#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# ── A signed reading ──────────────────────────────────────────
+etp:TelemetryBlock  a owl:Class ;
+    rdfs:subClassOf prov:Entity , sosa:Observation ;
+    rdfs:label "Telemetry Block" ;
+    rdfs:comment "A single interval reading bound to a monotonic sequence number and an ECDSA signature." .
+
+etp:hasNonce       a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:long .
+etp:blockHash      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:previousHash   a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:signature      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+
+# ── The novel assertion: completeness over an interval ────────
+etp:SequenceCommitment  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Sequence Commitment" ;
+    rdfs:comment "A cryptographic commitment that the observations over a closed nonce interval are exactly those enumerated — asserting completeness, not merely integrity. PROV-O has no equivalent." .
+
+etp:merkleRoot          a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:anchorDigest        a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:firstNonce          a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:lastNonce           a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:observedLeafCount   a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:expectedPeriodCount a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:previousCommitment  a owl:ObjectProperty ;
+    rdfs:domain etp:SequenceCommitment ;
+    rdfs:range  etp:SequenceCommitment ;
+    rdfs:comment "Chains day N to day N-1, closing the boundary." .
+
+# ── A positive assertion that data is absent ──────────────────
+etp:OmissionAssertion  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Omission Assertion" ;
+    rdfs:comment "Asserts that identified members of a committed sequence are absent. The assertion is itself evidence, and is anchored alongside the root." .
+
+etp:missingFrom     a owl:DatatypeProperty ; rdfs:range xsd:int .  # SP
+etp:missingTo       a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:gapCount        a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:omissionClass   a owl:DatatypeProperty ; rdfs:range xsd:string .
+    # internal | boundary | end-of-day
+
+# ── External time attestation ─────────────────────────────────
+etp:TimestampAnchor  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment "An RFC 3161 token attributed to a timestamp authority acting as a prov:Agent." .
+
+etp:isSimulated  a owl:DatatypeProperty ; rdfs:range xsd:boolean ;
+    rdfs:comment "True when locally generated rather than issued by an external authority. Always asserted, never omitted." .
+etp:pkiStatus    a owl:DatatypeProperty ; rdfs:range xsd:int .
+
+# ── The act of verifying ──────────────────────────────────────
+etp:VerificationActivity  a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "Route validation, replay check, canonical hash recomputation and signature verification, performed at the ingestion boundary." .
+
+etp:verificationStatus a owl:DatatypeProperty ; rdfs:range xsd:string .
+    # VERIFIED | CHAIN_GAP | REPLAY_REJECTED | TAMPER_REJECTED
