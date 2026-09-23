@@ -5821,7 +5821,6 @@ async function loadTableHistory() {
     // Sort historical snapshots newest first
     const sorted = [...history].reverse();
     container.innerHTML = sorted.map((snap: any) => {
-      const commitDate = new Date(snap.timestamp_ms);
       return `
         <button class="btn btn-secondary btn-sm" style="display:flex; flex-direction:column; text-align:left; width:100%; padding:0.6rem 0.8rem; gap:0.25rem; font-size:0.75rem;" onclick="loadTimeTravelPreview(${snap.snapshot_id})">
           <div style="font-weight:700; color:#38bdf8; display:flex; justify-content:space-between; width:100%;">

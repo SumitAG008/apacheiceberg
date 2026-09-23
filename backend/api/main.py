@@ -607,8 +607,13 @@ def get_current_user(request: Request) -> Dict[str, Any]:
 # PROMETHEUS METRICS ENDPOINT
 # ─────────────────────────────────────────
 @app.get("/metrics", tags=["Observability"])
-async def metrics_endpoint():
+async def metrics_endpoint(request: Request):
     """Scraped by Prometheus for ETP telemetry verification counters & latency histograms."""
+    # Tier 3 internal endpoint protection
+    internal_key = os.environ.get("INTERNAL_METRICS_KEY")
+    auth_header = request.headers.get("authorization") or request.headers.get("x-internal-secret") or request.headers.get("x-internal-metrics-key")
+    if internal_key and auth_header != internal_key:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Tier 3 endpoint is restricted to internal monitoring listener.")
     try:
         from observability.metrics import get_metrics_response
         content, content_type = get_metrics_response()
@@ -3375,13 +3380,15 @@ async def etp_honeypot_stix(user: Dict[str, Any] = Depends(get_current_user)):
 
 @app.get("/ns/etp", tags=["ETP Ontology"])
 @app.get("/ns/etp.ttl", tags=["ETP Ontology"])
+@app.get("/ns/etp#", tags=["ETP Ontology"])
 async def etp_ontology_ttl():
     """Dereferences the official ETP W3C Turtle (.ttl) Ontology definition (CIM + SOSA + PROV-O + etp: completeness extension)."""
-    ttl_path = "backend/data/etp.ttl"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ttl_path = os.path.join(base_dir, "data", "etp.ttl")
     if os.path.exists(ttl_path):
         with open(ttl_path, "r", encoding="utf-8") as f:
             content = f.read()
-        return Response(content=content, media_type="text/turtle")
+        return Response(content=content, media_type="text/turtle; charset=utf-8")
     raise HTTPException(status_code=404, detail="ETP Ontology definition file not found")
 
 

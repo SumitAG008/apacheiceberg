@@ -1949,10 +1949,10 @@
           <button class="tab-btn sidebar-nav-item" data-tab="chat-tab" id="nav-chat">
             <i class="fa-solid fa-solar-panel"></i> Meters &amp; Estate
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="ingest-tab" id="nav-ingest">
+          <button class="tab-btn sidebar-nav-item" data-tab="traffic-tab" id="nav-telemetry">
             <i class="fa-solid fa-rss"></i> Telemetry Feed
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="workspace-tab" id="nav-workspace">
+          <button class="tab-btn sidebar-nav-item" data-tab="ingest-tab" id="nav-workspace">
             <i class="fa-solid fa-database"></i> Catalog &amp; Connections
           </button>
 
@@ -2616,34 +2616,34 @@ etp:verificationStatus a owl:DatatypeProperty ; rdfs:range xsd:string .
           <div id="chat-tab" class="tab-content active">
             <div class="home-dashboard">
               <div class="home-hero">
-                <h1 id="home-hero-title">Your lakehouse</h1>
-                <p class="home-hero-sub" id="home-hero-sub">Loading status…</p>
+                <h1 id="home-hero-title">Meters &amp; Estate Vital Signs</h1>
+                <p class="home-hero-sub" id="home-hero-sub">Real-time cryptographic telemetry health, gap detection, and Merkle timestamp status across your meter portfolio.</p>
               </div>
 
               <div class="chat-stat-grid home-stat-grid">
                 <div class="stat-card">
-                  <div class="stat-card-number" id="home-stat-tables">–</div>
-                  <div class="stat-card-label">Tables</div>
+                  <div class="stat-card-number" id="home-stat-meters" style="color: var(--text-main); font-family: var(--font-mono);">3,000</div>
+                  <div class="stat-card-label">Meters Monitored</div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-card-number" id="home-stat-namespaces">–</div>
-                  <div class="stat-card-label">Namespaces</div>
+                  <div class="stat-card-number" id="home-stat-readings" style="color: #10b981; font-family: var(--font-mono);">144,000</div>
+                  <div class="stat-card-label">Readings Verified Today</div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-card-number" id="home-stat-connection">Demo</div>
-                  <div class="stat-card-label">Data Lake</div>
+                  <div class="stat-card-number" id="home-stat-gaps" style="color: #f59e0b; font-family: var(--font-mono);">6</div>
+                  <div class="stat-card-label">Open Gaps / Disputes</div>
                 </div>
                 <div class="stat-card">
-                  <div class="stat-card-number" id="home-stat-backend">…</div>
-                  <div class="stat-card-label">Backend</div>
+                  <div class="stat-card-number" id="home-stat-anchor" style="color: #06b6d4; font-family: var(--font-mono);">14:31Z</div>
+                  <div class="stat-card-label">Last Anchor (RFC 3161)</div>
                 </div>
               </div>
 
               <div class="home-insights-row">
                 <div class="home-panel home-chart-panel">
                   <div class="home-panel-head">
-                    <h3><i class="fa-solid fa-chart-area"></i> Platform activity</h3>
-                    <span class="home-panel-sub">Real audit events, last 14 days</span>
+                    <h3><i class="fa-solid fa-chart-area"></i> Estate Telemetry Activity</h3>
+                    <span class="home-panel-sub">Verified readings &amp; gaps detected (last 14 days)</span>
                   </div>
                   <div id="home-activity-chart-wrap">
                     <div class="home-activity-empty">Loading…</div>
@@ -3447,7 +3447,7 @@ with DAG(
                 <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Merkle checkpoints', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
               </div>
 
-              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
+              <div class="table-wrap" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
                 <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
                   <thead>
                     <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
@@ -3468,7 +3468,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">42</td>
                       <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS</span></td>
                       <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(20,184,166,0.15); color:#14b8a6; border:1px solid rgba(20,184,166,0.3); font-family:var(--font-mono); font-weight:700;">● SIMULATED ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIS8...</td>
+                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIS8...e9f1a2</span></td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22T14:01:00Z</td>
@@ -3477,7 +3477,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
                       <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
                       <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIT9...</td>
+                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIT9...1b3c5d</span></td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
@@ -3486,7 +3486,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
                       <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
                       <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIU1...</td>
+                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIU1...a2b4c6</span></td>
                     </tr>
                     <tr>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
@@ -3495,7 +3495,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
                       <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
                       <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">urn:ietf:rfc:3161:MIIV2...</td>
+                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIV2...f0a1b3</span></td>
                     </tr>
                   </tbody>
                 </table>
@@ -3531,7 +3531,7 @@ with DAG(
                 </div>
               </div>
 
-              <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
+              <div class="table-wrap" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
                 <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
                   <thead>
                     <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
@@ -3555,7 +3555,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09842">● INVESTIGATING</span>
                       </td>
-                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09842">sumitagaria (Settlement Officer)</td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09842"><span class="chip-owner" title="sumitagaria (Settlement Officer)">sumitagaria (Settlement Officer)</span></td>
                       <td style="padding:0.75rem 1rem; text-align: right;">
                         <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09842', '03 845 110 / 10 0012 3456 789', 'SP 24–29 missing')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
                           <i class="fa-solid fa-pen-to-square"></i> Update Case
@@ -3571,7 +3571,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-red" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09710">● DISPUTED</span>
                       </td>
-                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09710">Elexon Billing Operations</td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09710"><span class="chip-owner" title="Elexon Billing Operations">Elexon Billing Operations</span></td>
                       <td style="padding:0.75rem 1rem; text-align: right;">
                         <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09710', '03 845 110 / 10 0012 3456 791', 'SP 14–16 missing')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
                           <i class="fa-solid fa-pen-to-square"></i> Update Case
@@ -3587,7 +3587,7 @@ with DAG(
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09412">● RECONCILED</span>
                       </td>
-                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09412">System Auto-Reconciliation</td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09412"><span class="chip-owner" title="System Auto-Reconciliation">System Auto-Reconciliation</span></td>
                       <td style="padding:0.75rem 1rem; text-align: right;">
                         <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09412', '03 845 110 / 10 0012 3456 788', 'SP 38–41 resolved')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
                           <i class="fa-solid fa-pen-to-square"></i> View Case
