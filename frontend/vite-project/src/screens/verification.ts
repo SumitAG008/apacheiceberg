@@ -1,9 +1,5 @@
-/**
- * Copyright (c) 2026 Meldra AI Ltd / Tally Platform. All rights reserved.
- * Screen Controller: Zero-Trust Counterparty Proof Pack Verification Portal
- */
-
-import { etpClient, ProofPackVerificationResponse } from '../api';
+import { etpClient } from '../api';
+import type { ProofPackVerificationResponse } from '../api';
 
 export function renderVerificationPortalHtml(): string {
   return `

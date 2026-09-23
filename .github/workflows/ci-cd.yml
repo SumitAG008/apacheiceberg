@@ -261,9 +261,13 @@ jobs:
 
       - name: Configure and Execute Sanitizer Suite (ASan, LSan, UBSan in Debug)
         run: |
+          set -o pipefail
           cmake -B cpp/build-asan -S cpp -DCMAKE_BUILD_TYPE=Debug -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
           cmake --build cpp/build-asan --config Debug -j 2
-          ./cpp/build-asan/test_etp_core
+          if ! ./cpp/build-asan/test_etp_core 2>&1 | tee asan.log; then
+            echo "::error::$(grep -m 10 -E 'ERROR|SUMMARY|runtime error|LeakSanitizer|AddressSanitizer' asan.log | tr '\n' ' ~ ')"
+            exit 1
+          fi
 
       - name: Build etp_core C++ binaries and python module (Release)
         run: |

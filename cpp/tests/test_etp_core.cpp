@@ -189,5 +189,6 @@ int main() {
     std::cout << "  ✓ GatewayEngine MTD honeypot diversion passed.\n";
 
     std::cout << "\n[SUCCESS] All etp_core C++20 tests passed cleanly!\n";
+    OPENSSL_cleanup();
     return 0;
 }
