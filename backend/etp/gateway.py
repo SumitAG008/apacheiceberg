@@ -178,7 +178,14 @@ class ETPGateway:
         if expected_prev_hash is not None and block.prev_hash != expected_prev_hash:
             verify_status = "CHAIN_GAP"
 
-        # 7. State Commit (Only NOW after signature + hash verification pass!)
+        # 7. Outbox Micro-Batch Buffering & Lakehouse Persistence (Buffer FIRST before advancing nonce counter)
+        self.writer.add_block(block, verify_status=verify_status)
+        if self.writer.should_flush():
+            committed_rows = self.writer.flush()
+            if audit and committed_rows:
+                audit.allow(action="etp.writer_flush", detail={"rows_written": len(committed_rows)})
+
+        # 8. State Commit (Advance nonce counter AFTER block is buffered)
         commit_status, committed_last, commit_reason = self.nonce_store.commit(
             mpan=block.mpan,
             incoming_nonce=block.nonce,
@@ -210,13 +217,6 @@ class ETPGateway:
         if audit:
             audit.allow(action="etp.telemetry_ingest", detail=evt)
         record_verification(verify_status, "OK", time.perf_counter() - t0)
-
-        # 8. Outbox Micro-Batch Buffering & Lakehouse Persistence
-        self.writer.add_block(block, verify_status=verify_status)
-        if self.writer.should_flush():
-            committed_rows = self.writer.flush()
-            if audit and committed_rows:
-                audit.allow(action="etp.writer_flush", detail={"rows_written": len(committed_rows)})
 
         return 200, {
             "status": "accepted",
