@@ -899,3 +899,55 @@ export const dqe = {
   },
 };
 
+// ─── ETP / Tally Zero-Trust Provenance Client ─────────────────────────────────
+export interface ProofPackVerificationResponse {
+  verified: boolean;
+  status: 'VERIFIED' | 'ANCHORED_WITH_GAPS' | 'FAILED';
+  expected_period_count: number;
+  observed_leaf_count: number;
+  sequence_gap_count: number;
+  merkle_root: string;
+  authenticated_anchor_digest: string;
+  tsa_anchor_ref: string;
+  '@context'?: string;
+  'prov:wasDerivedFrom'?: string;
+}
+
+export const etpClient = {
+  async getOmissions(mpan?: string, day?: string): Promise<{ omissions_count: number; omissions: any[] }> {
+    const params = new URLSearchParams();
+    if (mpan) params.append('mpan', mpan);
+    if (day) params.append('day', day);
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
+    const res = await authFetch(`${BASE_URL}/v1/etp/omissions${queryStr}`);
+    if (!res.ok) throw new Error('Failed to fetch ETP omissions');
+    return res.json();
+  },
+
+  async verifyProofPack(proofPack: Record<string, any>): Promise<ProofPackVerificationResponse> {
+    const res = await fetch(`${BASE_URL}/v1/etp/proof-pack/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proof_pack: proofPack }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Proof pack verification failed');
+    }
+    return res.json();
+  },
+
+  async run60sOmissionDemo(): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/v1/etp/demo/omission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Omission demo execution failed');
+    }
+    return res.json();
+  },
+};
+
+
