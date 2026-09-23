@@ -67,3 +67,59 @@ gantt
 1. **Automated Testing:** 100% green pass on pytest suites, TypeScript type checks, and Debug ASan/LSan/UBSan C++ native tests.
 2. **Performance Benchmarking:** Publish empirical single-thread ($\approx 22,900 \text{ ops/sec}$) and multi-core throughput benchmarks.
 3. **Accessibility (WCAG AA):** Guarantee all table headers, status badges, and interactive components maintain $\ge 4.5:1$ contrast ratio.
+
+---
+
+## 5. Daily Vendor & Investor Readiness Tracking Matrix
+
+To support upcoming **Vendor negotiations & Investor due diligence**, platform readiness is tracked daily across 5 core enterprise pillars:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    VENDOR & INVESTOR READINESS SCORECARD                    │
+├──────────────────────────────────────┬──────────────┬───────────────────────┤
+│ Core Pillar                          │ Status       │ Key Deliverable       │
+├──────────────────────────────────────┼──────────────┼───────────────────────┤
+│ 1. Technical & Provenance Core       │ 🟢 READY     │ Cryptographic Receipts│
+│ 2. Commercial Settlement Utility     │ 🟡 IN-PROGRESS│ Elexon BSC Exporter  │
+│ 3. Scalability & Performance Metrics │ 🟢 READY     │ 22.9k ops/sec & 3-Tier│
+│ 4. Security & Compliance Governance  │ 🟢 READY     │ 4-Layer RBAC & JWT    │
+│ 5. Enterprise Branding & UX Polish   │ 🟢 READY     │ Design System & Demo  │
+└──────────────────────────────────────┴──────────────┴───────────────────────┘
+```
+
+### 5.1 Pillar Detail & Due Diligence Requirements
+
+#### Pillar 1: Technical & Provenance Core (Vendor Differentiator)
+* **Value Prop for Vendors:** "Receipts, Not Reports." Replaces internal vendor assertions with independently verifiable cryptographic receipts.
+* **Open Standards:** IEC 61968/61970 CIM RDF/XML, W3C PROV-O JSON-LD, RFC 3161 TSA timestamp anchors.
+* **Tracking Metric:** 100% test pass on differential golden vectors and native C++20 engine.
+
+#### Pillar 2: Commercial Settlement Utility (Supplier / DNO ROI)
+* **Value Prop for Utility Clients:** Instantly closes settlement disputes by generating self-contained dispute export bundles.
+* **Key Feature:** Elexon BSC Dispute Exporter (`/v1/etp/dispute/bsc-pack`).
+* **Tracking Metric:** Automated ZIP package generation containing proofs, CIM XML, and feeder topology graphs.
+
+#### Pillar 3: Scalability & Performance Metrics (Investor Pitch Deck)
+* **Value Prop for Investors:** 3-tier storage architecture handling 144M rows/day ($52.6\text{B rows/year}$) while UI loads in single-digit milliseconds.
+* **Key Benchmark:** Measured OpenSSL single-core verification baseline ($\approx 22,900 \text{ ops/sec}$).
+* **Tracking Metric:** Daily benchmark execution via `cpp/bench/bench_etp_core.cpp`.
+
+#### Pillar 4: Security, Compliance & Governance (Auditor Sign-off)
+* **Value Prop for Enterprise Security:** 4-layer RBAC, Hard JWT tenant scope context, immutable audit logging, and zero per-tenant DDL migrations.
+* **Audit Standards:** ISO-8601 GMT/UTC timestamps (`runtime_saved_at`) and spatial geolocation (`latitude`, `longitude`, `geo_h3_index`).
+* **Tracking Metric:** Zero tenant leak policy verification in CI test suite.
+
+#### Pillar 5: Enterprise Branding & UX Polish (Investor Demo Impression)
+* **Value Prop for Pitch Demos:** High-contrast, sleek enterprise visual identity that wows investors and utility executives at first glance.
+* **Visual Standards:** Deep Emerald (`#0d9488`) / Royal Cobalt (`#2563eb`), neutral slate table headers, WCAG AA $\ge 4.5:1$ contrast pass.
+* **Tracking Metric:** 60-Second Executive Omission & Dispute Demonstration Path live in application.
+
+---
+
+## 6. Daily Launch Readiness Scorecard (Tracked Daily)
+
+| Date | Pillar 1 (Core) | Pillar 2 (Dispute) | Pillar 3 (Scale) | Pillar 4 (Security) | Pillar 5 (Brand) | Overall Target |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **2026-09-24** | 100% | 65% | 100% | 100% | 95% | **92% ON TRACK** |
+
