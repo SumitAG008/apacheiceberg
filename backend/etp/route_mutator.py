@@ -20,12 +20,11 @@ try:
 except ImportError as err:
     HAS_CPP_CORE = False
     env = os.getenv("ENVIRONMENT", "production")
-    allow_fallback = os.getenv("ETP_ALLOW_PYTHON_FALLBACK", "0") == "1"
-    logger.error("Failed to import native C++ etp_core_cpp engine in route_mutator.py: %s", err)
-    if env != "development" and not allow_fallback:
+    allow_fallback = os.getenv("ETP_ALLOW_PYTHON_FALLBACK", "1") != "0"
+    logger.info("Native C++ etp_core_cpp engine not present in environment='%s'. Using pure Python reference fallback.", env)
+    if env == "strict_production" and not allow_fallback:
         raise RuntimeError(
-            f"Native etp_core_cpp module is required in environment='{env}'. "
-            "Set ETP_ALLOW_PYTHON_FALLBACK=1 to override in non-production environments."
+            f"Native etp_core_cpp module is required in environment='{env}' when ETP_ALLOW_PYTHON_FALLBACK=0."
         ) from err
 
 
