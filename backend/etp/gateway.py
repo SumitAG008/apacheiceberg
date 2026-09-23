@@ -18,6 +18,7 @@ from .route_mutator import RouteMutator
 from .meter import TelemetryBlock, UNIT_SEPARATOR, compute_canonical_hash
 from .phantom_grid import PhantomGridHoneypot
 from .security import ETPSecurityManager
+from .writer import MicroBatchWriter
 
 try:
     from backend.observability import audit, record_verification, record_honeypot_divert
@@ -41,12 +42,14 @@ class ETPGateway:
         route_mutator: RouteMutator,
         nonce_store: AbstractNonceStore,
         phantom_grid: PhantomGridHoneypot,
-        security_manager: ETPSecurityManager = None
+        security_manager: ETPSecurityManager = None,
+        micro_batch_writer: Optional[MicroBatchWriter] = None
     ):
         self.route_mutator = route_mutator
         self.nonce_store = nonce_store
         self.phantom_grid = phantom_grid
         self.security = security_manager or ETPSecurityManager()
+        self.writer = micro_batch_writer or MicroBatchWriter()
         self.public_key_registry: Dict[str, ec.EllipticCurvePublicKey] = {}
         # Bounded audit log deque to prevent memory leaks during DoS scans (ETP-2026-003)
         self.audit_log = collections.deque(maxlen=10000)
@@ -207,6 +210,13 @@ class ETPGateway:
         if audit:
             audit.allow(action="etp.telemetry_ingest", detail=evt)
         record_verification(verify_status, "OK", time.perf_counter() - t0)
+
+        # 8. Outbox Micro-Batch Buffering & Lakehouse Persistence
+        self.writer.add_block(block, verify_status=verify_status)
+        if self.writer.should_flush():
+            committed_rows = self.writer.flush()
+            if audit and committed_rows:
+                audit.allow(action="etp.writer_flush", detail={"rows_written": len(committed_rows)})
 
         return 200, {
             "status": "accepted",

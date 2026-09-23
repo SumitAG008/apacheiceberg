@@ -9061,7 +9061,7 @@ function init60sOmissionDemo() {
 
       setTimeout(() => {
         const t2 = new Date().toISOString().substring(11, 19) + 'Z';
-        consoleOut.innerHTML += `<div>[${t2}] <span style="color:#bef264;">[C++ engine]</span> Executing compute_root() (42 leaves, odd-node promotion enabled, CVE-2012-2459 duplicate-leaf class mitigated)...</div>`;
+        consoleOut.innerHTML += `<div>[${t2}] <span style="color:#bef264;">[C++ engine]</span> Executing compute_root() (42 leaves, odd-node promotion enabled, Bitcoin Merkle tree vulnerability CVE-2012-2459 mitigated)...</div>`;
         consoleOut.scrollTop = consoleOut.scrollHeight;
       }, 500);
 
@@ -9134,9 +9134,79 @@ function initAwsAuthModeSelector() {
   };
 }
 
+// ─────────────────────────────────────────
+// DISPUTE WORKFLOW & PROOF PACK HANDLERS
+// ─────────────────────────────────────────
+let activeDisputeCaseId = 'DSP-2026-09842';
+
+(window as any).openDisputeWorkflowModal = function(caseId: string, mpan: string, gapDesc: string) {
+  activeDisputeCaseId = caseId;
+  const titleEl = document.getElementById('dispute-modal-title');
+  const subEl = document.getElementById('dispute-modal-subtitle');
+  if (titleEl) titleEl.textContent = `Dispute Case ${caseId}`;
+  if (subEl) subEl.textContent = `MPAN ${mpan} · ${gapDesc}`;
+
+  (window as any).openMeldraModal('modal-dispute-workflow');
+};
+
+(window as any).handleSaveDisputeCase = function() {
+  const stateSelect = document.getElementById('dispute-state-select') as HTMLSelectElement;
+  const ownerInput = document.getElementById('dispute-owner-input') as HTMLInputElement;
+
+  const newState = stateSelect ? stateSelect.value : 'INVESTIGATING';
+  const newOwner = ownerInput ? ownerInput.value : 'Unassigned';
+
+  const stateSpan = document.getElementById(`state-${activeDisputeCaseId}`);
+  const ownerCell = document.getElementById(`owner-${activeDisputeCaseId}`);
+
+  if (stateSpan) {
+    stateSpan.textContent = `● ${newState.replace(/_/g, ' ')}`;
+    if (newState === 'RECONCILED') {
+      stateSpan.className = 'pill pill-success';
+    } else if (newState === 'DISPUTED') {
+      stateSpan.className = 'pill pill-red';
+    } else {
+      stateSpan.className = 'pill pill-orange';
+    }
+  }
+
+  if (ownerCell) {
+    ownerCell.textContent = newOwner;
+  }
+
+  (window as any).closeMeldraModal('modal-dispute-workflow');
+  showToast(`Updated case ${activeDisputeCaseId}: State -> ${newState}`, 'success');
+};
+
+(window as any).handleDownloadProofPack = function() {
+  (window as any).openMeldraModal('modal-proof-pack');
+};
+
+(window as any).copyProofPackJSON = function() {
+  const jsonView = document.getElementById('proof-pack-json-view');
+  if (jsonView) {
+    navigator.clipboard.writeText(jsonView.textContent || '');
+    showToast('Evidence Proof Pack JSON copied to clipboard', 'success');
+  }
+};
+
+(window as any).downloadProofPackFile = function() {
+  const jsonView = document.getElementById('proof-pack-json-view');
+  const text = jsonView ? jsonView.textContent || '{}' : '{}';
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ETP_Proof_Pack_${activeDisputeCaseId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Downloaded proof pack ETP_Proof_Pack_${activeDisputeCaseId}.json`, 'success');
+};
+
 setTimeout(() => {
   init60sOmissionDemo();
   initAwsAuthModeSelector();
 }, 250);
+
 
 

@@ -1941,9 +1941,6 @@
           <button class="tab-btn sidebar-nav-item" data-tab="omissions-tab" id="nav-omissions">
             <i class="fa-solid fa-triangle-exclamation"></i> Omission Register
           </button>
-          <button class="tab-btn sidebar-nav-item" data-tab="ontology-tab" id="nav-ontology">
-            <i class="fa-solid fa-sitemap"></i> ETP Ontology
-          </button>
 
           <!-- ESTATE -->
           <div class="sidebar-nav-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 0.6rem 0.5rem 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
@@ -3414,7 +3411,7 @@ with DAG(
               <div class="audit-header" style="display:flex; flex-direction:column; gap:1rem; border-bottom:1px solid var(--border-subtle); padding-bottom:1rem; margin-bottom:1rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                   <div>
-                    <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-shield-cat" style="color:#bef264;"></i> Audit Ledger</h2>
+                    <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-shield-cat" style="color:#bef264;"></i> Audit Ledger</h2>
                     <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Real-time cryptographic audit trail of ETP protocol events, security rejections, honeypot diversions, and telemetry operations.</p>
                   </div>
                   <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -3444,7 +3441,7 @@ with DAG(
             <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
                 <div>
-                  <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link" style="color:#38bdf8;"></i> Checkpoints &amp; Anchors</h2>
+                  <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link" style="color:#38bdf8;"></i> Checkpoints &amp; Anchors</h2>
                   <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Immutable Merkle tree checkpoints and RFC 3161 Timestamp Authority proofs (C++ native engine verified).</p>
                 </div>
                 <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Merkle checkpoints', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
@@ -3511,10 +3508,27 @@ with DAG(
             <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
                 <div>
-                  <h2 style="margin:0; font-size:1.4rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> Omission Register</h2>
+                  <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> Omission Register</h2>
                   <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Cryptographically proven telemetry interval gaps and BSC settlement dispute records (UC-09).</p>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Omission Register', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                  <button class="btn btn-primary btn-sm" onclick="handleDownloadProofPack()"><i class="fa-solid fa-file-pdf"></i> Download Proof Pack</button>
+                  <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Omission Register', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                </div>
+              </div>
+
+              <!-- Alert & Notification Config Toolbar -->
+              <div style="background: var(--bg-surface2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.78rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-muted);">
+                  <i class="fa-solid fa-bell" style="color: #eab308;"></i>
+                  <span><strong>Dispute Alert Rule:</strong> Auto-notify via Email &amp; Webhook if gap count &gt;</span>
+                  <input type="number" id="alert-gap-threshold" value="2" min="1" max="48" style="width: 45px; padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 4px; border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-main);" />
+                  <span>SPs</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.72rem; color: #22c55e; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Webhook Active (BSC Ingestion)</span>
+                  <button class="btn btn-secondary btn-sm" onclick="showToast('Alert notification rules updated successfully', 'success')" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">Save Alert Config</button>
+                </div>
               </div>
 
               <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
@@ -3525,8 +3539,10 @@ with DAG(
                       <th style="padding: 0.75rem 1rem;">Date (UTC)</th>
                       <th style="padding: 0.75rem 1rem;">Missing Settlement Window</th>
                       <th style="padding: 0.75rem 1rem;">Gap Count</th>
-                      <th style="padding: 0.75rem 1rem;">State Chip</th>
                       <th style="padding: 0.75rem 1rem;">Dispute Case ID</th>
+                      <th style="padding: 0.75rem 1rem;">Lifecycle State</th>
+                      <th style="padding: 0.75rem 1rem;">Owner</th>
+                      <th style="padding: 0.75rem 1rem; text-align: right;">Workflow Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3535,24 +3551,48 @@ with DAG(
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22</td>
                       <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 24–29 missing (11:30–14:30Z)</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">6 SPs</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS · ANCHORED_WITH_GAPS</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary);">DSP-2026-09842</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary); font-weight: 700;">DSP-2026-09842</td>
+                      <td style="padding:0.75rem 1rem;">
+                        <span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09842">● INVESTIGATING</span>
+                      </td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09842">sumitagaria (Settlement Officer)</td>
+                      <td style="padding:0.75rem 1rem; text-align: right;">
+                        <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09842', '03 845 110 / 10 0012 3456 789', 'SP 24–29 missing')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+                          <i class="fa-solid fa-pen-to-square"></i> Update Case
+                        </button>
+                      </td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 791</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-20</td>
                       <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 14–16 missing (06:30–08:00Z)</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">3 SPs</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS · ANCHORED_WITH_GAPS</span></td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary);">DSP-2026-09710</td>
+                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary); font-weight: 700;">DSP-2026-09710</td>
+                      <td style="padding:0.75rem 1rem;">
+                        <span class="pill pill-red" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09710">● DISPUTED</span>
+                      </td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09710">Elexon Billing Operations</td>
+                      <td style="padding:0.75rem 1rem; text-align: right;">
+                        <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09710', '03 845 110 / 10 0012 3456 791', 'SP 14–16 missing')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+                          <i class="fa-solid fa-pen-to-square"></i> Update Case
+                        </button>
+                      </td>
                     </tr>
                     <tr>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 788</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-18</td>
                       <td style="padding:0.75rem 1rem; color:#22c55e; font-family:var(--font-mono);">SP 38–41 resolved (18:30–20:30Z)</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">4 SPs</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● RECONCILED</span></td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">DSP-2026-09412</td>
+                      <td style="padding:0.75rem 1rem;">
+                        <span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09412">● RECONCILED</span>
+                      </td>
+                      <td style="padding:0.75rem 1rem; color:var(--text-muted);" id="owner-DSP-2026-09412">System Auto-Reconciliation</td>
+                      <td style="padding:0.75rem 1rem; text-align: right;">
+                        <button class="btn btn-secondary btn-sm" onclick="openDisputeWorkflowModal('DSP-2026-09412', '03 845 110 / 10 0012 3456 788', 'SP 38–41 resolved')" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+                          <i class="fa-solid fa-pen-to-square"></i> View Case
+                        </button>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -5893,6 +5933,97 @@ with DAG(
           <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;">
             <button class="btn btn-secondary" onclick="closeMeldraModal('modal-support-ticket')">Cancel</button>
             <button class="btn btn-primary" onclick="handleSubmitSupportTicket()" style="background:#15201c;color:#fff;">Submit Support Ticket</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISPUTE WORKFLOW CASE MANAGEMENT MODAL -->
+    <div id="modal-dispute-workflow" class="meldra-modal-overlay">
+      <div class="meldra-modal-card" style="width:640px;">
+        <div style="background:#fcfcfb;padding:24px 28px;display:flex;flex-direction:column;gap:16px;position:relative;">
+          <button onclick="closeMeldraModal('modal-dispute-workflow')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#8a8f89;">&times;</button>
+          
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="font-size:18px;font-weight:700;color:#15201c;" id="dispute-modal-title">Dispute Case DSP-2026-09842</div>
+              <span class="badge badge-orange" id="dispute-modal-badge">INVESTIGATING</span>
+            </div>
+            <div style="font-size:12.5px;color:#6f7570;margin-top:4px" id="dispute-modal-subtitle">MPAN 03 845 110 / 10 0012 3456 789 · SP 24–29 missing</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Lifecycle State</label>
+                <select id="dispute-state-select" class="input-field" style="width:100%;font-size:12.5px;padding:8px;">
+                  <option value="NEW">New (Unassigned)</option>
+                  <option value="INVESTIGATING" selected>Investigating (Active)</option>
+                  <option value="DISPUTED">Disputed (Raised with Elexon)</option>
+                  <option value="RECONCILED">Reconciled (Closed)</option>
+                  <option value="WRITTEN_OFF">Written Off (Disregard)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Assigned Owner</label>
+                <input type="text" id="dispute-owner-input" class="input-field" value="sumitagaria (Settlement Officer)" style="width:100%;font-size:12.5px;padding:8px;">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#15201c;display:block;margin-bottom:4px;">Investigation Notes &amp; Action Log</label>
+              <textarea id="dispute-notes-input" class="input-field" style="width:100%;height:90px;font-size:12.5px;padding:8px;" placeholder="Add details regarding cause (meter outage, communication failure, data theft probe)..."></textarea>
+            </div>
+
+            <div style="background:#f0efec;padding:12px;border-radius:8px;font-size:11.5px;color:#4a504c;">
+              <strong>Cryptographic Provenance Link:</strong> Root <code>0x3f7a91b8...e9f1a2</code> · RFC 3161 TSA <code>urn:ietf:rfc:3161:MIIS8...</code>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn btn-secondary" onclick="closeMeldraModal('modal-dispute-workflow')">Cancel</button>
+            <button class="btn btn-primary" onclick="handleSaveDisputeCase()" style="background:#15201c;color:#fff;">Save Case Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOWNLOAD PROOF PACK MODAL -->
+    <div id="modal-proof-pack" class="meldra-modal-overlay">
+      <div class="meldra-modal-card" style="width:680px;">
+        <div style="background:#0f172a;padding:24px 28px;display:flex;flex-direction:column;gap:16px;position:relative;color:#ffffff;">
+          <button onclick="closeMeldraModal('modal-proof-pack')" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">&times;</button>
+          
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <i class="fa-solid fa-certificate" style="color:#38bdf8;font-size:22px;"></i>
+              <div style="font-size:18px;font-weight:700;color:#ffffff;">Download Evidence Proof Pack</div>
+            </div>
+            <div style="font-size:12.5px;color:#cbd5e1;margin-top:4px">Cryptographically verifiable export bundle for counterparty dispute settlement</div>
+          </div>
+
+          <div style="background:#020617;border:1px solid #1e293b;border-radius:8px;padding:14px;font-family:var(--font-mono);font-size:0.75rem;color:#bef264;height:180px;overflow-y:auto;" id="proof-pack-json-view">
+            {
+              "export_type": "ETP_SETTLEMENT_PROOF_PACK_V1",
+              "tenant": "UK-DNO-MID-98421",
+              "mpan": "03 845 110 / 10 0012 3456 789",
+              "date_utc": "2026-09-22",
+              "omitted_settlement_periods": [24, 25, 26, 27, 28, 29],
+              "missing_window_utc": "11:30-14:30Z",
+              "merkle_root_hash": "0x3f7a91b82c4e6f01d5a8b9c2e4f6a8b1c3d5e7f9a2b4c6e8f0a1b3c5d7e9f1a2",
+              "tsa_token_ref": "urn:ietf:rfc:3161:MIIS8...FREETSA",
+              "cve_mitigation": "Bitcoin Merkle CVE-2012-2459 Mitigated",
+              "verification_endpoint": "https://zerocopy.meldra.ai/v1/etp/query/verify"
+            }
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.75rem;color:#94a3b8;"><i class="fa-solid fa-shield-halved"></i> Includes RFC 3161 TimeStampToken + SHA-256 Merkle Proof</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-sm" onclick="copyProofPackJSON()"><i class="fa-solid fa-copy"></i> Copy JSON</button>
+              <button class="btn btn-primary btn-sm" onclick="downloadProofPackFile()" style="background:#0284c7;color:#fff;"><i class="fa-solid fa-download"></i> Download .json Pack</button>
+            </div>
           </div>
         </div>
       </div>
