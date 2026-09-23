@@ -181,7 +181,7 @@ Wired existing Playwright specs (`tests/ui/`) into GitHub Actions CI, adding spe
 
 | Layer / Domain | Technology Component | Architectural Purpose |
 |---|---|---|
-| **Native Performance Core** | **C++20 (`libetp_core` via PyBind11)** | Zero-allocation RAII OpenSSL hex parsing, byte-level block hashing, and ECDSA-P256 signature verification (>35,000 verifications/sec/node). |
+| **Native Performance Core** | **C++20 (`libetp_core` via PyBind11)** | Zero-allocation RAII OpenSSL hex parsing, byte-level block hashing, and ECDSA P-256 (NIST secp256r1) signature verification (~22,900 single-thread verifications/sec baseline, scalable across multi-core node pools). |
 | **API & Business Logic** | **Python 3.11+ (FastAPI, Asyncio, Pydantic v2)** | High-performance async API backend, JWT/MFA auth, rate-limiting, and data-layer RBAC column masking. |
 | **Lakehouse Format** | **Apache Iceberg + Apache Polaris (REST Catalog)** | Open ACID lakehouse table format supporting Parquet storage, time-travel, schema evolution, and cross-engine catalog metadata. |
 | **In-Memory & Streaming Transport** | **Apache Arrow & Apache Arrow Flight SQL** | Zero-copy columnar memory representation for micro-batch buffers and gRPC analytics streaming. |

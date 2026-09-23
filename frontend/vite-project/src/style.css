@@ -869,7 +869,7 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 
 .message-text table { width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 0.83rem; }
 .message-text th, .message-text td { border: 1px solid var(--border-subtle); padding: 0.45rem 0.7rem; text-align: left; }
-.message-text th { background: var(--color-primary-dim); font-weight: 600; color: var(--color-primary); }
+.message-text th { background: var(--bg-surface2); font-weight: 600; color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; }
 
 /* Chat Input */
 .chat-input-bar { display: flex; gap: 0.65rem; align-items: center; }
@@ -1112,13 +1112,14 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
   white-space: nowrap;
 }
 
-.preview-table th, .schema-config-table th {
-  background: rgba(139,92,246,0.06);
+.preview-table th, .schema-config-table th,
+.omissions-table th, .checkpoints-table th {
+  background: var(--bg-surface2);
   font-weight: 600;
-  font-size: 0.78rem;
-  color: #A78BFA;
+  font-size: 0.72rem;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.09em;
 }
 
 .preview-table tr:hover td { background: rgba(139,92,246,0.04); }
@@ -1380,12 +1381,12 @@ input:checked + .slider:before { transform: translateX(22px); background: var(--
 }
 
 .api-params-table th {
-  background: rgba(139,92,246,0.06);
-  color: #A78BFA;
+  background: var(--bg-surface2);
+  color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.09em;
   padding: 0.45rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid var(--border-subtle);
