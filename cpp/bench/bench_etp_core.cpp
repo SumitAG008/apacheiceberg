@@ -48,7 +48,7 @@ int main() {
     etp::RouteMutator mutator("super-secret-etp-key-32-bytes-long", 60);
     auto start_route = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < ITERATIONS; ++i) {
-        auto routes = mutator.generate_route_set(1787400000 + i);
+        auto routes = mutator.get_routes(1787400000 + i);
         (void)routes;
     }
     auto end_route = std::chrono::high_resolution_clock::now();
@@ -56,7 +56,7 @@ int main() {
     double ops_sec_route = static_cast<double>(ITERATIONS) / elapsed_route_s;
     double us_per_op_route = (elapsed_route_s * 1e6) / static_cast<double>(ITERATIONS);
 
-    std::cout << "[Benchmark 2] RouteMutator::generate_route_set (HMAC-SHA256)\n";
+    std::cout << "[Benchmark 2] RouteMutator::get_routes (HMAC-SHA256)\n";
     std::cout << "  Iterations: " << ITERATIONS << "\n";
     std::cout << "  Total Time: " << std::fixed << std::setprecision(4) << elapsed_route_s << " s\n";
     std::cout << "  Throughput: " << std::fixed << std::setprecision(2) << ops_sec_route << " ops/sec\n";
@@ -67,8 +67,11 @@ int main() {
     constexpr size_t MERKLE_ITERATIONS = 10000;
     auto start_merkle = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < MERKLE_ITERATIONS; ++i) {
-        etp::MerkleTree tree(leaf_hashes);
-        std::string root = tree.get_root();
+        etp::MerkleTree tree;
+        for (const auto& h : leaf_hashes) {
+            tree.add_leaf_hex(h);
+        }
+        std::string root = tree.compute_root();
         (void)root;
     }
     auto end_merkle = std::chrono::high_resolution_clock::now();

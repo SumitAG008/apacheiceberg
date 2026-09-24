@@ -610,14 +610,14 @@ def get_current_user(request: Request) -> Dict[str, Any]:
 async def metrics_endpoint(request: Request):
     """Scraped by Prometheus for ETP telemetry verification counters & latency histograms."""
     # Tier 3 internal endpoint protection
-    internal_key = os.environ.get("INTERNAL_METRICS_KEY", "etp-internal-metrics-secret-default")
+    internal_key = os.environ.get("INTERNAL_METRICS_KEY")
     auth_header = request.headers.get("authorization") or request.headers.get("x-internal-secret") or request.headers.get("x-internal-metrics-key")
     
     # Strip 'Bearer ' if present
     if auth_header and auth_header.startswith("Bearer "):
         auth_header = auth_header.split(" ", 1)[1]
         
-    if auth_header != internal_key:
+    if not internal_key or auth_header != internal_key:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Tier 3 endpoint is restricted to internal monitoring listener.")
     try:
         from observability.metrics import get_metrics_response
@@ -3467,12 +3467,88 @@ async def etp_run_omission_demo(user: Dict[str, Any] = Depends(get_current_user)
 async def etp_ontology_ttl():
     """Dereferences the official ETP W3C Turtle (.ttl) Ontology definition (CIM + SOSA + PROV-O + etp: completeness extension)."""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ttl_path = os.path.join(base_dir, "data", "etp.ttl")
-    if os.path.exists(ttl_path):
-        with open(ttl_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        return Response(content=content, media_type="text/turtle; charset=utf-8")
-    raise HTTPException(status_code=404, detail="ETP Ontology definition file not found")
+    candidates = [
+        os.path.join(base_dir, "data", "etp.ttl"),
+        os.path.join(os.path.dirname(base_dir), "backend", "data", "etp.ttl"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "etp.ttl"),
+        "data/etp.ttl",
+        "backend/data/etp.ttl"
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return Response(content=content, media_type="text/turtle; charset=utf-8")
+    
+    # Embedded fallback to ensure zero-404 resolution under any container/deployment path
+    fallback_ttl = """@prefix etp:  <https://meldra.ai/ns/etp#> .
+@prefix cim:  <http://iec.ch/TC57/CIM100#> .
+@prefix sosa: <http://www.w3.org/ns/sosa/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# ── A signed reading ──────────────────────────────────────────
+etp:TelemetryBlock  a owl:Class ;
+    rdfs:subClassOf prov:Entity , sosa:Observation ;
+    rdfs:label "Telemetry Block" ;
+    rdfs:comment "A single interval reading bound to a monotonic sequence number and an ECDSA signature." .
+
+etp:hasNonce       a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:long .
+etp:blockHash      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:previousHash   a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+etp:signature      a owl:DatatypeProperty ;
+    rdfs:domain etp:TelemetryBlock ; rdfs:range xsd:hexBinary .
+
+# ── The novel assertion: completeness over an interval ────────
+etp:SequenceCommitment  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Sequence Commitment" ;
+    rdfs:comment "A cryptographic commitment that the observations over a closed nonce interval are exactly those enumerated — asserting completeness, not merely integrity. PROV-O has no equivalent." .
+
+etp:merkleRoot          a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:anchorDigest        a owl:DatatypeProperty ; rdfs:range xsd:hexBinary .
+etp:firstNonce          a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:lastNonce           a owl:DatatypeProperty ; rdfs:range xsd:long .
+etp:observedLeafCount   a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:expectedPeriodCount a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:previousCommitment  a owl:ObjectProperty ;
+    rdfs:domain etp:SequenceCommitment ;
+    rdfs:range  etp:SequenceCommitment ;
+    rdfs:comment "Chains day N to day N-1, closing the boundary." .
+
+# ── A positive assertion that data is absent ──────────────────
+etp:OmissionAssertion  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Omission Assertion" ;
+    rdfs:comment "Asserts that identified members of a committed sequence are absent. The assertion is itself evidence, and is anchored alongside the root." .
+
+etp:missingFrom     a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:missingTo       a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:gapCount        a owl:DatatypeProperty ; rdfs:range xsd:int .
+etp:omissionClass   a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+# ── External time attestation ─────────────────────────────────
+etp:TimestampAnchor  a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment "An RFC 3161 token attributed to a timestamp authority acting as a prov:Agent." .
+
+etp:isSimulated  a owl:DatatypeProperty ; rdfs:range xsd:boolean ;
+    rdfs:comment "True when locally generated rather than issued by an external authority. Always asserted, never omitted." .
+etp:pkiStatus    a owl:DatatypeProperty ; rdfs:range xsd:int .
+
+# ── The act of verifying ──────────────────────────────────────
+etp:VerificationActivity  a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "Route validation, replay check, canonical hash recomputation and signature verification, performed at the ingestion boundary." .
+
+etp:verificationStatus a owl:DatatypeProperty ; rdfs:range xsd:string .
+"""
+    return Response(content=fallback_ttl, media_type="text/turtle; charset=utf-8")
 
 
 @app.exception_handler(HTTPException)
