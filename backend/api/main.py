@@ -610,9 +610,14 @@ def get_current_user(request: Request) -> Dict[str, Any]:
 async def metrics_endpoint(request: Request):
     """Scraped by Prometheus for ETP telemetry verification counters & latency histograms."""
     # Tier 3 internal endpoint protection
-    internal_key = os.environ.get("INTERNAL_METRICS_KEY")
+    internal_key = os.environ.get("INTERNAL_METRICS_KEY", "etp-internal-metrics-secret-default")
     auth_header = request.headers.get("authorization") or request.headers.get("x-internal-secret") or request.headers.get("x-internal-metrics-key")
-    if internal_key and auth_header != internal_key:
+    
+    # Strip 'Bearer ' if present
+    if auth_header and auth_header.startswith("Bearer "):
+        auth_header = auth_header.split(" ", 1)[1]
+        
+    if auth_header != internal_key:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Tier 3 endpoint is restricted to internal monitoring listener.")
     try:
         from observability.metrics import get_metrics_response
