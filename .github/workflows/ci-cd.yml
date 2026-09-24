@@ -280,9 +280,12 @@ jobs:
             exit 1
           fi
 
-      - name: Execute C++ Native Core Verification Suite
+      - name: Execute C++ Native Core Verification Suite & Benchmark
         run: |
           ./cpp/build/test_etp_core
+          if [ -f "./cpp/build/bench_etp_core" ]; then
+            ./cpp/build/bench_etp_core
+          fi
 
       - name: Install compiled etp_core_cpp module into Python environment
         run: |
