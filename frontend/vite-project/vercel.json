@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/ns/:path*",
+      "destination": "https://api.meldra.ai/ns/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
