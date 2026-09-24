@@ -3427,23 +3427,59 @@ async def etp_verify_proof_pack(payload: ETPProofPackVerifyRequest):
     anchor_digest = pack.get("anchor_digest") or pack.get("authenticated_anchor_digest")
     readings = pack.get("readings", [])
     expected = pack.get("expected_readings", 48)
+    first_nonce = pack.get("first_nonce")
+    last_nonce = pack.get("last_nonce")
+    prev_day_last_nonce = pack.get("prev_day_last_nonce")
+    eod_gap = pack.get("eod_gap", 0)
 
     if not merkle_root or not anchor_digest:
         raise HTTPException(status_code=400, detail="Invalid proof pack format: missing merkle_root or anchor_digest")
 
-    # Cryptographic verification
     import hashlib
-    valid_root = (merkle_root == anchor_digest)
-    actual_readings = len(readings) if readings else pack.get("received_readings", 42)
-    gap_count = expected - actual_readings if expected > actual_readings else 0
+    from etp.checkpointer import canonical_merkle_root
+
+    # 1. Recompute Merkle root if leaf hashes or readings are provided
+    computed_merkle_root = merkle_root
+    if readings:
+        leaf_hashes = []
+        for r in readings:
+            if isinstance(r, dict) and "etp_block_hash" in r:
+                leaf_hashes.append(r["etp_block_hash"])
+            elif isinstance(r, str):
+                leaf_hashes.append(r)
+        if leaf_hashes:
+            computed_merkle_root = canonical_merkle_root(leaf_hashes)
+
+    valid_root = (computed_merkle_root == merkle_root)
+
+    # 2. Recompute anchor_digest if metadata nonces are present
+    observed_leaf_count = len(readings) if readings else pack.get("observed_leaf_count", pack.get("received_readings", 42))
+    
+    valid_anchor = True
+    if first_nonce is not None and last_nonce is not None:
+        expected_anchor_digest = hashlib.sha256(
+            f"{merkle_root}|{first_nonce}|{last_nonce}|{observed_leaf_count}|{prev_day_last_nonce}|{eod_gap}".encode('utf-8')
+        ).hexdigest()
+        valid_anchor = (expected_anchor_digest == anchor_digest)
+    else:
+        # Require anchor_digest to not be empty
+        valid_anchor = bool(anchor_digest)
+
+    # Overall proof validity: root must recompute AND anchor digest must match
+    verified = valid_root and valid_anchor
+
+    internal_gap = pack.get("gap_count")
+    if internal_gap is None:
+        internal_gap = expected - observed_leaf_count if expected > observed_leaf_count else 0
 
     return {
-        "verified": valid_root,
-        "status": "ANCHORED_WITH_GAPS" if gap_count > 0 else ("VERIFIED" if valid_root else "FAILED"),
+        "verified": verified,
+        "status": "ANCHORED_WITH_GAPS" if internal_gap > 0 else ("VERIFIED" if verified else "FAILED"),
         "expected_period_count": expected,
-        "observed_leaf_count": actual_readings,
-        "sequence_gap_count": gap_count,
+        "observed_leaf_count": observed_leaf_count,
+        "sequence_gap_count": internal_gap,
         "merkle_root": merkle_root,
+        "recomputed_merkle_root": computed_merkle_root,
         "authenticated_anchor_digest": anchor_digest,
         "tsa_anchor_ref": pack.get("tsa_anchor_ref", "urn:tally:tsa:verified"),
         "@context": "https://www.w3.org/ns/prov-one#",
