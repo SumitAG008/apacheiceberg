@@ -233,3 +233,31 @@ def test_verifier_ignores_spoofed_gap_count_and_computes_from_nonces():
     assert data["status"] == "ANCHORED_WITH_GAPS"
     assert data["sequence_gap_count"] == 6  # Derived from nonces, ignoring pack's gap_count: 0
 
+
+def test_verifier_rejects_pack_b_incomplete_reading_fields():
+    """Pack B with made-up readings missing required canonical fields (mpan, timestamp, etc.) must be rejected."""
+    # Readings containing only bare hashes without mpan/timestamp/reading_kwh
+    readings = [
+        {"etp_block_hash": "a" * 64},
+        {"etp_block_hash": "b" * 64}
+    ]
+    merkle_root = canonical_merkle_root(["a" * 64, "b" * 64])
+    anchor_digest = hashlib.sha256(f"{merkle_root}|1000|1001|2|None|0".encode('utf-8')).hexdigest()
+
+    proof_pack = {
+        "merkle_root": merkle_root,
+        "anchor_digest": anchor_digest,
+        "readings": readings,
+        "first_nonce": 1000,
+        "last_nonce": 1001,
+        "expected_readings": 2
+    }
+
+    resp = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": proof_pack})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["verified"] is False
+    assert data["status"] == "FAILED"
+    assert data["reason"] == "MISSING_READING_FIELDS"
+
+
