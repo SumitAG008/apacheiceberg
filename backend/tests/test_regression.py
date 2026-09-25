@@ -21,7 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api.main import app
 import mfa_service
-from auth_db import _get_conn
+from auth_db import _get_conn, init_auth_schema
+
+init_auth_schema()
 
 client = TestClient(app)
 

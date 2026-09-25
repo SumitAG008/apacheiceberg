@@ -3425,59 +3425,142 @@ async def etp_verify_proof_pack(payload: ETPProofPackVerifyRequest):
     pack = payload.proof_pack
     merkle_root = pack.get("merkle_root")
     anchor_digest = pack.get("anchor_digest") or pack.get("authenticated_anchor_digest")
-    readings = pack.get("readings", [])
+    readings = pack.get("readings")
     expected = pack.get("expected_readings", 48)
     first_nonce = pack.get("first_nonce")
     last_nonce = pack.get("last_nonce")
     prev_day_last_nonce = pack.get("prev_day_last_nonce")
     eod_gap = pack.get("eod_gap", 0)
 
-    if not merkle_root or not anchor_digest:
-        raise HTTPException(status_code=400, detail="Invalid proof pack format: missing merkle_root or anchor_digest")
+    # 1. Reject if readings or nonces or core cryptographic fields are missing
+    if not merkle_root or not anchor_digest or not readings or first_nonce is None or last_nonce is None:
+        return {
+            "verified": False,
+            "status": "FAILED",
+            "reason": "MISSING_CRYPTOGRAPHIC_FIELDS",
+            "expected_period_count": expected,
+            "observed_leaf_count": len(readings) if readings else 0,
+            "sequence_gap_count": 0,
+            "merkle_root": merkle_root or "",
+            "recomputed_merkle_root": "",
+            "authenticated_anchor_digest": anchor_digest or "",
+            "tsa_anchor_ref": pack.get("tsa_anchor_ref", "urn:tally:tsa:verified"),
+            "@context": "https://www.w3.org/ns/prov-one#",
+            "prov:wasDerivedFrom": pack.get("prov:wasDerivedFrom", "")
+        }
 
     import hashlib
     from etp.checkpointer import canonical_merkle_root
+    from etp.meter import compute_canonical_hash
 
-    # 1. Recompute Merkle root if leaf hashes or readings are provided
-    computed_merkle_root = merkle_root
-    if readings:
-        leaf_hashes = []
-        for r in readings:
-            if isinstance(r, dict) and "etp_block_hash" in r:
-                leaf_hashes.append(r["etp_block_hash"])
-            elif isinstance(r, str):
-                leaf_hashes.append(r)
-        if leaf_hashes:
-            computed_merkle_root = canonical_merkle_root(leaf_hashes)
+    # 2. Re-verify each individual reading block hash against canonical hash
+    for r in readings:
+        if isinstance(r, dict) and "etp_block_hash" in r:
+            mpan = r.get("mpan")
+            reading_kwh = r.get("reading_kwh")
+            timestamp = r.get("timestamp")
+            prev_hash = r.get("prev_hash")
+            nonce = r.get("etp_nonce") if r.get("etp_nonce") is not None else r.get("nonce")
+            crypto_suite_id = r.get("crypto_suite_id", "ECDSA-P256-SHA256-v1")
+            key_id = r.get("key_id", "k-test")
 
-    valid_root = (computed_merkle_root == merkle_root)
+            if None not in (mpan, reading_kwh, timestamp, prev_hash, nonce):
+                expected_hash = compute_canonical_hash(
+                    mpan=str(mpan),
+                    reading_kwh=float(reading_kwh),
+                    timestamp=str(timestamp),
+                    prev_hash=str(prev_hash),
+                    nonce=int(nonce),
+                    crypto_suite_id=str(crypto_suite_id),
+                    key_id=str(key_id)
+                )
+                if expected_hash != r["etp_block_hash"]:
+                    return {
+                        "verified": False,
+                        "status": "FAILED",
+                        "reason": "BLOCK_HASH_MISMATCH",
+                        "expected_period_count": expected,
+                        "observed_leaf_count": len(readings),
+                        "sequence_gap_count": 0,
+                        "merkle_root": merkle_root,
+                        "recomputed_merkle_root": "",
+                        "authenticated_anchor_digest": anchor_digest,
+                        "tsa_anchor_ref": pack.get("tsa_anchor_ref", "urn:tally:tsa:verified"),
+                        "@context": "https://www.w3.org/ns/prov-one#",
+                        "prov:wasDerivedFrom": pack.get("prov:wasDerivedFrom", "")
+                    }
 
-    # 2. Recompute anchor_digest if metadata nonces are present
-    observed_leaf_count = len(readings) if readings else pack.get("observed_leaf_count", pack.get("received_readings", 42))
-    
-    valid_anchor = True
-    if first_nonce is not None and last_nonce is not None:
-        expected_anchor_digest = hashlib.sha256(
-            f"{merkle_root}|{first_nonce}|{last_nonce}|{observed_leaf_count}|{prev_day_last_nonce}|{eod_gap}".encode('utf-8')
-        ).hexdigest()
-        valid_anchor = (expected_anchor_digest == anchor_digest)
-    else:
-        # Require anchor_digest to not be empty
-        valid_anchor = bool(anchor_digest)
+    # 3. Recompute Merkle root from leaf hashes
+    leaf_hashes = []
+    for r in readings:
+        if isinstance(r, dict) and "etp_block_hash" in r:
+            leaf_hashes.append(r["etp_block_hash"])
+        elif isinstance(r, str):
+            leaf_hashes.append(r)
 
-    # Overall proof validity: root must recompute AND anchor digest must match
-    verified = valid_root and valid_anchor
+    computed_merkle_root = canonical_merkle_root(leaf_hashes)
+    if computed_merkle_root != merkle_root:
+        return {
+            "verified": False,
+            "status": "FAILED",
+            "reason": "MERKLE_ROOT_MISMATCH",
+            "expected_period_count": expected,
+            "observed_leaf_count": len(readings),
+            "sequence_gap_count": 0,
+            "merkle_root": merkle_root,
+            "recomputed_merkle_root": computed_merkle_root,
+            "authenticated_anchor_digest": anchor_digest,
+            "tsa_anchor_ref": pack.get("tsa_anchor_ref", "urn:tally:tsa:verified"),
+            "@context": "https://www.w3.org/ns/prov-one#",
+            "prov:wasDerivedFrom": pack.get("prov:wasDerivedFrom", "")
+        }
 
-    internal_gap = pack.get("gap_count")
-    if internal_gap is None:
-        internal_gap = expected - observed_leaf_count if expected > observed_leaf_count else 0
+    # 4. Re-verify authenticated anchor digest
+    observed_leaf_count = len(readings)
+    calculated_eod_gap = 0
+    if expected is not None and expected > 0:
+        expected_end_nonce = first_nonce + expected - 1
+        if expected_end_nonce > last_nonce:
+            calculated_eod_gap = expected_end_nonce - last_nonce
+    actual_eod_gap = max(eod_gap, calculated_eod_gap)
+
+    expected_anchor_digest = hashlib.sha256(
+        f"{merkle_root}|{first_nonce}|{last_nonce}|{observed_leaf_count}|{prev_day_last_nonce}|{actual_eod_gap}".encode('utf-8')
+    ).hexdigest()
+
+    if expected_anchor_digest != anchor_digest:
+        return {
+            "verified": False,
+            "status": "FAILED",
+            "reason": "ANCHOR_DIGEST_MISMATCH",
+            "expected_period_count": expected,
+            "observed_leaf_count": observed_leaf_count,
+            "sequence_gap_count": 0,
+            "merkle_root": merkle_root,
+            "recomputed_merkle_root": computed_merkle_root,
+            "authenticated_anchor_digest": anchor_digest,
+            "tsa_anchor_ref": pack.get("tsa_anchor_ref", "urn:tally:tsa:verified"),
+            "@context": "https://www.w3.org/ns/prov-one#",
+            "prov:wasDerivedFrom": pack.get("prov:wasDerivedFrom", "")
+        }
+
+    # 5. Work out gap count strictly from nonces (never trust pack's gap_count)
+    internal_gap = max(0, (last_nonce - first_nonce + 1) - observed_leaf_count)
+    boundary_gap = 0
+    if prev_day_last_nonce is not None and first_nonce > prev_day_last_nonce + 1:
+        boundary_gap = first_nonce - (prev_day_last_nonce + 1)
+
+    calculated_gap_count = internal_gap + boundary_gap + actual_eod_gap
+
+    verified = True
+    status = "ANCHORED_WITH_GAPS" if calculated_gap_count > 0 else "VERIFIED"
 
     return {
         "verified": verified,
-        "status": "ANCHORED_WITH_GAPS" if internal_gap > 0 else ("VERIFIED" if verified else "FAILED"),
+        "status": status,
         "expected_period_count": expected,
         "observed_leaf_count": observed_leaf_count,
-        "sequence_gap_count": internal_gap,
+        "sequence_gap_count": calculated_gap_count,
         "merkle_root": merkle_root,
         "recomputed_merkle_root": computed_merkle_root,
         "authenticated_anchor_digest": anchor_digest,
