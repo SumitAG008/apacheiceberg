@@ -937,6 +937,15 @@ export const etpClient = {
     return res.json();
   },
 
+  async getSampleProofPack(): Promise<Record<string, any>> {
+    const res = await fetch(`${BASE_URL}/v1/etp/sample-proof-pack`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to fetch sample proof pack');
+    }
+    return res.json();
+  },
+
   async run60sOmissionDemo(): Promise<any> {
     const res = await authFetch(`${BASE_URL}/v1/etp/demo/omission`, {
       method: 'POST',

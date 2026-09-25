@@ -620,21 +620,19 @@ def list_approvers() -> List[Dict[str, Any]]:
         conn.close()
 
 
-def ensure_bootstrap_admin(user_id: str) -> Optional[str]:
-    """If the whole platform has zero Admins, promote this logging-in user.
+def ensure_bootstrap_admin(user_id: str, email: Optional[str] = None) -> Optional[str]:
+    """Promote user to Admin ONLY if their email matches the BOOTSTRAP_ADMIN_EMAIL env var.
 
-    Every new registration defaults to 'Business Analyst' (see auth.users'
-    column default) and the Users & Roles page that assigns roles itself
-    requires Admin — with no Admin ever created, nobody could ever reach
-    it. Called on every successful login/MFA-verify; a no-op once any
-    Admin exists. Returns the new role if a promotion happened, else None.
+    Prevents security flaw where an arbitrary first registrant on a fresh database becomes Admin.
+    Returns the new role if promotion happened, else None.
     """
+    bootstrap_email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+    if not bootstrap_email or not email or email.lower().strip() != bootstrap_email:
+        return None
+
     conn = _get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT 1 FROM auth.users WHERE user_role = 'Admin' LIMIT 1;")
-        if cur.fetchone():
-            return None
         cur.execute(
             "UPDATE auth.users SET user_role = 'Admin' WHERE id = %s RETURNING user_role;",
             (user_id,),

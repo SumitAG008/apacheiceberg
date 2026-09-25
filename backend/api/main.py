@@ -777,9 +777,8 @@ async def verify_mfa(payload: VerifyMFARequest):
     else:
         update_last_login(user_id)
 
-    # Platform-wide bootstrap: if nobody is Admin yet, this user becomes the
-    # first one (see ensure_bootstrap_admin's docstring for why this exists).
-    bootstrapped_role = ensure_bootstrap_admin(user_id)
+    # Platform-wide bootstrap: promote ONLY if user's email matches BOOTSTRAP_ADMIN_EMAIL
+    bootstrapped_role = ensure_bootstrap_admin(user_id, user.get("email"))
     effective_role = bootstrapped_role or user.get("user_role", "Business Analyst")
 
     # Issue tokens using user's database tier and role
@@ -3438,6 +3437,70 @@ def _build_verifier_failure_response(
         "tsa_anchor_ref": tsa_anchor_ref,
         "@context": "https://www.w3.org/ns/prov-one#",
         "prov:wasDerivedFrom": prov_derived_from
+    }
+
+
+@app.get("/v1/etp/sample-proof-pack", tags=["Zero-Trust Counterparty Verification"])
+async def get_sample_proof_pack():
+    """Generates a valid MerkleCheckpointer sample proof pack with 42 readings and 6 sequence gaps live.
+    
+    Used by frontend verification portal and CI test suite to guarantee zero drift.
+    """
+    from etp.checkpointer import MerkleCheckpointer
+    from etp.meter import compute_canonical_hash
+
+    checkpointer = MerkleCheckpointer(storage_path="backend/data/etp_sample_checkpoints.json")
+    mpan = "MPAN-1200098765432"
+    day = "2026-09-22"
+    first_nonce = 1000
+    readings = []
+
+    for i in range(42):
+        nonce = first_nonce + i
+        reading_kwh = round(10.0 + (i * 0.5), 3)
+        timestamp = f"2026-09-22T{(i // 2):02d}:{(i % 2) * 30:02d}:00.000Z"
+        prev_hash = "0000000000000000000000000000000000000000000000000000000000000000" if i == 0 else readings[-1]["etp_block_hash"]
+
+        block_hash = compute_canonical_hash(
+            mpan=mpan,
+            reading_kwh=reading_kwh,
+            timestamp=timestamp,
+            prev_hash=prev_hash,
+            nonce=nonce,
+            crypto_suite_id="ECDSA-P256-SHA256-v1",
+            key_id="k-test"
+        )
+        readings.append({
+            "mpan": mpan,
+            "reading_kwh": reading_kwh,
+            "timestamp": timestamp,
+            "prev_hash": prev_hash,
+            "etp_nonce": nonce,
+            "crypto_suite_id": "ECDSA-P256-SHA256-v1",
+            "key_id": "k-test",
+            "etp_block_hash": block_hash
+        })
+
+    ckpt = checkpointer.build_meter_day_checkpoint(
+        mpan=mpan,
+        day=day,
+        readings=readings,
+        prev_day_last_nonce=999,
+        expected_daily_readings=48
+    )
+
+    return {
+        "merkle_root": ckpt["merkle_root"],
+        "anchor_digest": ckpt["anchor_digest"],
+        "first_nonce": ckpt["first_nonce"],
+        "last_nonce": ckpt["last_nonce"],
+        "prev_day_last_nonce": ckpt["prev_day_last_nonce"],
+        "eod_gap": ckpt["eod_gap"],
+        "expected_readings": 48,
+        "tsa_anchor_ref": ckpt.get("anchor_ref", "urn:tally:tsa:2026-09-22:MPAN-1200098765432"),
+        "@context": "https://www.w3.org/ns/prov-one#",
+        "prov:wasDerivedFrom": f"urn:tally:snapshot:{day}:{mpan}",
+        "readings": readings
     }
 
 
