@@ -1,5 +1,7 @@
 # November Platform Go-Live Roadmap & Enterprise Branding Strategy
 
+> **⚠️ Superseded 2026-09-25T23:15Z by [`PROJECT_PLAN.md`](PROJECT_PLAN.md).** Kept for history only — the readiness scorecard below does not reflect the code. See the plan's change log for why.
+
 **Target Launch Date:** November 2026  
 **Core Objective:** Deploy a fully wired, production-grade Zero-Trust Metering Lakehouse platform with unified enterprise branding and commercial audit capabilities.
 
