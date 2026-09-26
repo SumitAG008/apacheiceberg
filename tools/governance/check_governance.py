@@ -130,9 +130,12 @@ def report():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     check_decisions()
     check_claims()
     check_workflows()
     check_risks()
     report()
     sys.exit(1 if errors else 0)
+
