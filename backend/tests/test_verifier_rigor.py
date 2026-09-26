@@ -261,3 +261,18 @@ def test_verifier_rejects_pack_b_incomplete_reading_fields():
     assert data["reason"] == "MISSING_READING_FIELDS"
 
 
+def test_live_sample_proof_pack_verifies():
+    """Live sample proof pack from GET /v1/etp/sample-proof-pack must pass verification with ANCHORED_WITH_GAPS."""
+    resp_sample = client.get("/v1/etp/sample-proof-pack")
+    assert resp_sample.status_code == 200
+    pack = resp_sample.json()
+
+    resp_verify = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": pack})
+    assert resp_verify.status_code == 200
+    data = resp_verify.json()
+    assert data["verified"] is True
+    assert data["status"] == "ANCHORED_WITH_GAPS"
+    assert data["sequence_gap_count"] == 6
+
+
+

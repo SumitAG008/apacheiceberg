@@ -127,3 +127,21 @@ def test_etp_ingest_endpoint(client, auth_headers):
     assert resp_data.get("verify_status") == "VERIFIED"
     assert resp_data.get("block_hash") == block.block_hash
 
+
+def test_etp_sample_proof_pack_verifies(client):
+    """Verifies GET /v1/etp/sample-proof-pack generates a proof pack that passes /v1/etp/proof-pack/verify."""
+    resp_sample = client.get("/v1/etp/sample-proof-pack")
+    assert resp_sample.status_code == 200
+    pack = resp_sample.json()
+    assert "merkle_root" in pack
+    assert "readings" in pack
+    assert len(pack["readings"]) == 42
+
+    resp_verify = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": pack})
+    assert resp_verify.status_code == 200
+    data = resp_verify.json()
+    assert data["verified"] is True
+    assert data["status"] == "ANCHORED_WITH_GAPS"
+    assert data["sequence_gap_count"] == 6
+
+
