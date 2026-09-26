@@ -9209,3 +9209,32 @@ setTimeout(() => {
 
 
 
+
+// Evidence tables: click, double-click or Enter on a TSA token chip opens its full details.
+(window as any).openEvidenceDetail = function(el: HTMLElement) {
+  const dialog = document.getElementById('evidence-detail-dialog') as HTMLDialogElement | null;
+  if (!dialog) return;
+  const fields: Record<string, string | undefined> = {
+    'ev-detail-token': el.dataset.token,
+    'ev-detail-anchored': el.dataset.anchored,
+    'ev-detail-mpan': el.dataset.mpan,
+    'ev-detail-root': el.dataset.root,
+    'ev-detail-readings': el.dataset.readings,
+  };
+  for (const [id, value] of Object.entries(fields)) {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value || '—';
+  }
+  const copyBtn = document.getElementById('ev-detail-copy') as HTMLButtonElement | null;
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(el.dataset.token || '')
+        .then(() => showToast('TSA token ref copied', 'info'))
+        .catch(() => showToast('Copy failed: select the token text instead', 'error'));
+    };
+  }
+  const closeBtn = document.getElementById('ev-detail-close') as HTMLButtonElement | null;
+  if (closeBtn) closeBtn.onclick = () => dialog.close();
+  // A double-click also fires two clicks; don't reopen a dialog that is already open.
+  if (!dialog.open) dialog.showModal();
+};

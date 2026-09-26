@@ -3631,3 +3631,92 @@ body.prod-instance-active .app-header {
 
 
 
+/* ══════════════════════════════════════
+   EVIDENCE TABLES — status colours & readable data
+   One meaning per colour, every pair ≥ 4.5:1 (WCAG AA):
+   green = complete / reconciled · amber = gaps / investigating
+   red = disputed / missing · grey dashed = sample, not verified
+   ══════════════════════════════════════ */
+:root {
+  --ev-ok-fg: #065f46;     --ev-ok-bg: #d1fae5;
+  --ev-warn-fg: #92400e;   --ev-warn-bg: #fef3c7;
+  --ev-bad-fg: #9f1239;    --ev-bad-bg: #ffe4e6;
+  --ev-sample-fg: #334155; --ev-sample-bg: #f1f5f9;
+}
+body.theme-dark {
+  --ev-ok-fg: #6ee7b7;     --ev-ok-bg: rgba(16, 185, 129, 0.16);
+  --ev-warn-fg: #fcd34d;   --ev-warn-bg: rgba(245, 158, 11, 0.16);
+  --ev-bad-fg: #fda4af;    --ev-bad-bg: rgba(244, 63, 94, 0.16);
+  --ev-sample-fg: #cbd5e1; --ev-sample-bg: rgba(148, 163, 184, 0.12);
+  --data-id: #86efac;
+  --data-time: #7dd3fc;
+  --data-hash: #c4b5fd;
+}
+body.theme-high-contrast {
+  --ev-ok-fg: #ffffff;     --ev-ok-bg: #000000;
+  --ev-warn-fg: #ffffff;   --ev-warn-bg: #000000;
+  --ev-bad-fg: #ffffff;    --ev-bad-bg: #000000;
+  --ev-sample-fg: #ffffff; --ev-sample-bg: #000000;
+  --data-id: #ffffff;
+  --data-time: #ffffff;
+  --data-hash: #ffffff;
+}
+
+.pill-success, .pill-ok { background: var(--ev-ok-bg);   color: var(--ev-ok-fg);   border: 1px solid currentColor; }
+.pill-orange, .pill-warn { background: var(--ev-warn-bg); color: var(--ev-warn-fg); border: 1px solid currentColor; }
+.pill-red, .pill-bad     { background: var(--ev-bad-bg);  color: var(--ev-bad-fg);  border: 1px solid currentColor; }
+.pill-sample { background: var(--ev-sample-bg); color: var(--ev-sample-fg); border: 1px dashed currentColor; }
+
+.ev-table td, .ev-table th { padding: 0.75rem 1rem; }
+.ev-mpan { font-family: var(--font-mono); color: var(--data-id); font-weight: 600; white-space: nowrap; }
+.ev-time { font-family: var(--font-mono); color: var(--data-time); white-space: nowrap; }
+.ev-hash { font-family: var(--font-mono); color: var(--data-hash); white-space: nowrap; }
+.ev-num  { font-family: var(--font-mono); color: var(--text-main); }
+.ev-missing  { font-family: var(--font-mono); color: var(--ev-bad-fg); }
+.ev-resolved { font-family: var(--font-mono); color: var(--ev-ok-fg); }
+
+.ev-legend {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center;
+  font-size: 0.75rem; color: var(--text-muted);
+}
+.ev-legend .pill { margin-right: 0.3rem; }
+
+/* TSA token chip: shows the start and end of the value; click, double-click or Enter opens full details */
+button.chip-token {
+  max-width: 220px;
+  color: var(--data-hash);
+  background: var(--ev-sample-bg);
+  border: 1px dashed var(--data-hash);
+  font-weight: 600;
+}
+button.chip-token:hover, button.chip-token:focus-visible {
+  background: var(--bg-surface2);
+  outline: 2px solid var(--data-hash);
+  outline-offset: 1px;
+}
+
+.ev-dialog {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  padding: 1.25rem 1.5rem;
+  width: min(640px, calc(100vw - 32px));
+  /* the global reset zeroes margins, which removes the browser's default dialog centring */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+.ev-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+.ev-dialog dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; margin: 1rem 0; font-size: 0.82rem; }
+.ev-dialog dt { color: var(--text-muted); font-weight: 600; }
+.ev-dialog dd { margin: 0; font-family: var(--font-mono); word-break: break-all; }
+.ev-dialog .ev-note {
+  font-size: 0.78rem; color: var(--ev-warn-fg); background: var(--ev-warn-bg);
+  border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
+}
+.ev-dialog .ev-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }

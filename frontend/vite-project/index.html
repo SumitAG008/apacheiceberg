@@ -3436,66 +3436,75 @@ with DAG(
             </div>
           </div>
 
-          <!-- TAB: CHECKPOINTS & ANCHORS -->
+          <!-- TAB: CHECKPOINTS & ANCHORS
+               Sample rows until the live checkpoint feed lands (PROJECT_PLAN.md M3).
+               RFC 3161 tokens are placeholders: the verifier does not check them yet (M1). -->
           <div id="checkpoints-tab" class="tab-content">
             <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
                 <div>
-                  <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link" style="color:#38bdf8;"></i> Checkpoints &amp; Anchors</h2>
-                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Immutable Merkle tree checkpoints and RFC 3161 Timestamp Authority proofs (C++ native engine verified).</p>
+                  <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link" style="color:var(--data-time);"></i> Checkpoints &amp; Anchors</h2>
+                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Daily Merkle checkpoint per meter: how many half-hourly readings arrived, and the timestamp anchor for that day's root. <strong>Sample data</strong>: timestamp tokens are placeholders and are not verified yet.</p>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Merkle checkpoints', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                <button class="btn btn-secondary btn-sm" onclick="showToast('Sample data: the live checkpoint feed is not connected yet', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+              </div>
+
+              <div class="ev-legend" aria-label="Status colour legend">
+                <span><span class="pill pill-ok">● Complete</span>all 48 readings present</span>
+                <span><span class="pill pill-warn">● Gaps</span>readings missing</span>
+                <span><span class="pill pill-sample">● Sample</span>placeholder, not verified</span>
+                <span><i class="fa-regular fa-hand-pointer"></i> Click or double-click a token to see it in full</span>
               </div>
 
               <div class="table-wrap" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
-                <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
+                <table class="preview-table ev-table" style="width:100%; font-size:0.8rem; margin:0;">
                   <thead>
-                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
-                      <th style="padding: 0.75rem 1rem;">Anchored At (UTC)</th>
-                      <th style="padding: 0.75rem 1rem;">UsagePoint (MPAN)</th>
-                      <th style="padding: 0.75rem 1rem;">Merkle Root Hash</th>
-                      <th style="padding: 0.75rem 1rem;">Leaves</th>
-                      <th style="padding: 0.75rem 1rem;">Status</th>
-                      <th style="padding: 0.75rem 1rem;">Anchor Type</th>
-                      <th style="padding: 0.75rem 1rem;">TSA Token Ref</th>
+                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left;">
+                      <th>Anchored At (UTC)</th>
+                      <th>UsagePoint (MPAN)</th>
+                      <th>Merkle Root</th>
+                      <th>Readings</th>
+                      <th>Completeness</th>
+                      <th>Anchor</th>
+                      <th>TSA Token Ref</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22T14:31:00Z</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x3f7a91b8...e9f1a2</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">42</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● GAPS</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(20,184,166,0.15); color:#14b8a6; border:1px solid rgba(20,184,166,0.3); font-family:var(--font-mono); font-weight:700;">● SIMULATED ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIS8...e9f1a2</span></td>
+                      <td class="ev-time">2026-09-22T14:31:00Z</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 789</td>
+                      <td class="ev-hash" title="0x3f7a91b82c4e6f01d5a8b9c2e4f6a8b1c3d5e7f9a2b4c6e8f0a1b3c5d7e9f1a2">0x3f7a91b8…e9f1a2</td>
+                      <td class="ev-num">42 / 48</td>
+                      <td><span class="pill pill-warn">● Gaps (6)</span></td>
+                      <td><span class="pill pill-sample">● Sample</span></td>
+                      <td><button type="button" class="chip-token" title="urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2 — click for details" data-token="urn:ietf:rfc:3161:MIIS8f39a0b12c9f1a2" data-anchored="2026-09-22T14:31:00Z" data-mpan="03 845 110 / 10 0012 3456 789" data-root="0x3f7a91b82c4e6f01d5a8b9c2e4f6a8b1c3d5e7f9a2b4c6e8f0a1b3c5d7e9f1a2" data-readings="42 / 48" onclick="openEvidenceDetail(this)" ondblclick="openEvidenceDetail(this)">MIIS8f39…12c9f1a2</button></td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22T14:01:00Z</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 790</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x8c2e4f6a...1b3c5d</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIT9...1b3c5d</span></td>
+                      <td class="ev-time">2026-09-22T14:01:00Z</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 790</td>
+                      <td class="ev-hash">0x8c2e4f6a…1b3c5d</td>
+                      <td class="ev-num">48 / 48</td>
+                      <td><span class="pill pill-ok">● Complete</span></td>
+                      <td><span class="pill pill-sample">● Sample</span></td>
+                      <td><button type="button" class="chip-token" title="urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7 — click for details" data-token="urn:ietf:rfc:3161:MIIT9a48b21c3d5e6f7" data-anchored="2026-09-22T14:01:00Z" data-mpan="03 845 110 / 10 0012 3456 790" data-root="0x8c2e4f6a…1b3c5d (sample, shortened)" data-readings="48 / 48" onclick="openEvidenceDetail(this)" ondblclick="openEvidenceDetail(this)">MIIT9a48…c3d5e6f7</button></td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x7a8b1c3d...a2b4c6</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIU1...a2b4c6</span></td>
+                      <td class="ev-time">2026-09-21T23:59:00Z</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 789</td>
+                      <td class="ev-hash">0x7a8b1c3d…a2b4c6</td>
+                      <td class="ev-num">48 / 48</td>
+                      <td><span class="pill pill-ok">● Complete</span></td>
+                      <td><span class="pill pill-sample">● Sample</span></td>
+                      <td><button type="button" class="chip-token" title="urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8 — click for details" data-token="urn:ietf:rfc:3161:MIIU1b59c32d4e6f7a8" data-anchored="2026-09-21T23:59:00Z" data-mpan="03 845 110 / 10 0012 3456 789" data-root="0x7a8b1c3d…a2b4c6 (sample, shortened)" data-readings="48 / 48" onclick="openEvidenceDetail(this)" ondblclick="openEvidenceDetail(this)">MIIU1b59…d4e6f7a8</button></td>
                     </tr>
                     <tr>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-21T23:59:00Z</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 790</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">0x5e7f9a2b...f0a1b3</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">48</td>
-                      <td style="padding:0.75rem 1rem;"><span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;">● VERIFIED</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="badge" style="font-size:0.6rem; background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); font-family:var(--font-mono); font-weight:700;">● RFC 3161 ANCHOR</span></td>
-                      <td style="padding:0.75rem 1rem;"><span class="chip-token" title="urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9" onclick="navigator.clipboard.writeText('urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9'); if(window.showToast) showToast('TSA Token Ref copied!', 'info');">MIIV2...f0a1b3</span></td>
+                      <td class="ev-time">2026-09-21T23:59:00Z</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 790</td>
+                      <td class="ev-hash">0x5e7f9a2b…f0a1b3</td>
+                      <td class="ev-num">48 / 48</td>
+                      <td><span class="pill pill-ok">● Complete</span></td>
+                      <td><span class="pill pill-sample">● Sample</span></td>
+                      <td><button type="button" class="chip-token" title="urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9 — click for details" data-token="urn:ietf:rfc:3161:MIIV2c60d43e5f7a8b9" data-anchored="2026-09-21T23:59:00Z" data-mpan="03 845 110 / 10 0012 3456 790" data-root="0x5e7f9a2b…f0a1b3 (sample, shortened)" data-readings="48 / 48" onclick="openEvidenceDetail(this)" ondblclick="openEvidenceDetail(this)">MIIV2c60…e5f7a8b9</button></td>
                     </tr>
                   </tbody>
                 </table>
@@ -3503,17 +3512,33 @@ with DAG(
             </div>
           </div>
 
+          <dialog id="evidence-detail-dialog" class="ev-dialog" aria-labelledby="evidence-detail-title">
+            <h3 id="evidence-detail-title" style="margin:0; font-size:1.05rem;"><i class="fa-solid fa-stamp"></i> Timestamp token details</h3>
+            <dl>
+              <dt>TSA token ref</dt><dd id="ev-detail-token"></dd>
+              <dt>Anchored at (UTC)</dt><dd id="ev-detail-anchored"></dd>
+              <dt>UsagePoint (MPAN)</dt><dd id="ev-detail-mpan"></dd>
+              <dt>Merkle root</dt><dd id="ev-detail-root"></dd>
+              <dt>Readings</dt><dd id="ev-detail-readings"></dd>
+            </dl>
+            <p class="ev-note"><i class="fa-solid fa-circle-info"></i> Sample value. This token has not been checked against a timestamp authority: RFC 3161 verification is not built yet (milestone M1).</p>
+            <div class="ev-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="ev-detail-copy"><i class="fa-regular fa-copy"></i> Copy token</button>
+              <button type="button" class="btn btn-primary btn-sm" id="ev-detail-close">Close</button>
+            </div>
+          </dialog>
+
           <!-- TAB: OMISSION REGISTER -->
           <div id="omissions-tab" class="tab-content">
             <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 1200px; margin: 0 auto; width: 100%;">
               <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
                 <div>
                   <h2 style="margin:0; font-size:1.4rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-triangle-exclamation" style="color:#eab308;"></i> Omission Register</h2>
-                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Cryptographically proven telemetry interval gaps and BSC settlement dispute records (UC-09).</p>
+                  <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem;">Half-hourly readings missing from daily meter checkpoints, and the dispute case opened for each gap (UC-09). <strong>Sample data.</strong></p>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
                   <button class="btn btn-primary btn-sm" onclick="handleDownloadProofPack()"><i class="fa-solid fa-file-pdf"></i> Download Proof Pack</button>
-                  <button class="btn btn-secondary btn-sm" onclick="showToast('Refreshed Omission Register', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                  <button class="btn btn-secondary btn-sm" onclick="showToast('Sample data: the live omission feed is not connected yet', 'info')"><i class="fa-solid fa-rotate"></i> Refresh</button>
                 </div>
               </div>
 
@@ -3526,15 +3551,21 @@ with DAG(
                   <span>SPs</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="font-size: 0.72rem; color: #22c55e; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Webhook Active (BSC Ingestion)</span>
-                  <button class="btn btn-secondary btn-sm" onclick="showToast('Alert notification rules updated successfully', 'success')" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">Save Alert Config</button>
+                  <span class="pill pill-sample" title="Alerts are not built yet (PROJECT_PLAN.md M3)">● Webhook not connected</span>
+                  <button class="btn btn-secondary btn-sm" onclick="showToast('Not saved: alert rules are not built yet', 'info')" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;">Save Alert Config</button>
                 </div>
               </div>
 
+              <div class="ev-legend" aria-label="Case state colour legend">
+                <span><span class="pill pill-warn">● Investigating</span>gap under review</span>
+                <span><span class="pill pill-bad">● Disputed</span>raised with the counterparty</span>
+                <span><span class="pill pill-ok">● Reconciled</span>closed, readings recovered or agreed</span>
+              </div>
+
               <div class="table-wrap" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
-                <table class="preview-table" style="width:100%; font-size:0.8rem; margin:0;">
+                <table class="preview-table ev-table" style="width:100%; font-size:0.8rem; margin:0;">
                   <thead>
-                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; background: rgba(0,0,0,0.2);">
+                    <tr style="border-bottom:1px solid var(--border-subtle); text-align:left;">
                       <th style="padding: 0.75rem 1rem;">UsagePoint (MPAN)</th>
                       <th style="padding: 0.75rem 1rem;">Date (UTC)</th>
                       <th style="padding: 0.75rem 1rem;">Missing Settlement Window</th>
@@ -3547,10 +3578,10 @@ with DAG(
                   </thead>
                   <tbody>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 789</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-22</td>
-                      <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 24–29 missing (11:30–14:30Z)</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">6 SPs</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 789</td>
+                      <td class="ev-time">2026-09-22</td>
+                      <td class="ev-missing">SP 24–29 missing (11:30–14:30Z)</td>
+                      <td class="ev-num">6 SPs</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary); font-weight: 700;">DSP-2026-09842</td>
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-orange" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09842">● INVESTIGATING</span>
@@ -3563,10 +3594,10 @@ with DAG(
                       </td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border-subtle);">
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 791</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-20</td>
-                      <td style="padding:0.75rem 1rem; color:#ef4444; font-family:var(--font-mono);">SP 14–16 missing (06:30–08:00Z)</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">3 SPs</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 791</td>
+                      <td class="ev-time">2026-09-20</td>
+                      <td class="ev-missing">SP 14–16 missing (06:30–08:00Z)</td>
+                      <td class="ev-num">3 SPs</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--color-primary); font-weight: 700;">DSP-2026-09710</td>
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-red" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09710">● DISPUTED</span>
@@ -3579,10 +3610,10 @@ with DAG(
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#bef264;">03 845 110 / 10 0012 3456 788</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:#38bdf8;">2026-09-18</td>
-                      <td style="padding:0.75rem 1rem; color:#22c55e; font-family:var(--font-mono);">SP 38–41 resolved (18:30–20:30Z)</td>
-                      <td style="padding:0.75rem 1rem; font-family:var(--font-mono);">4 SPs</td>
+                      <td class="ev-mpan">03 845 110 / 10 0012 3456 788</td>
+                      <td class="ev-time">2026-09-18</td>
+                      <td class="ev-resolved">SP 38–41 resolved (18:30–20:30Z)</td>
+                      <td class="ev-num">4 SPs</td>
                       <td style="padding:0.75rem 1rem; font-family:var(--font-mono); color:var(--text-muted);">DSP-2026-09412</td>
                       <td style="padding:0.75rem 1rem;">
                         <span class="pill pill-success" style="font-family:var(--font-mono); font-weight:800; font-size:0.68rem;" id="state-DSP-2026-09412">● RECONCILED</span>
