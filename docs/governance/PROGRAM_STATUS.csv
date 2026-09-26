@@ -1,0 +1,37 @@
+ID,Milestone,Workstream,Deliverable,Owner,Status,RAG,Target (UTC),Evidence (file:line / CI run / URL),Next action,Last verified
+M0-01,M0,Engineering,CI green on main,release-engineer,Done,Green,2026-09-28,Actions run #114 (CI/CD) + #1 (Code Quality & Governance) @ 9a7eaa3: success,Keep green; no masks,2026-09-26
+M0-02,M0,Security,No auto-Admin on signup or login,cto,Done,Green,2026-09-28,backend/api/main.py:657-661 (BOOTSTRAP_ADMIN_EMAIL only); backend/auth_db.py:624,None,2026-09-26
+M0-03,M0,Engineering,UI sample proof pack generated live and CI-verified,cto,Done,Green,2026-09-28,eba6d71; /v1/etp/sample-proof-pack,None,2026-09-26
+M1-01,M1,Engineering,Verifier checks meter ECDSA signatures,cto,Not started,Red,2026-10-09,backend/etp/verifier.py: no signature code (grep),Write failing test with pack E first; add key registry input to proof pack,2026-09-26
+M1-02,M1,Engineering,Verifier checks RFC 3161 token over the anchor,cto,Not started,Red,2026-10-09,backend/etp/verifier.py: no TSA / RFC 3161 code (grep),Pick TSA provider; add token verification with test vectors,2026-09-26
+M1-03,M1,Engineering,Pack E (fabricated day) and all attack packs rejected in CI,cto,Not started,Red,2026-10-09,Pack E currently returns VERIFIED (PROJECT_PLAN.md section 4),Add pack E to test_verifier_rigor.py,2026-09-26
+M2-01,M2,Engineering,Open-source offline CLI verifier,cto,Not started,Amber,2026-10-16,No CLI verifier in repo (git ls-files),Starts after M1-01/02; decide licence with /decide,2026-09-26
+M3-01,M3,Engineering,ETP gateway wired into the API,cto,Done,Green,2026-10-23,backend/api/main.py:3269; ingest route calls it at :3332,None,2026-09-26
+M3-02,M3,Engineering,Redis nonce store used by the live API,cto,"Built, not wired",Amber,2026-10-23,API uses in-memory SlidingWindowNonceStore at backend/api/main.py:3268; RedisNonceStore tested in CI,Select store from REDIS_URL at startup; test,2026-09-26
+M3-03,M3,Engineering,Gateway writer persists to Iceberg,cto,Not started,Red,2026-10-23,backend/etp/writer.py:80 keeps rows in memory; no table.append,Blocked on durability decision (M3-04),2026-09-26
+M3-04,M3,Engineering,No reading acknowledged before it is durable (restart test),cto,Not started,Red,2026-10-23,backend/etp/gateway.py:181-189 buffers then advances nonce (RSK-007),/decide: durable log before ack vs 202 + deferred nonce,2026-09-26
+M3-05,M3,Engineering,Audit event etp.writer_flush reflects a real commit,cto,Open defect,Red,2026-10-09,backend/etp/gateway.py:186 logs rows_written with nothing persisted,Emit only after a successful commit; test,2026-09-26
+M3-06,M3,Engineering,Malformed Kafka messages go to a dead-letter topic,cto,Not started,Amber,2026-10-23,backend/kafka_consumer.py:160-161 logs and discards,Add Producer + <topic>.dlq; test,2026-09-26
+M3-07,M3,Engineering,"De-duplication on (mpan, reading_ts); batch size; zstd",cto,Not started,Amber,2026-10-23,backend/kafka_consumer.py:136 batch=100; no compression setting found,Table properties + dedup test,2026-09-26
+M3-08,M3,Engineering,Nightly checkpoint opens omission_case,cto,Not started,Amber,2026-10-23,init_estate_schema() at backend/estate_db.py:228 never called outside tests,Call at startup; wire checkpointer gaps to cases; test,2026-09-26
+M3-09,M3,Engineering,End-to-end ingestion benchmark in CI,cto,Not started,Amber,2026-10-23,Only a single-thread crypto figure exists (CLM-005),Add backend/bench/bench_ingest_e2e.py; record result in CLAIMS_REGISTER,2026-09-26
+M3-10,M3,Engineering,Alerts on confirmed gaps,cto,Not started,Amber,2026-10-23,No alerting code found (grep),Define after M3-08,2026-09-26
+M4-01,M4,Engineering,Pipeline run on Low Carbon London; reproducible gap report,cto,Not started,Amber,2026-10-30,-,Check dataset licence; build loader,2026-09-26
+M5-01,M5,Security,Non-superuser DB role + RLS test,cto,Unverified,Amber,2026-11-06,backend/estate_db.py has an RLS option; no app-role test found,Add test that the app role cannot bypass RLS,2026-09-26
+M5-02,M5,Security,Secrets out of repo; gitleaks blocking,release-engineer,Partial,Amber,2026-11-06,.github/workflows/code-quality.yml:56 gitleaks (report-only per RSK-004),"Clean baseline, then make blocking",2026-09-26
+M5-03,M5,Security,Threat model,cto,Not started,Amber,2026-11-06,docs/security has SEC-2026-001/002 only,Write threat model for the ETP ingest path,2026-09-26
+M5-04,M5,Security,Remove agent silent fallback stubs,cto,Open,Amber,2026-11-06,backend/agent.py:19 returns 'Agent fallback mode active.',Fail loudly instead,2026-09-26
+M5-05,M5,Security,LLM-written-code tool removed or sandboxed,cto,Open,Amber,2026-11-06,backend/tools.py:502 distributed_python_extract,Remove from customer-facing agent,2026-09-26
+M6-01,M6,GTM,Publish 'what it proves / what it doesn't' (L1/L2/L3),gtm-lead,Not started,Amber,2026-11-06,-,Draft after M1,2026-09-26
+CPP-01,-,Engineering,C++ GatewayEngine used or removed from spec,cto,"Built, unused",Amber,2026-10-23,Python gateway never calls it; its nonce state is an in-memory map,/decide keep vs drop; update CPP-ARC-001,2026-09-26
+CPP-02,-,Engineering,C++ Arrow/Parquet writer,cto,Does not exist,Amber,-,Only in CPP-ARC-001 diagram; PROJECT_PLAN.md section 9 parks a C++ data layer,Remove from spec,2026-09-26
+CPP-03,-,Governance,"CPP-ARC-001 '35,000+ verifications/sec, <25 us' measured or removed",cto,Not measured,Red,2026-10-10,CPP-ARC-001-native-core-architecture.md:8; bench_etp_core.cpp doesn't time verification (CLM-006),Add verify benchmark or strike the figure; change status from 'Approved',2026-09-26
+GOV-01,-,Governance,Branch protection on main (PR + checks required),founder,Not started,Red,2026-09-28,GitHub API branches/main protected=false; 9a7eaa3 pushed directly,Founder: GitHub Settings > Branches > add rule for main,2026-09-26
+GOV-02,-,Governance,"Reword 'tamper-proof' / 'certified' (CLM-002, CLM-004)",gtm-lead,Not started,Red,2026-10-10,"ETP_PRODUCT_OVERVIEW.md:13; BC-002-etp-business-case.md:189; product_blueprint.md:21,44; CI blocks after 2026-10-10",Reword now (e.g. 'detects changes and gaps'),2026-09-26
+GOV-03,-,Governance,"Throughput claims registered (CLM-005, CLM-006)",gtm-lead,In review (this PR),Green,2026-09-26,docs/governance/CLAIMS_REGISTER.md,"Keep qualifier 'single thread, crypto only'",2026-09-26
+GOV-04,-,Governance,PROJECT_PLAN.md on main,project-planner,In review (this PR),Amber,2026-09-28,Plan was only on claude/elegant-dijkstra-393jn4,Merge this PR; close the old branch without merging (it would delete governance files),2026-09-26
+GOV-05,-,Governance,Local governance check works on Windows; .gitattributes,release-engineer,Uncommitted,Amber,2026-09-28,check_governance.py UnicodeEncodeError on cp1252; fix + .gitattributes exist in the working tree only,Commit on a branch and open a PR,2026-09-26
+GOV-06,-,Governance,Railway PR #1 ($PORT expansion) reviewed,release-engineer,Open,Amber,2026-09-30,https://github.com/SumitAG008/apacheiceberg/pull/1,Review and merge or close,2026-09-26
+GOV-07,-,Governance,Risk review RSK-001..008,cto,Due,Amber,2026-10-03,docs/governance/RISK_REGISTER.md,Run /audit,2026-09-26
+GTM-01,Phase 1,GTM,4-week discovery test: 15-20 conversations (continue/refocus/stop rules fixed),founder,Not started,Red,2026-10-23,0 conversations held; test window starts 2026-09-29,Book the first 5 calls this week; log each in INITIATIVES.md,2026-09-26
+GTM-02,Phase 2,GTM,First design partner signed,founder,Not started,Amber,2026-11-13,None in repo,Depends on GTM-01,2026-09-26
