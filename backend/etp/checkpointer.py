@@ -16,6 +16,15 @@ from typing import List, Dict, Any, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
+import sys
+if sys.platform == "win32":
+    for p in [r"C:\Program Files\PostgreSQL\16\bin", r"C:\Program Files\OpenSSL-Win64\bin", os.getcwd(), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]:
+        if os.path.exists(p):
+            try:
+                os.add_dll_directory(p)
+            except Exception:
+                pass
+
 try:
     import etp_core_cpp
     HAS_CPP_CORE = True
@@ -144,6 +153,37 @@ def create_rfc3161_anchor_token(anchor_digest: str, timestamp_iso: str, tsa_url:
         "hashed_message": anchor_digest,
         "token": f"urn:meldra:simulated-tsa:{encoded}"
     }
+
+
+def verify_rfc3161_timestamp(token_str: str, expected_digest_hex: str = "") -> Tuple[bool, bool, str]:
+    """Verifies an RFC 3161 timestamp token against an expected digest hex.
+    
+    Returns (is_valid, is_simulated, status_message).
+    """
+    if HAS_CPP_CORE and hasattr(etp_core_cpp, "verify_rfc3161_timestamp"):
+        res = etp_core_cpp.verify_rfc3161_timestamp(token_str, expected_digest_hex)
+        return res.valid, res.is_simulated, res.status_message
+
+    if token_str.startswith("urn:meldra:"):
+        parts = token_str.split(":", 2)
+        if len(parts) >= 3:
+            b64_payload = parts[2]
+            try:
+                data = json.loads(base64.b64decode(b64_payload).decode('utf-8'))
+                hashed_msg = data.get("hashed_message", "")
+                gen_time = data.get("gen_time", "")
+                nonce = data.get("nonce", "")
+                sig = data.get("signature", "")
+                policy = data.get("policy", "1.3.6.1.4.1.58432.1.1.simulated")
+                payload = f"SIMULATED_TSA_V1|policy:{policy}|digest:sha256:{hashed_msg}|nonce:{nonce}|ts:{gen_time}"
+                expected_sig = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+                if expected_sig == sig:
+                    if expected_digest_hex and hashed_msg != expected_digest_hex:
+                        return False, True, "Digest mismatch"
+                    return True, True, "Simulated token verified"
+            except Exception as e:
+                return False, True, str(e)
+    return False, False, "Token format not supported in Python reference fallback"
 
 
 def canonical_merkle_root(leaf_hashes_hex: List[str]) -> str:

@@ -7,19 +7,23 @@ Tests byte-for-byte and hash-for-hash parity across boundary conditions:
 - Non-ASCII and empty MPAN strings
 - Merkle trees of sizes 0, 1, 2, 3, 47, 48, 49 (odd node promotion validation)
 - Directional Merkle proofs (MerkleProofStep is_left)
+- Standalone ECDSA P-256 signature verification in C++
+- RFC 3161 timestamp token verification in C++
+- Single unified verify_proof_pack execution in C++ (M2)
 """
 
 import pytest
 import os
+import json
 import hashlib
 import sys
 backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-from etp.meter import compute_canonical_hash
+from etp.meter import compute_canonical_hash, SmartMeterSimulator
 from etp.route_mutator import RouteMutator
-from etp.checkpointer import canonical_merkle_root, verify_merkle_proof
+from etp.checkpointer import canonical_merkle_root, verify_merkle_proof, create_rfc3161_anchor_token
 
 try:
     import etp_core_cpp
@@ -43,6 +47,10 @@ def test_cpp_module_loaded_explicitly():
     assert hasattr(etp_core_cpp, "RouteMutator")
     assert hasattr(etp_core_cpp, "MerkleTree")
     assert hasattr(etp_core_cpp, "MerkleProofStep")
+    assert hasattr(etp_core_cpp, "verify_ecdsa_signature")
+    assert hasattr(etp_core_cpp, "verify_rfc3161_timestamp")
+    assert hasattr(etp_core_cpp, "verify_proof_pack")
+    assert hasattr(etp_core_cpp, "compute_anchor_digest")
 
 
 def test_adversarial_canonical_hash_boundary_cases():
@@ -104,10 +112,8 @@ def test_adversarial_merkle_proofs():
 
         for idx in range(len(leaves)):
             proof = tree.get_proof(idx)
-            # Convert proof to dict list for verify_merkle_proof
             proof_dicts = [{"hash": step.hash, "is_left": step.is_left} for step in proof]
             
-            # Verify using C++ and Python wrapper
             assert verify_merkle_proof(leaves[idx], proof_dicts, root), f"Proof failed for leaf index {idx}"
             assert etp_core_cpp.MerkleTree.verify_proof(leaves[idx], proof, root), f"Native C++ proof failed for leaf index {idx}"
 
@@ -134,3 +140,69 @@ def test_adversarial_route_mutator():
         assert cpp_routes.next_route == routes["next"]
         assert cpp_mutator.validate_route(routes["current"], now)
         assert not cpp_mutator.validate_route("/api/v1/telemetry/rotated_badhex12", now)
+
+
+def test_cpp_ecdsa_and_timestamp_verification():
+    """Tests native C++ ECDSA signature verification and RFC 3161 timestamp token verification."""
+    meter = SmartMeterSimulator("MPAN-TEST-ECDSA-CPP")
+    block = meter.generate_block(15.75)
+    pub_pem = meter.export_public_key_pem()
+
+    # Verify ECDSA signature in native C++
+    is_valid_sig = etp_core_cpp.verify_ecdsa_signature(block.block_hash, block.signature, pub_pem)
+    assert is_valid_sig, "C++ verify_ecdsa_signature failed valid signature"
+
+    bad_sig = etp_core_cpp.verify_ecdsa_signature("0" * 64, block.signature, pub_pem)
+    assert not bad_sig, "C++ verify_ecdsa_signature accepted corrupt hash"
+
+    # Verify RFC 3161 timestamp token in native C++
+    token_envelope = create_rfc3161_anchor_token(block.block_hash, block.timestamp)
+    ts_res = etp_core_cpp.verify_rfc3161_timestamp(token_envelope["token"], block.block_hash)
+    assert ts_res.valid, f"C++ verify_rfc3161_timestamp failed: {ts_res.status_message}"
+    assert ts_res.is_simulated
+
+
+def test_cpp_unified_proof_pack_verifier():
+    """Tests single verify_proof_pack execution covering Merkle proof, signature and timestamp together (M2)."""
+    meter = SmartMeterSimulator("MPAN-PROOF-PACK")
+    b = meter.generate_block(22.50)
+    pub_pem = meter.export_public_key_pem()
+
+    leaf2 = "0000000000000000000000000000000000000000000000000000000000000002"
+    tree = etp_core_cpp.MerkleTree()
+    tree.add_leaf_hex(b.block_hash)
+    tree.add_leaf_hex(leaf2)
+    root = tree.compute_root()
+    proof_steps = tree.get_proof(0)
+
+    anchor_digest = etp_core_cpp.compute_anchor_digest(root, b.nonce, b.nonce + 1, 2, -1, 0)
+    token_envelope = create_rfc3161_anchor_token(anchor_digest, b.timestamp)
+
+    pack = etp_core_cpp.ProofPack()
+    pack.leaf_hash = b.block_hash
+    pack.mpan = b.mpan
+    pack.reading_kwh = b.reading_kwh
+    pack.timestamp = b.timestamp
+    pack.prev_hash = b.prev_hash
+    pack.nonce = b.nonce
+    pack.crypto_suite_id = b.crypto_suite_id
+    pack.key_id = b.key_id
+    pack.signature = b.signature
+    pack.public_key_pem = pub_pem
+    pack.proof = proof_steps
+    pack.merkle_root = root
+    pack.first_nonce = b.nonce
+    pack.last_nonce = b.nonce + 1
+    pack.leaf_count = 2
+    pack.prev_day_last_nonce = -1
+    pack.eod_gap = 0
+    pack.anchor_digest = anchor_digest
+    pack.timestamp_token = token_envelope["token"]
+
+    result = etp_core_cpp.verify_proof_pack(pack)
+    assert result.valid, f"ProofPack verification failed: {result.errors}"
+    assert result.overall_status == "VERIFIED"
+    assert result.ecdsa_verified
+    assert result.merkle_verified
+    assert result.anchor_digest_verified
+    assert result.timestamp_verified

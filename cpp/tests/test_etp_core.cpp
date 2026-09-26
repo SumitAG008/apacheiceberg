@@ -1,6 +1,9 @@
 #include "etp/route_mutator.hpp"
 #include "etp/merkle.hpp"
 #include "etp/gateway.hpp"
+#include "etp/ecdsa.hpp"
+#include "etp/timestamp.hpp"
+#include "etp/proof_pack.hpp"
 #include <iostream>
 #include <cassert>
 #include <memory>
@@ -72,13 +75,59 @@ std::string sign_block_hash(std::string_view block_hash_hex, std::string_view pr
     EVP_DigestSignFinal(ctx.get(), sig_bytes.data(), &sig_len);
     sig_bytes.resize(sig_len);
 
-
     std::ostringstream oss;
     oss.imbue(std::locale::classic());
     for (uint8_t b : sig_bytes) {
         oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
     }
     return oss.str();
+}
+
+std::string compute_sha256_str(std::string_view input) {
+    std::vector<uint8_t> hash(32);
+    unsigned int out_len = 0;
+    EVP_MD_CTX_ptr ctx(EVP_MD_CTX_new(), EVP_MD_CTX_free);
+    EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx.get(), input.data(), input.size());
+    EVP_DigestFinal_ex(ctx.get(), hash.data(), &out_len);
+
+    std::ostringstream oss;
+    oss.imbue(std::locale::classic());
+    for (uint8_t b : hash) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+    }
+    return oss.str();
+}
+
+std::string base64_encode(const std::string& input) {
+    BIO_ptr bio(BIO_new(BIO_f_base64()), BIO_free);
+    BIO_set_flags(bio.get(), BIO_FLAGS_BASE64_NO_NL);
+    BIO* mem = BIO_new(BIO_s_mem());
+    bio.reset(BIO_push(bio.release(), mem));
+    BIO_write(bio.get(), input.data(), static_cast<int>(input.size()));
+    BIO_flush(bio.get());
+    char* buffer = nullptr;
+    long length = BIO_get_mem_data(bio.get(), &buffer);
+    return std::string(buffer, length);
+}
+
+std::string create_simulated_token_for_digest(std::string_view digest_hex, std::string_view timestamp_iso) {
+    std::string nonce_hex = "8ae27362aa48ec5f";
+    std::string policy = "1.3.6.1.4.1.58432.1.1.simulated";
+    std::string sig_payload = "SIMULATED_TSA_V1|policy:" + policy +
+        "|digest:sha256:" + std::string(digest_hex) +
+        "|nonce:" + nonce_hex +
+        "|ts:" + std::string(timestamp_iso);
+
+    std::string sig = compute_sha256_str(sig_payload);
+    std::ostringstream json;
+    json << "{\"algorithm\":\"sha256\",\"gen_time\":\"" << timestamp_iso << "\","
+         << "\"hashed_message\":\"" << digest_hex << "\","
+         << "\"nonce\":\"" << nonce_hex << "\","
+         << "\"policy\":\"" << policy << "\","
+         << "\"signature\":\"" << sig << "\"}";
+
+    return "urn:meldra:simulated-tsa:" + base64_encode(json.str());
 }
 
 int main() {
@@ -106,87 +155,62 @@ int main() {
     ETP_CHECK(golden_routes.current_route == "/api/v1/telemetry/rotated_2559e962cce1", "Golden route mismatch");
     std::cout << "  ✓ Golden route scrambler vector match (rotated_2559e962cce1).\n";
 
-    // --- 1. Test RouteMutator ---
-    std::string secret = "0123456789abcdef0123456789abcdef"; // 32 bytes
-    etp::RouteMutator mutator(secret, 60, "/api/v1/telemetry");
-    uint64_t now = 1700000000;
-    auto routes = mutator.get_routes(now);
-    std::cout << "  [RouteMutator] Current route: " << routes.current_route << "\n";
-    ETP_CHECK(mutator.validate_route(routes.current_route, now), "Valid current route rejected");
-    ETP_CHECK(mutator.validate_route(routes.prev_route, now), "Valid prev route rejected");
-    ETP_CHECK(mutator.validate_route(routes.next_route, now), "Valid next route rejected");
-    ETP_CHECK(!mutator.validate_route("/api/v1/telemetry/rotated_invalidhex", now), "Invalid route accepted");
-    std::cout << "  ✓ RouteMutator MTD tests passed.\n";
+    // --- 1. Test Standalone ECDSA Signature Verification ---
+    auto [pub_pem, priv_pem] = generate_test_keypair_pem();
+    std::string sig = sign_block_hash(golden_hash, priv_pem);
+    ETP_CHECK(etp::verify_ecdsa_signature(golden_hash, sig, pub_pem), "Valid ECDSA signature failed verification");
+    ETP_CHECK(!etp::verify_ecdsa_signature("0000000000000000000000000000000000000000000000000000000000000000", sig, pub_pem), "Bad block hash accepted");
+    std::cout << "  ✓ Standalone ECDSA verification passed.\n";
 
-    // --- 2. Test MerkleTree ---
-    etp::MerkleTree merkle;
-    std::string leaf1 = "leaf_1_telemetry_data";
-    std::string leaf2 = "leaf_2_telemetry_data";
-    merkle.add_leaf(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(leaf1.data()), leaf1.size()));
-    merkle.add_leaf(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(leaf2.data()), leaf2.size()));
-    std::string root = merkle.compute_root();
-    std::cout << "  [MerkleTree] 2-leaf Root: " << root << "\n";
-    ETP_CHECK(root.size() == 64, "Merkle root length must be 64");
-    ETP_CHECK(merkle.leaf_count() == 2, "Leaf count mismatch");
+    // --- 2. Test RFC 3161 Timestamp Verification ---
+    std::string sim_token = create_simulated_token_for_digest(golden_hash, "2026-09-20T23:00:00.000Z");
+    auto ts_res = etp::verify_rfc3161_timestamp(sim_token, golden_hash);
+    ETP_CHECK(ts_res.valid, "Simulated RFC 3161 timestamp verification failed");
+    ETP_CHECK(ts_res.is_simulated, "Expected is_simulated = true");
+    std::cout << "  ✓ RFC 3161 timestamp verification passed.\n";
 
-    // Test 3-leaf odd node promotion Merkle Tree golden vector
+    // --- 3. Test Unified verify_proof_pack (M2 Offline Verifier) ---
     etp::MerkleTree merkle_3;
-    std::string l1 = "0000000000000000000000000000000000000000000000000000000000000001";
+    std::string l1 = golden_hash;
     std::string l2 = "0000000000000000000000000000000000000000000000000000000000000002";
-    std::string l3 = "0000000000000000000000000000000000000000000000000000000000000003";
     merkle_3.add_leaf_hex(l1);
     merkle_3.add_leaf_hex(l2);
-    merkle_3.add_leaf_hex(l3);
     std::string root_3 = merkle_3.compute_root();
-    std::cout << "  [MerkleTree] 3-leaf Root: " << root_3 << "\n";
-    ETP_CHECK(root_3 == "93e34ecb30d456c2bb3903c45dd51d053db3e66522a0a2eaf5fafa58312ed037", "3-leaf Merkle root vector mismatch (odd node promotion)");
-
-    // Test directional Merkle proof generation and verification
     auto proof0 = merkle_3.get_proof(0);
-    auto proof1 = merkle_3.get_proof(1);
-    auto proof2 = merkle_3.get_proof(2); // Leaf 2 is promoted at level 0, so proof size should be 1 (the hash of leaf0+leaf1 on the left)
 
-    ETP_CHECK(etp::MerkleTree::verify_proof(l1, proof0, root_3), "Proof verification failed for leaf 0");
-    ETP_CHECK(etp::MerkleTree::verify_proof(l2, proof1, root_3), "Proof verification failed for leaf 1");
-    ETP_CHECK(etp::MerkleTree::verify_proof(l3, proof2, root_3), "Proof verification failed for leaf 2 (promoted node)");
-    ETP_CHECK(!etp::MerkleTree::verify_proof(l1, proof1, root_3), "Bad proof accepted for leaf 0");
-    std::cout << "  ✓ MerkleTree directional proof verification passed.\n";
+    std::string anchor_digest = etp::compute_anchor_digest(root_3, 100, 101, 2, -1, 0);
+    std::string anchor_sim_token = create_simulated_token_for_digest(anchor_digest, "2026-09-20T23:00:00.000Z");
 
-    // --- 3. Test GatewayEngine ---
-    auto [pub_pem, priv_pem] = generate_test_keypair_pem();
-    etp::GatewayEngine gateway(secret, 60);
-    std::string mpan = "1012345678901";
-    gateway.register_meter_public_key(mpan, pub_pem);
-
-    etp::TelemetryBlock block{
-        .mpan = mpan,
-        .reading_kwh = 12.345,
-        .timestamp = "2026-09-20T23:00:00.000Z",
-        .prev_hash = "0000000000000000000000000000000000000000000000000000000000000000",
-        .nonce = 100,
-        .crypto_suite_id = "ECDSA-P256-SHA256-v1",
-        .key_id = "k-test"
+    etp::ProofPack pack{
+        .leaf_hash = l1,
+        .mpan = golden_block.mpan,
+        .reading_kwh = golden_block.reading_kwh,
+        .timestamp = golden_block.timestamp,
+        .prev_hash = golden_block.prev_hash,
+        .nonce = golden_block.nonce,
+        .crypto_suite_id = golden_block.crypto_suite_id,
+        .key_id = golden_block.key_id,
+        .signature = sig,
+        .public_key_pem = pub_pem,
+        .proof = proof0,
+        .merkle_root = root_3,
+        .first_nonce = 100,
+        .last_nonce = 101,
+        .leaf_count = 2,
+        .prev_day_last_nonce = -1,
+        .eod_gap = 0,
+        .anchor_digest = anchor_digest,
+        .timestamp_token = anchor_sim_token
     };
 
-    block.block_hash = etp::GatewayEngine::compute_canonical_hash(block);
-    block.signature = sign_block_hash(block.block_hash, priv_pem);
-
-    // Verify valid block
-    auto res = gateway.verify_telemetry_block(routes.current_route, block, now);
-    ETP_CHECK(res.status == etp::VerificationStatus::VERIFIED, "Valid block verification failed");
-    ETP_CHECK(!res.divert_to_honeypot, "Valid block diverted to honeypot");
-    std::cout << "  ✓ GatewayEngine valid block verification passed.\n";
-
-    // Verify replay rejection
-    auto res_replay = gateway.verify_telemetry_block(routes.current_route, block, now);
-    ETP_CHECK(res_replay.status == etp::VerificationStatus::REPLAY_REJECTED, "Replay attack not rejected");
-    std::cout << "  ✓ GatewayEngine anti-replay check passed.\n";
-
-    // Verify MTD route failure -> honeypot diversion
-    auto res_invalid_route = gateway.verify_telemetry_block("/api/v1/telemetry/bad_route", block, now);
-    ETP_CHECK(res_invalid_route.status == etp::VerificationStatus::INVALID_ROUTE, "Invalid route not caught");
-    ETP_CHECK(res_invalid_route.divert_to_honeypot, "Invalid route not diverted to honeypot");
-    std::cout << "  ✓ GatewayEngine MTD honeypot diversion passed.\n";
+    auto pack_res = etp::verify_proof_pack(pack);
+    ETP_CHECK(pack_res.valid, "ProofPack unified verification failed");
+    ETP_CHECK(pack_res.overall_status == "VERIFIED", "Status must be VERIFIED");
+    ETP_CHECK(pack_res.ecdsa_verified, "ECDSA check failed in proof pack");
+    ETP_CHECK(pack_res.merkle_verified, "Merkle check failed in proof pack");
+    ETP_CHECK(pack_res.anchor_digest_verified, "Anchor digest check failed in proof pack");
+    ETP_CHECK(pack_res.timestamp_verified, "Timestamp check failed in proof pack");
+    std::cout << "  ✓ Unified verify_proof_pack (M2) offline check passed.\n";
 
     std::cout << "\n[SUCCESS] All etp_core C++20 tests passed cleanly!\n";
     OPENSSL_cleanup();

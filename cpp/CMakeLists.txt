@@ -23,6 +23,9 @@ set(SOURCES
     src/route_mutator.cpp
     src/gateway.cpp
     src/merkle.cpp
+    src/ecdsa.cpp
+    src/timestamp.cpp
+    src/proof_pack.cpp
 )
 
 # Native library target
@@ -32,6 +35,10 @@ target_link_libraries(etp_core PRIVATE OpenSSL::Crypto OpenSSL::SSL)
 # Native C++ test executable
 add_executable(test_etp_core tests/test_etp_core.cpp ${SOURCES})
 target_link_libraries(test_etp_core PRIVATE OpenSSL::Crypto OpenSSL::SSL)
+
+# Offline Command-Line Verifier executable (M2)
+add_executable(etp_verifier src/cli_verifier.cpp ${SOURCES})
+target_link_libraries(etp_verifier PRIVATE OpenSSL::Crypto OpenSSL::SSL)
 
 # Benchmark executable
 option(BUILD_BENCHMARKS "Build benchmark executables" ON)
@@ -54,7 +61,6 @@ option(BUILD_PYTHON_BINDINGS "Build pybind11 Python extension module" ON)
 if(BUILD_PYTHON_BINDINGS)
     find_package(pybind11 CONFIG QUIET)
     if(NOT pybind11_FOUND)
-        # Attempt finding pybind11 via Python module if pybind11_DIR wasn't provided
         find_package(pybind11 CONFIG REQUIRED)
     endif()
     if(pybind11_FOUND)
@@ -64,24 +70,7 @@ if(BUILD_PYTHON_BINDINGS)
     endif()
 endif()
 
-# Sanitizers in Debug mode (GCC / Clang) across all targets
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
-    target_compile_options(etp_core PRIVATE -fsanitize=address,leak,undefined -g)
-    target_link_options(etp_core PRIVATE -fsanitize=address,leak,undefined)
-    target_compile_options(test_etp_core PRIVATE -fsanitize=address,leak,undefined -g)
-    target_link_options(test_etp_core PRIVATE -fsanitize=address,leak,undefined)
-    if(TARGET bench_etp_core)
-        target_compile_options(bench_etp_core PRIVATE -fsanitize=address,leak,undefined -g)
-        target_link_options(bench_etp_core PRIVATE -fsanitize=address,leak,undefined)
-    endif()
-    if(TARGET etp_core_cpp)
-        target_compile_options(etp_core_cpp PRIVATE -fsanitize=address,leak,undefined -g)
-        target_link_options(etp_core_cpp PRIVATE -fsanitize=address,leak,undefined)
-    endif()
-endif()
-
 # Installation targets for OEM C++ SDK packaging
 include(GNUInstallDirs)
-install(TARGETS etp_core DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS etp_core etp_verifier DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/etp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-

@@ -15,6 +15,15 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat,
 
 logger = logging.getLogger(__name__)
 
+import sys
+if sys.platform == "win32":
+    for p in [r"C:\Program Files\PostgreSQL\16\bin", r"C:\Program Files\OpenSSL-Win64\bin", os.getcwd(), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]:
+        if os.path.exists(p):
+            try:
+                os.add_dll_directory(p)
+            except Exception:
+                pass
+
 try:
     import etp_core_cpp
     HAS_CPP_CORE = True

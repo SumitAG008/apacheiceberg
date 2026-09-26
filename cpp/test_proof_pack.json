@@ -1,0 +1,24 @@
+{
+  "mpan": "MPAN-1200012345678",
+  "reading_kwh": 12.345,
+  "timestamp": "2026-09-20T23:00:00.000Z",
+  "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "nonce": 100,
+  "crypto_suite_id": "ECDSA-P256-SHA256-v1",
+  "key_id": "k-test",
+  "leaf_hash": "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41",
+  "proof": [
+    {
+      "hash": "58cc2f44d3a27866874701fbad573da9ad1cfd88fa3145531c822f20a58beea1",
+      "is_left": false
+    }
+  ],
+  "merkle_root": "371b21aa176b1d2f8dc47ad5ffd2b9e986ef7ed6d42c2c8712aee47999b53424",
+  "first_nonce": 100,
+  "last_nonce": 101,
+  "leaf_count": 2,
+  "prev_day_last_nonce": -1,
+  "eod_gap": 0,
+  "anchor_digest": "ce291d74d18bc56ca3f9a0b8aaa345c1ab8d058b0ebc0d962481fc75335233a8",
+  "timestamp_token": "urn:meldra:simulated-tsa:eyJnZW5fdGltZSI6ICIyMDI2LTA5LTIwVDIzOjAwOjAwLjAwMFoiLCAiaGFzaF9hbGdvcml0aG0iOiAic2hhMjU2IiwgImhhc2hlZF9tZXNzYWdlIjogImNlMjkxZDc0ZDE4YmM1NmNhM2Y5YTBiOGFhYTM0NWMxYWI4ZDA1OGIwZWJjMGQ5NjI0ODFmYzc1MzM1MjMzYTgiLCAiaXNfc2ltdWxhdGVkIjogdHJ1ZSwgIm5vbmNlIjogIjNjOGY5YTVjY2E3NWE0ODkiLCAicG9saWN5IjogIjEuMy42LjEuNC4xLjU4NDMyLjEuMS5zaW11bGF0ZWQiLCAic2lnbmF0dXJlIjogImQ0OGFjNDg3YjdjMDQ4N2Q2ZDgxOWI1MjcxYTU0MzhmMTIxOGFiZDA1M2JkMTU3N2YzNWI3ZmY3NTc3MDk0YWUiLCAic2lnbmF0dXJlX2FsZ29yaXRobSI6ICJzaW11bGF0ZWRTaGEyNTZITUFDIiwgInRzYV9uYW1lIjogInVybjptZWxkcmE6dHNhOnNpbXVsYXRlZC1sb2NhbCIsICJ2ZXJzaW9uIjogMX0="
+}

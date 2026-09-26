@@ -13,6 +13,7 @@ import warnings
 from typing import Dict, Any, Tuple, Optional
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from .route_mutator import RouteMutator
 from .meter import TelemetryBlock, UNIT_SEPARATOR, compute_canonical_hash
@@ -32,6 +33,22 @@ except ImportError:
 
 
 from .nonce_store import AbstractNonceStore, MemoryNonceStore, RedisNonceStore, SlidingWindowNonceStore
+
+import os
+import sys
+if sys.platform == "win32":
+    for p in [r"C:\Program Files\PostgreSQL\16\bin", r"C:\Program Files\OpenSSL-Win64\bin", os.getcwd(), os.path.dirname(os.path.dirname(os.path.abspath(__file__)))]:
+        if os.path.exists(p):
+            try:
+                os.add_dll_directory(p)
+            except Exception:
+                pass
+
+try:
+    import etp_core_cpp
+    HAS_CPP_CORE = True
+except ImportError:
+    HAS_CPP_CORE = False
 
 
 class ETPGateway:
@@ -54,17 +71,34 @@ class ETPGateway:
         # Bounded audit log deque to prevent memory leaks during DoS scans (ETP-2026-003)
         self.audit_log = collections.deque(maxlen=10000)
 
-    def register_meter_public_key(self, mpan: str, public_key: ec.EllipticCurvePublicKey):
+    def register_meter_public_key(self, mpan: str, public_key: Any):
         """Registers a meter's public key for signature verification."""
         self.public_key_registry[mpan] = public_key
 
     def verify_signature(self, block: TelemetryBlock) -> bool:
-        """Verifies ECDSA signature against public key registry."""
+        """Verifies ECDSA signature against public key registry using native C++ when available."""
         pub_key = self.public_key_registry.get(block.mpan)
         if not pub_key:
             return False
         
         try:
+            if HAS_CPP_CORE and hasattr(etp_core_cpp, "verify_ecdsa_signature"):
+                pem_str = ""
+                if isinstance(pub_key, str):
+                    pem_str = pub_key
+                elif hasattr(pub_key, "public_bytes"):
+                    pem_str = pub_key.public_bytes(
+                        encoding=Encoding.PEM,
+                        format=PublicFormat.SubjectPublicKeyInfo
+                    ).decode('utf-8')
+                
+                if pem_str:
+                    return etp_core_cpp.verify_ecdsa_signature(
+                        block.block_hash,
+                        block.signature,
+                        pem_str
+                    )
+
             hash_bytes = bytes.fromhex(block.block_hash)
             sig_bytes = bytes.fromhex(block.signature)
             pub_key.verify(sig_bytes, hash_bytes, ec.ECDSA(hashes.SHA256()))
