@@ -241,6 +241,23 @@ def parse_saml_response(saml_response_b64: str) -> Dict[str, Any]:
         "name_id": name_id,
         "name": attributes.get("name") or attributes.get("displayName") or resolved_email.split("@")[0],
         "roles": role_list,
+        "mapped_role": map_saml_role(role_list),
         "attributes": attributes,
         "issue_instant": assertion.attrib.get("IssueInstant"),
     }
+
+
+def map_saml_role(roles: Optional[List[str]]) -> str:
+    """
+    Map enterprise SAML roles/groups to a platform persona.
+    Returns 'Admin', 'Data Engineer', or defaults to 'Business Analyst'.
+    """
+    if not roles:
+        return "Business Analyst"
+    saml_roles = [str(r).strip().lower() for r in roles]
+    if any(r in ("admin", "administrator") for r in saml_roles):
+        return "Admin"
+    if any("engineer" in r for r in saml_roles):
+        return "Data Engineer"
+    return "Business Analyst"
+

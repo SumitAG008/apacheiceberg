@@ -4,7 +4,7 @@ import duckdb
 import pandas as pd
 import pyarrow as pa
 from contextvars import ContextVar
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     NestedField,
@@ -18,6 +18,9 @@ from pyiceberg.types import (
     TimestampType
 )
 from catalog_setup import get_catalog, create_namespace_if_not_exists
+
+if TYPE_CHECKING:
+    from query_engine.executor import QueryEngine
 from langchain.tools import tool
 from graph_db import sync_dataframe_to_age, execute_cypher_query
 from tenancy import scope_namespace

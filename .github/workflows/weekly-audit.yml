@@ -1,0 +1,74 @@
+name: Weekly Governance Audit
+
+# Every Monday 07:00 UTC (and on demand): the auditor agent checks plan vs code, claims,
+# decisions, risks and CI integrity, then files the report as a GitHub issue.
+# Requires repository secret ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN).
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Audit scope (full, plan, claims, decisions, ci, security)'
+        required: false
+        default: 'full'
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  id-token: write
+
+jobs:
+  audit:
+    name: Governance audit
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: development
+      JWT_SECRET_KEY: ci-test-secret-key-32-chars-minimum-length-here
+      JWT_ALGORITHM: HS256
+      ETP_SECRET_KEY: dev-etp-secret-key-change-in-production-environments-32-bytes!
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install backend dependencies (so the auditor can run proving tests)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Governance check snapshot
+        id: gov
+        run: |
+          set +e
+          python tools/governance/check_governance.py > governance.txt
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          cat governance.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            SCOPE: ${{ github.event.inputs.scope || 'full' }}
+            COMMIT: ${{ github.sha }}
+
+            You are the Auditor. Follow .claude/agents/auditor.md and docs/governance/README.md.
+            The governance check already ran (exit code ${{ steps.gov.outputs.rc }}); its output is in governance.txt.
+            The local Claude audit trail (.claude/audit/) is not available in CI — list it under "Not checked".
+
+            Produce the report in the structure of docs/governance/audits/AUDIT-TEMPLATE.md and file it with:
+              gh issue create --title "Governance audit $(date -u +%F): <verdict>" --label governance --body-file <file>
+            If the "governance" label does not exist, create the issue without --label.
+            Every finding must cite a command + output or file:line. Run proving tests from backend/ with
+            `python -m pytest <file> -q`. Do not modify repository files.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,Write,Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(python -m pytest:*),Bash(cd backend && python -m pytest:*),Bash(python tools/governance/check_governance.py),Bash(gh issue create:*),Bash(gh issue list:*),Bash(gh run list:*),Bash(date:*),Bash(cat:*)"

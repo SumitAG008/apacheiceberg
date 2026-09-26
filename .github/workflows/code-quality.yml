@@ -1,0 +1,123 @@
+name: Code Quality, Security & Governance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+  # Dependency audits report findings without failing until this date, then block (DEC-0001).
+  DEP_AUDIT_BLOCKING_FROM: '2026-10-26'
+
+jobs:
+  # ─── 1. STATIC ANALYSIS (blocking) ──────────────────────────────────────────
+  lint-and-sast:
+    name: Lint (ruff) + SAST (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install tools
+        run: python -m pip install --upgrade pip ruff bandit
+
+      - name: Ruff — syntax errors & undefined names (runtime NameError class)
+        run: |
+          ruff check backend \
+            --select E9,F63,F7,F82 \
+            --exclude backend/warehouse,backend/data \
+            --output-format github
+
+      - name: Bandit — high severity, high confidence
+        run: |
+          bandit -r backend \
+            -x backend/tests,backend/warehouse,backend/data \
+            -lll -iii \
+            -f custom --msg-template "::error file={relpath},line={line}::{test_id} {msg}"
+
+  # ─── 2. SECRET SCAN (blocking) ──────────────────────────────────────────────
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── 3. DEPENDENCY AUDIT (report-only until DEP_AUDIT_BLOCKING_FROM) ────────
+  dependencies:
+    name: Dependency audit (pip-audit + npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: pip-audit (backend/requirements.txt)
+        run: |
+          set +e
+          pip-audit -r backend/requirements.txt --progress-spinner off -f markdown > pip-audit.md
+          rc=$?
+          set -e
+          { echo "## pip-audit"; cat pip-audit.md; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            if [[ "$(date -u +%F)" < "$DEP_AUDIT_BLOCKING_FROM" ]]; then
+              echo "::warning::Vulnerable Python dependencies found (see summary). Report-only until $DEP_AUDIT_BLOCKING_FROM, blocking after (DEC-0001)."
+            else
+              echo "::error::Vulnerable Python dependencies found (see summary)."
+              exit 1
+            fi
+          fi
+
+      - name: npm audit (frontend, production deps, high+)
+        working-directory: frontend/vite-project
+        run: |
+          set +e
+          npm audit --omit=dev --audit-level=high > npm-audit.txt
+          rc=$?
+          set -e
+          { echo "## npm audit"; echo '```'; tail -n 40 npm-audit.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            if [[ "$(date -u +%F)" < "$DEP_AUDIT_BLOCKING_FROM" ]]; then
+              echo "::warning::High/critical npm vulnerabilities found (see summary). Report-only until $DEP_AUDIT_BLOCKING_FROM, blocking after (DEC-0001)."
+            else
+              echo "::error::High/critical npm vulnerabilities found (see summary)."
+              exit 1
+            fi
+          fi
+
+  # ─── 4. GOVERNANCE (blocking) ───────────────────────────────────────────────
+  governance:
+    name: Governance (decisions, claims, CI integrity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check decision trail, claim hygiene and masked CI steps
+        run: python tools/governance/check_governance.py

@@ -6,7 +6,7 @@ Verification-Aware Query Objects (Figure + Snapshot ID + SQL String + Merkle Pro
 
 import datetime
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from .checkpointer import MerkleCheckpointer, canonical_merkle_root
 
 

@@ -78,3 +78,15 @@ def test_parse_saml_response_valid():
     assert claims["email"] == "alice@enterprise.com"
     assert claims["name"] == "Alice Johnson"
     assert "Admin" in claims["roles"]
+    assert claims["mapped_role"] == "Admin"
+
+
+def test_map_saml_role():
+    assert saml.map_saml_role(["Admin"]) == "Admin"
+    assert saml.map_saml_role(["administrator"]) == "Admin"
+    assert saml.map_saml_role(["Lead Software Engineer"]) == "Data Engineer"
+    assert saml.map_saml_role(["Data Engineer"]) == "Data Engineer"
+    assert saml.map_saml_role(["Viewer", "Business User"]) == "Business Analyst"
+    assert saml.map_saml_role([]) == "Business Analyst"
+    assert saml.map_saml_role(None) == "Business Analyst"
+

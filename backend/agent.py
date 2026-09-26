@@ -5,6 +5,7 @@ import asyncio
 import datetime
 from typing import Dict, Any
 from dotenv import load_dotenv
+from langchain_anthropic import ChatAnthropic
 try:
     from langchain.agents import AgentExecutor
 except Exception:

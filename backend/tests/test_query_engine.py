@@ -20,7 +20,7 @@ import sys
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 import networkx as nx
@@ -33,6 +33,9 @@ import pytest
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _BACKEND not in sys.path:
     sys.path.insert(0, _BACKEND)
+
+if TYPE_CHECKING:
+    from query_engine.models import QueryJob
 
 
 # ─────────────────────────────────────────────────────────────────────────────

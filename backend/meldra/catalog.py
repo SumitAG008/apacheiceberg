@@ -1,8 +1,11 @@
 import time
 import datetime
+import logging
 import pyarrow as pa
 from typing import Dict, Any, List, Optional, Tuple
 from catalog_setup import get_catalog, create_namespace_if_not_exists
+
+logger = logging.getLogger(__name__)
 
 class MeldraCatalog:
     def __init__(self):

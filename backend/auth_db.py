@@ -11,7 +11,7 @@ import os
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import bcrypt
 import psycopg2
 import psycopg2.extras

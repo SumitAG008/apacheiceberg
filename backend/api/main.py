@@ -1060,13 +1060,8 @@ async def saml_acs(request: Request):
     if not email:
         return RedirectResponse(f"{frontend_url}/?saml_error=no_email_claim")
 
-    # Map enterprise role or fallback to Business Analyst
-    assigned_role = "Business Analyst"
-    saml_roles = [str(r).strip().lower() for r in claims.get("roles", [])]
-    if any(r in ("admin", "administrator") for r in saml_roles):
-        assigned_role = "Admin"
-    elif any("engineer" in r for r in saml_roles):
-        assigned_role = "Data Engineer"
+    # Map enterprise role or fallback to Business Analyst via saml.map_saml_role
+    assigned_role = saml.map_saml_role(claims.get("roles", []))
 
     user = get_or_create_sso_user(email, provider=saml.provider_name(), user_role=assigned_role)
     update_last_login(user["id"])
@@ -3265,7 +3260,10 @@ try:
         else:
             raise RuntimeError("ETP_SECRET_KEY environment variable is required unless ENVIRONMENT='development'.")
 
-    etp_honeypot = PhantomGridHoneypot(storage_path="backend/data/etp_threat_logs.jsonl")
+    from pathlib import Path
+    _etp_data_dir = Path(__file__).resolve().parent.parent / "data"
+
+    etp_honeypot = PhantomGridHoneypot(storage_path=str(_etp_data_dir / "etp_threat_logs.jsonl"))
     etp_route_mutator = RouteMutator(secret_key=etp_secret.encode('utf-8'), window_s=60)
     etp_nonce_store = SlidingWindowNonceStore()
     etp_gateway = ETPGateway(
@@ -3273,7 +3271,7 @@ try:
         nonce_store=etp_nonce_store,
         phantom_grid=etp_honeypot
     )
-    etp_checkpointer = MerkleCheckpointer(storage_path="backend/data/etp_checkpoints.json")
+    etp_checkpointer = MerkleCheckpointer(storage_path=str(_etp_data_dir / "etp_checkpoints.json"))
     etp_verifier = ETPVerifier(etp_checkpointer)
 except Exception as _etp_init_err:
     print(f"[api/main] ERROR initializing ETP gateway engine: {_etp_init_err}")

@@ -62,3 +62,6 @@ logs/
 *.docx
 *.doc
 
+
+# Claude Code local audit trail (hash-chained; verify with python .claude/hooks/audit_log.py --verify)
+.claude/audit/
