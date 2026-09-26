@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 import shutil
 import time
 import asyncio
@@ -34,6 +35,8 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # ── Auth DB & MFA service ────────────────────────────────────────────────────
 import sys, os as _os
@@ -652,15 +655,11 @@ async def register(payload: RegisterRequest, request: Request):
     )
 
     try:
-        from auth_db import _get_conn
-        conn = _get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT count(*) FROM auth.users;")
-        first_user = cur.fetchone()["count"] == 0
-        conn.close()
-        
-        # Force "Business Analyst" role for new public signups (Admin is set manually or for first user)
-        assigned_role = "Admin" if first_user else "Business Analyst"
+        bootstrap_email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+        if bootstrap_email and payload.email.lower().strip() == bootstrap_email:
+            assigned_role = "Admin"
+        else:
+            assigned_role = "Business Analyst"
         
         user = create_user(
             email=payload.email,
@@ -1063,10 +1062,10 @@ async def saml_acs(request: Request):
 
     # Map enterprise role or fallback to Business Analyst
     assigned_role = "Business Analyst"
-    saml_roles = claims.get("roles", [])
-    if any("admin" in str(r).lower() for r in saml_roles):
+    saml_roles = [str(r).strip().lower() for r in claims.get("roles", [])]
+    if any(r in ("admin", "administrator") for r in saml_roles):
         assigned_role = "Admin"
-    elif any("engineer" in str(r).lower() for r in saml_roles):
+    elif any("engineer" in r for r in saml_roles):
         assigned_role = "Data Engineer"
 
     user = get_or_create_sso_user(email, provider=saml.provider_name(), user_role=assigned_role)
@@ -3446,10 +3445,12 @@ async def get_sample_proof_pack():
     
     Used by frontend verification portal and CI test suite to guarantee zero drift.
     """
+    from pathlib import Path
     from etp.checkpointer import MerkleCheckpointer
     from etp.meter import compute_canonical_hash
 
-    checkpointer = MerkleCheckpointer(storage_path="backend/data/etp_sample_checkpoints.json")
+    sample_storage = str(Path(__file__).resolve().parent.parent / "data" / "etp_sample_checkpoints.json")
+    checkpointer = MerkleCheckpointer(storage_path=sample_storage)
     mpan = "MPAN-1200098765432"
     day = "2026-09-22"
     first_nonce = 1000

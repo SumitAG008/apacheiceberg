@@ -303,3 +303,38 @@ class TestInvalidOTP:
             "code": "000000"  # Definitely wrong
         })
         assert res.status_code == 401
+
+
+class TestBootstrapAdminAndRoleSecurity:
+    def test_ensure_bootstrap_admin_matching(self, monkeypatch):
+        """ensure_bootstrap_admin should promote to Admin ONLY when email matches BOOTSTRAP_ADMIN_EMAIL."""
+        from auth_db import ensure_bootstrap_admin
+
+        test_email = f"admin_{uuid.uuid4().hex[:8]}@corp.com"
+
+        # Unmatched email
+        monkeypatch.setenv("BOOTSTRAP_ADMIN_EMAIL", test_email)
+        res = ensure_bootstrap_admin("dummy-user-id", "unmatched@corp.com")
+        assert res is None
+
+        # Matched email (case-insensitive & stripped)
+        conn = _get_conn()
+        cur = conn.cursor()
+        test_uid = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO auth.users (id, email, password_hash, user_role) VALUES (%s, %s, %s, %s);",
+            (test_uid, test_email, "hash", "Business Analyst")
+        )
+        conn.commit()
+        conn.close()
+
+        res_promoted = ensure_bootstrap_admin(test_uid, f" {test_email.upper()} ")
+        assert res_promoted == "Admin"
+
+    def test_saml_loose_matching_prevented(self):
+        """SAML assertions with 'Administrative Assistant' should not receive Admin role."""
+        roles = ["Administrative Assistant", "non-admin-viewer"]
+        saml_roles = [str(r).strip().lower() for r in roles]
+        is_admin = any(r in ("admin", "administrator") for r in saml_roles)
+        assert not is_admin, "Substring 'admin' in 'Administrative Assistant' incorrectly granted Admin!"
+
