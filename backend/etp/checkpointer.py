@@ -211,7 +211,8 @@ class MerkleCheckpointer:
 
     def __init__(self, tsa_url: Optional[str] = None, storage_path: Optional[str] = None):
         self.tsa_url = tsa_url
-        self.storage_path = storage_path or "backend/data/etp_checkpoints.json"
+        default_path = str(Path(__file__).resolve().parent.parent / "data" / "etp_checkpoints.json")
+        self.storage_path = storage_path or default_path
         self.checkpoints: List[Dict[str, Any]] = []
         self._load_checkpoints()
 
