@@ -652,16 +652,8 @@ async def register(payload: RegisterRequest, request: Request):
     )
 
     try:
-        from auth_db import _get_conn
-        conn = _get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT count(*) FROM auth.users;")
-        first_user = cur.fetchone()["count"] == 0
-        conn.close()
-        
-        # Force "Business Analyst" role for new public signups (Admin is set manually or for first user)
-        assigned_role = "Admin" if first_user else "Business Analyst"
-        
+        # Public signups are never Admin. The only way to get Admin is
+        # BOOTSTRAP_ADMIN_EMAIL (see ensure_bootstrap_admin) or an existing Admin.
         user = create_user(
             email=payload.email,
             password=payload.password,
@@ -669,7 +661,7 @@ async def register(payload: RegisterRequest, request: Request):
             tier="trial",
             reg_ip=reg_ip,
             reg_country=reg_country,
-            user_role=assigned_role
+            user_role="Business Analyst"
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

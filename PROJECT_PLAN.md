@@ -2,7 +2,7 @@
 
 **Status:** Living document. This is the single source of truth for what we build, for whom, in what order, and why.
 **Created:** 2026-09-25T23:15Z
-**Last updated:** 2026-09-26T00:30Z
+**Last updated:** 2026-09-26T01:10Z
 **Supersedes:** `NOVEMBER_GO_LIVE_ROADMAP.md` (see §11)
 
 ### How to use this document
@@ -97,8 +97,8 @@ Always tell customers which level they are getting.
 |---|---|---|
 | Verifier rejects forged packs A–D | ✅ Done | Attack script re-run; `test_verifier_rigor.py` in CI, passing |
 | Verifier rejects fully fabricated day (pack E, no key/TSA) | ❌ Open → M1 | Returns `VERIFIED` |
-| UI "Load Sample Proof Pack" | ❌ Broken | Sample fails: `BLOCK_HASH_MISMATCH` on all 41 readings; 41 not 42 readings |
-| CI | ❌ Red (1 test) | Bootstrap-admin promotes first login to Admin (security hole) |
+| UI "Load Sample Proof Pack" | ✅ Fixed (`eba6d71`) | Generated live by `/v1/etp/sample-proof-pack` via `MerkleCheckpointer`; CI test verifies it |
+| CI | 🟡 Fix ready on branch | Second auto-Admin path (registration made first signup Admin) removed; regression suite 13/13 and ETP suite 70 passed locally — green once merged to `main` |
 | C++ core (Merkle, route mutator) | ✅ Done, used from Python | CI green incl. ASan/LSan/UBSan |
 | C++ GatewayEngine | ⚠️ Built, unused | Python gateway doesn't call it |
 | Redis nonce store | ⚠️ Built, not wired to API | — |
@@ -165,6 +165,7 @@ Always tell customers which level they are getting.
 
 | Timestamp (UTC) | Change | Rationale | Evidence |
 |---|---|---|---|
+| 2026-09-26T01:10Z | Status: sample pack fixed; registration no longer auto-assigns Admin; M0 complete once merged | `eba6d71` gated login bootstrap on `BOOTSTRAP_ADMIN_EMAIL`, but `/auth/register` still made the first signup Admin — CI kept failing and the hole stayed open | CI run #112 failure reproduced locally; passes with fix |
 | 2026-09-26T00:30Z | Added §3.4 prompt-driven customer experience; agent status row; M5 extended (agent fallbacks, LLM-code tool); Phase 3 includes prompt-driven ops; engineering rule 6 | Founder goal: users complete complex tasks by prompt. Existing agent is generic (no product tools), uses an older model via LangChain, and has silent fallbacks — building on it as-is would repeat the "looks like it works" risk | Code review of `backend/agent.py`, `backend/tools.py` |
 | 2026-09-25T23:15Z | Created this plan; `NOVEMBER_GO_LIVE_ROADMAP.md` superseded | Old roadmap marked unbuilt work as done and scored 92% readiness; plan needs one honest source of truth with change history | Code review of `main` @ `45bd880` |
 | 2026-09-25T23:10Z | Status: UI sample proof pack recorded as broken; rule "never hand-write proof fixtures" added | Sample fails verification on all 41 hashes despite being reported as passing | Sample run through verifier: `BLOCK_HASH_MISMATCH` |
