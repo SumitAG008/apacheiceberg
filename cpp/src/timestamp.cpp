@@ -199,14 +199,14 @@ TimestampVerifyResult verify_rfc3161_timestamp(
     }
 
     TS_VERIFY_CTX_init(ctx);
-    TS_VERIFY_CTX_set_flags(ctx, TS_VERIFY_DATA | TS_VERIFY_SIGNER);
+    TS_VERIFY_CTX_set_flags(ctx, TS_VFY_DATA | TS_VFY_SIGNER);
     TS_VERIFY_CTX_set_store(ctx, store);
 
     int verify_status = TS_RESP_verify_token(ctx, token);
 
     TS_VERIFY_CTX_free(ctx);
-    X509_STORE_free(store);
     TS_RESP_free(response);
+
 
     if (verify_status != 1) {
         ERR_clear_error();

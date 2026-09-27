@@ -254,7 +254,19 @@ ProofPackVerifyResult verify_proof_pack(
         res.error_message = "RFC 3161 timestamp token verification failed: " + ts_res.error;
         return res;
     }
+
+    // Verify timestamp token date against reading day interval
+    if (!pack.timestamp.empty() && !ts_res.gen_time.empty()) {
+        std::string reading_day = pack.timestamp.substr(0, 10);
+        std::string token_day = ts_res.gen_time.substr(0, 10);
+        if (!reading_day.empty() && !token_day.empty() && token_day < reading_day) {
+            res.error_message = "Timestamp token gen_time (" + ts_res.gen_time + ") is prior to reading day (" + reading_day + ")";
+            return res;
+        }
+    }
+
     res.timestamp_verified = true;
+
 
     // All verification checks passed
     res.verified = true;

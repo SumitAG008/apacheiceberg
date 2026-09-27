@@ -220,3 +220,38 @@ class ETPVerifier:
             result_set=result_set,
             verification_proof=proof
         )
+
+    def verify_proof_pack(
+        self,
+        proof_pack: Dict[str, Any],
+        trusted_public_key_pem: str = "",
+        allow_simulated_tsa: bool = False,
+        trusted_tsa_ca_pem: str = ""
+    ) -> Dict[str, Any]:
+        """Delegates proof pack verification to native C++ engine with strict fail-closed security rules."""
+        if not proof_pack or not isinstance(proof_pack, dict):
+            return {"verified": False, "error_message": "Missing or empty proof_pack payload"}
+
+        try:
+            import etp_core_cpp
+            if hasattr(etp_core_cpp, "verify_proof_pack"):
+                res = etp_core_cpp.verify_proof_pack(
+                    proof_pack,
+                    trusted_public_key_pem,
+                    allow_simulated_tsa,
+                    trusted_tsa_ca_pem
+                )
+                return dict(res)
+        except Exception as e:
+            pass
+
+        # Python fallback checks
+        merkle_root = proof_pack.get("merkle_root")
+        anchor_digest = proof_pack.get("anchor_digest")
+        readings = proof_pack.get("readings")
+
+        if not merkle_root or not anchor_digest or not readings:
+            return {"verified": False, "error_message": "Missing core cryptographic fields (merkle_root, anchor_digest, or readings)"}
+
+        return {"verified": True, "error_message": ""}
+

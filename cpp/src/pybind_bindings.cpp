@@ -12,9 +12,23 @@ namespace py = pybind11;
 PYBIND11_MODULE(etp_core_cpp, m) {
     m.doc() = "ETP C++ Core Native Extension Module";
 
+    // TelemetryBlock struct
+    py::class_<etp::TelemetryBlock>(m, "TelemetryBlock")
+        .def(py::init<>())
+        .def_readwrite("mpan", &etp::TelemetryBlock::mpan)
+        .def_readwrite("reading_kwh", &etp::TelemetryBlock::reading_kwh)
+        .def_readwrite("timestamp", &etp::TelemetryBlock::timestamp)
+        .def_readwrite("prev_hash", &etp::TelemetryBlock::prev_hash)
+        .def_readwrite("nonce", &etp::TelemetryBlock::nonce)
+        .def_readwrite("crypto_suite_id", &etp::TelemetryBlock::crypto_suite_id)
+        .def_readwrite("key_id", &etp::TelemetryBlock::key_id)
+        .def_readwrite("block_hash", &etp::TelemetryBlock::block_hash)
+        .def_readwrite("signature", &etp::TelemetryBlock::signature);
+
     // Gateway API
     py::class_<etp::GatewayEngine>(m, "GatewayEngine")
         .def(py::init<int>(), py::arg("batch_size") = 100)
+        .def_static("compute_canonical_hash", &etp::GatewayEngine::compute_canonical_hash)
         .def("process_reading", &etp::GatewayEngine::process_reading, py::arg("reading_json"))
         .def("verify_meter_signature", &etp::GatewayEngine::verify_meter_signature, py::arg("reading_json"), py::arg("public_key_pem"));
 
@@ -25,10 +39,41 @@ PYBIND11_MODULE(etp_core_cpp, m) {
         .def("remove_route", &etp::RouteMutator::remove_route)
         .def("mutate_headers", &etp::RouteMutator::mutate_headers);
 
+    // MerkleProofStep struct
+    py::class_<etp::MerkleProofStep>(m, "MerkleProofStep")
+        .def(py::init<>())
+        .def_readwrite("hash", &etp::MerkleProofStep::hash)
+        .def_readwrite("is_left", &etp::MerkleProofStep::is_left);
+
+    // MerkleTree class
+    py::class_<etp::MerkleTree>(m, "MerkleTree")
+        .def(py::init<>())
+        .def("add_leaf_hex", &etp::MerkleTree::add_leaf_hex)
+        .def("compute_root", &etp::MerkleTree::compute_root)
+        .def("get_proof", &etp::MerkleTree::get_proof)
+        .def_static("verify_proof", &etp::MerkleTree::verify_proof)
+        .def("leaf_count", &etp::MerkleTree::leaf_count)
+        .def("clear", &etp::MerkleTree::clear);
+
     // Merkle Engine API
     m.def("compute_merkle_root", &etp::compute_merkle_root, py::arg("hashes"));
     m.def("generate_merkle_proof", &etp::generate_merkle_proof, py::arg("hashes"), py::arg("index"));
     m.def("verify_merkle_proof", &etp::verify_merkle_proof, py::arg("leaf_hash"), py::arg("proof"), py::arg("root"));
+    m.def("compute_anchor_digest", [](const std::string& merkle_root, int64_t first_nonce, int64_t last_nonce, int64_t leaf_count, int64_t prev_day_last_nonce, int64_t eod_gap) {
+        std::string anchor_payload = merkle_root + "|" + std::to_string(first_nonce) + "|" + std::to_string(last_nonce) + "|" + std::to_string(leaf_count) + "|" + std::to_string(prev_day_last_nonce) + "|" + std::to_string(eod_gap);
+        uint8_t hash[32];
+        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+        EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+        EVP_DigestUpdate(ctx, anchor_payload.data(), anchor_payload.size());
+        EVP_DigestFinal_ex(ctx, hash, nullptr);
+        EVP_MD_CTX_free(ctx);
+        std::stringstream ss;
+        for (int i = 0; i < 32; ++i) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+        }
+        return ss.str();
+    });
+
 
     // ECDSA Signature Verification API
     m.def("verify_ecdsa_signature", &etp::verify_ecdsa_signature,

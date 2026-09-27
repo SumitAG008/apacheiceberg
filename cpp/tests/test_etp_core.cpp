@@ -1,6 +1,9 @@
 #include "etp/route_mutator.hpp"
 #include "etp/merkle.hpp"
 #include "etp/gateway.hpp"
+#include "etp/proof_pack.hpp"
+#include "etp/timestamp.hpp"
+
 #include <iostream>
 #include <cassert>
 #include <memory>
@@ -188,7 +191,62 @@ int main() {
     ETP_CHECK(res_invalid_route.divert_to_honeypot, "Invalid route not diverted to honeypot");
     std::cout << "  ✓ GatewayEngine MTD honeypot diversion passed.\n";
 
+    // --- 4. Forgery Attack Verification Tests (M1-03) ---
+    std::cout << "  [M1-03] Testing Forgery Rejection Suite...\n";
+
+    // Forgery 1: Empty Proof Pack
+    etp::ProofPack empty_pack;
+    auto res_empty = etp::verify_proof_pack(empty_pack);
+    ETP_CHECK(!res_empty.verified, "Forgery test 1 failed: Empty proof pack MUST be rejected");
+    std::cout << "  ✓ Forgery 1: Empty proof pack strictly rejected.\n";
+
+    // Forgery 2: Self-Asserted Key (untrusted meter key vs trusted registry key mismatch)
+    etp::ProofPack self_key_pack{
+        .mpan = mpan,
+        .reading_kwh = 12.345,
+        .timestamp = "2026-09-20T23:00:00.000Z",
+        .prev_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+        .nonce = 100,
+        .crypto_suite_id = "ECDSA-P256-SHA256-v1",
+        .key_id = "k-test",
+        .signature = block.signature,
+        .public_key_pem = "UNTRUSTED_SELF_ASSERTED_KEY_PEM",
+        .leaf_hash = block.block_hash,
+        .proof = {{leaf2, false}},
+        .merkle_root = root,
+        .first_nonce = 100,
+        .last_nonce = 101,
+        .leaf_count = 2,
+        .prev_day_last_nonce = -1,
+        .eod_gap = 0,
+        .anchor_digest = "0000000000000000000000000000000000000000000000000000000000000000",
+        .timestamp_token = "invalid_token"
+    };
+    auto res_self_key = etp::verify_proof_pack(self_key_pack, pub_pem);
+    ETP_CHECK(!res_self_key.verified, "Forgery test 2 failed: Mismatching self-asserted key MUST be rejected");
+    std::cout << "  ✓ Forgery 2: Self-asserted key mismatch strictly rejected.\n";
+
+    // Forgery 3: Unsigned / Corrupt Timestamp Token
+    auto res_unsigned_ts = etp::verify_rfc3161_timestamp("invalid_b64_garbage_token", "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41", false);
+    ETP_CHECK(!res_unsigned_ts.valid, "Forgery test 3 failed: Unsigned/corrupt RFC3161 token MUST be rejected");
+    std::cout << "  ✓ Forgery 3: Unsigned/corrupt timestamp token strictly rejected.\n";
+
+    // Forgery 4: Forged Simulated Token presented in strict mode
+    auto res_forged_sim = etp::verify_rfc3161_timestamp("urn:meldra:simulated-tsa:aW52YWxpZF9tZXNzYWdlX2hhc2g=", "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41", false);
+    ETP_CHECK(!res_forged_sim.valid, "Forgery test 4 failed: Forged simulated token MUST be rejected when allow_simulated=false");
+    std::cout << "  ✓ Forgery 4: Forged simulated token strictly rejected in strict mode.\n";
+
+    // Forgery 5: Token dated after the reading's day interval
+    etp::ProofPack dated_after_pack = self_key_pack;
+    dated_after_pack.public_key_pem = pub_pem;
+    dated_after_pack.timestamp = "2026-09-20T23:00:00.000Z";
+    dated_after_pack.timestamp_token = "urn:meldra:simulated-tsa:MWYxNDViZDY5N2Y0NGQ5Njc3ODE0ZmNjYWViYzQ0ZWEwNGI2YjRlODIxYWI5MTcxNDQxNDU0ZDE1MDJhNWU0MQ==";
+    auto res_dated_after = etp::verify_proof_pack(dated_after_pack, pub_pem, true);
+    ETP_CHECK(!res_dated_after.verified, "Forgery test 5 failed: Token dated after/mismatched day interval MUST be rejected");
+    std::cout << "  ✓ Forgery 5: Token dated after day interval strictly rejected.\n";
+
     std::cout << "\n[SUCCESS] All etp_core C++20 tests passed cleanly!\n";
     OPENSSL_cleanup();
     return 0;
 }
+

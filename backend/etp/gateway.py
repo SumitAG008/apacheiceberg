@@ -178,14 +178,7 @@ class ETPGateway:
         if expected_prev_hash is not None and block.prev_hash != expected_prev_hash:
             verify_status = "CHAIN_GAP"
 
-        # 7. Outbox Micro-Batch Buffering & Lakehouse Persistence (Buffer FIRST before advancing nonce counter)
-        self.writer.add_block(block, verify_status=verify_status)
-        if self.writer.should_flush():
-            committed_rows = self.writer.flush()
-            if audit and committed_rows:
-                audit.allow(action="etp.writer_flush", detail={"rows_written": len(committed_rows)})
-
-        # 8. State Commit (Advance nonce counter AFTER block is buffered)
+        # 7. State Commit (Advance nonce counter FIRST before writing to lakehouse buffer)
         commit_status, committed_last, commit_reason = self.nonce_store.commit(
             mpan=block.mpan,
             incoming_nonce=block.nonce,
@@ -205,6 +198,14 @@ class ETPGateway:
                 audit.deny(action="etp.replay_rejected_commit", reason=commit_reason, detail=evt)
             record_verification("REPLAY_REJECTED", commit_reason, time.perf_counter() - t0)
             return 401, {"status": "rejected", "reason": "REPLAY_REJECTED"}
+
+        # 8. Outbox Micro-Batch Buffering & Lakehouse Persistence (Buffer ONLY after state commit succeeds)
+        self.writer.add_block(block, verify_status=verify_status)
+        if self.writer.should_flush():
+            committed_rows = self.writer.flush()
+            if audit and committed_rows:
+                audit.allow(action="etp.writer_flush", detail={"rows_written": len(committed_rows)})
+
 
         evt = {
             "action": "telemetry.ingest",
