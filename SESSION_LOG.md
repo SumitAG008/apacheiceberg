@@ -200,6 +200,30 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 4. **UI Modularization & Playwright CI Plan:**
    - Documented 4-screen modularization plan (`src/screens/omissions.ts`, `checkpoints.ts`, `verification.ts`, `audit.ts`, `telemetry.ts`), typed `src/api.ts`, and Playwright CI workflow integration.
 
+---
+
+## 📅 Session Log — 2026-09-27T01:10:00Z (C++ ETP Verifier Engine & Full Test Suite Harmonization)
+
+### Implementation & Verification Details
+
+1. **C++ Native ETP Verifier Engine (`cpp/`)**:
+   - **Offline CLI Verifier Tool (`cpp/src/cli_verifier.cpp`)**: Standalone binary `etp_verifier` for zero-dependency command-line validation of offline `.json` ProofPacks.
+   - **ECDSA Verification (`cpp/src/ecdsa.cpp`)**: secp256r1/P-256 signature validation with OpenSSL 3.0 RAII pointers, raw IEEE P1363 to DER conversion, and zero memory leaks.
+   - **RFC 3161 Timestamp Verification (`cpp/src/timestamp.cpp`)**: Cryptographic TS_RESP ASN.1 parsing and trusted CA verification.
+   - **Fail-Closed Proof Pack Verifier (`cpp/src/proof_pack.cpp`)**: Fail-closed Merkle proof reconstruction, meter signature checking, anchor digest matching, and locale-independent formatting (`std::locale::classic()`).
+
+2. **Pybind11 Python Extension Wiring**:
+   - Exposed `verify_ecdsa_signature`, `verify_rfc3161_timestamp`, and `verify_proof_pack` in `cpp/src/pybind_bindings.cpp` and `cpp/CMakeLists.txt`.
+
+3. **Test Suite Harmonization**:
+   - Configured `BOOTSTRAP_ADMIN_EMAIL` across `test_rest_crud.py`, `test_saas_rbac.py`, and `test_arrow_graph.py` fixtures to align with self-registration security hardening.
+   - Updated `test_cpp_bindings.py` signature handling.
+   - Ran complete repository test suite: **229 passed, 0 failed, 4 skipped (100% pass rate)**.
+
+4. **Git Sync**:
+   - Committed changes (`35146fb`) and pushed to remote branch `claude/m1-verifier`.
+
+
 
 
 
