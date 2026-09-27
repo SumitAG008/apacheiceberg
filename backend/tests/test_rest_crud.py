@@ -40,7 +40,7 @@ def monkeypatch_module():
     mp.undo()
 
 @pytest.fixture(scope="module")
-def test_users():
+def test_users(monkeypatch_module):
     # Ensure auth schema and tables are fully initialized first
     from auth_db import init_auth_schema
     init_auth_schema()
@@ -54,8 +54,10 @@ def test_users():
     conn.close()
 
     admin_email = "crud_admin@example.com"
+    monkeypatch_module.setenv("BOOTSTRAP_ADMIN_EMAIL", admin_email)
     analyst_email = "crud_analyst@example.com"
     pwd = "Password123!"
+
 
     # Create admin. NOTE: registration no longer honors a client-supplied
     # "role" field (fixed as a privilege-escalation bug) -- this becomes

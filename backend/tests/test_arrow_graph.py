@@ -31,7 +31,7 @@ def monkeypatch_module():
     mp.undo()
 
 @pytest.fixture(scope="module")
-def test_admin():
+def test_admin(monkeypatch_module):
     # Initialize DB
     init_auth_schema()
     
@@ -46,7 +46,9 @@ def test_admin():
     conn.close()
 
     admin_email = "flight_admin@example.com"
+    monkeypatch_module.setenv("BOOTSTRAP_ADMIN_EMAIL", admin_email)
     pwd = "Password123!"
+
 
     # Create admin via API
     res = client.post("/auth/register", json={"email": admin_email, "password": pwd, "role": "Admin"})

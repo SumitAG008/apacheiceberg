@@ -29,7 +29,7 @@ def monkeypatch_module():
     mp.undo()
 
 @pytest.fixture(scope="module")
-def test_users():
+def test_users(monkeypatch_module):
     # Ensure auth schema and tables are fully initialized first
     from auth_db import init_auth_schema
     init_auth_schema()
@@ -43,8 +43,10 @@ def test_users():
     conn.close()
 
     admin_email = "admin_test@example.com"
+    monkeypatch_module.setenv("BOOTSTRAP_ADMIN_EMAIL", admin_email)
     analyst_email = "analyst_test@example.com"
     pwd = "Password123!"
+
 
     # Create admin first via endpoint
     res = client.post("/auth/register", json={"email": admin_email, "password": pwd, "role": "Admin"})
