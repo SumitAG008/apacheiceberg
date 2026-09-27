@@ -2,7 +2,7 @@
 
 **Status:** Living document. This is the single source of truth for what we build, for whom, in what order, and why.
 **Created:** 2026-09-25T23:15Z
-**Last updated:** 2026-09-26T00:25Z
+**Last updated:** 2026-09-27T12:00Z
 **Supersedes:** `NOVEMBER_GO_LIVE_ROADMAP.md` (see §11)
 
 ### How to use this document
@@ -91,6 +91,25 @@ Always tell customers which level they are getting.
 
 **Sequencing:** the agent is only as good as the real tools and data under it. Domain tools are built as each milestone lands (M1 verify, M3 pipeline/cases); the full prompt-driven experience ships in Phase 3, after M3–M4, so it never runs on mock data.
 
+### 3.5 Libraries, APIs & data stores — November scope
+| Piece | By 13 Nov (must) | Later |
+|---|---|---|
+| C++ core (`libmeldra`) | Signatures + RFC 3161 checks (M1); packaged library | Java / C# bindings |
+| **Open-source "Meldra Proof"** | C++ core + Python package + offline verifier CLI, **Apache-2.0** (M2) | More language bindings |
+| Python API | Documented public v1: proof packs, verify, gaps, cases (OpenAPI) | Full platform API |
+| Go | *Stretch:* REST client generated from OpenAPI | Native Go bindings via C API + cgo |
+| Database | **PostgreSQL only**: auth, estate, cases **and knowledge graph via Apache AGE** (meter → feeder → substation) | Separate graph/cloud DBs only if Postgres limits are hit |
+| Cloud storage | Apache Iceberg on object storage (S3 or equivalent) | Snowflake / Databricks / BigQuery read Iceberg directly (connectors + docs) |
+| Long-term proofs | — | Periodic re-timestamping so proofs stay verifiable for 6–7+ years |
+
+**Licensing — open core:** only the proof library and verifier are open source (Apache-2.0). Platform (pipeline, cases, AI, UI) stays proprietary. Requires founder sign-off; repository licence today is proprietary.
+
+### 3.6 Testing partner & funding path
+- **Testing partner (one, by M4):** in order of likelihood — university smart-meter research group; small flexibility aggregator / battery operator from outreach; Energy Systems Catapult introduction. Offer: 8–12 week pilot on one month of data, gap report, ideally paid.
+- **Non-dilutive funding:** Innovate UK competitions (check open rounds); DNO innovation / Ofgem SIF (needs DNO lead partner); government energy-innovation competitions; paid pilot.
+- **Investment:** energy/climate angels (obtain SEIS advance assurance early); climate-tech accelerators / pre-seed.
+- **What funders need:** discovery evidence, working product (M1–M4), partner letter of support.
+
 ## 4. Verified status (as of 2026-09-25T23:15Z, commit `45bd880`)
 
 | Area | Status | Evidence |
@@ -165,6 +184,7 @@ Always tell customers which level they are getting.
 
 | Timestamp (UTC) | Change | Rationale | Evidence |
 |---|---|---|---|
+| 2026-09-27T12:00Z | Added §3.5 (November library/API/DB scope; open-core Apache-2.0 proof library; Postgres + Apache AGE as the single DB; Go as stretch via generated REST client) and §3.6 (testing partner & funding path) | Founder goals: open-source library, C++ core, Python & Go APIs, knowledge graph, Postgres for now. Scoped to what one person can ship by 13 Nov without delaying the partner pilot; AGE already runs on Postgres, and Iceberg is readable by major cloud warehouses | `backend/graph_db.py` (AGE), 78 FastAPI endpoints, repo licence currently proprietary |
 | 2026-09-26T00:25Z | **M0 complete**; next focus M1 (cannot be forged) + discovery outreach | CI green on `main` for the first time since masks were removed; live sample pack; no auto-Admin paths | CI run #113 @ `32beedc` |
 | 2026-09-26T01:10Z | Status: sample pack fixed; registration no longer auto-assigns Admin; M0 complete once merged | `eba6d71` gated login bootstrap on `BOOTSTRAP_ADMIN_EMAIL`, but `/auth/register` still made the first signup Admin — CI kept failing and the hole stayed open | CI run #112 failure reproduced locally; passes with fix |
 | 2026-09-26T00:30Z | Added §3.4 prompt-driven customer experience; agent status row; M5 extended (agent fallbacks, LLM-code tool); Phase 3 includes prompt-driven ops; engineering rule 6 | Founder goal: users complete complex tasks by prompt. Existing agent is generic (no product tools), uses an older model via LangChain, and has silent fallbacks — building on it as-is would repeat the "looks like it works" risk | Code review of `backend/agent.py`, `backend/tools.py` |
