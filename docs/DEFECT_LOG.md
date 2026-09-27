@@ -17,6 +17,7 @@ This document records all defects, security regressions, and build failures iden
 | **DEF-007** | Security | `backend/rbac_utils.py` | Broad `except Exception: return []` in policy fetchers | Fail-open regression: DB errors silently disabled row-level security | **RESOLVED** |
 | **DEF-008** | Race Condition | `backend/etp/nonce_store.py` | Read-compute-write window in `RedisNonceStore` | Non-atomic check/commit enabled concurrent replay attacks across pods | **RESOLVED** |
 | **DEF-009** | Security | `backend/etp/nonce_store.py` | Fail-open fallback to `MemoryNonceStore` during Redis outage | Disconnected Redis degraded multi-replica cluster to isolated in-memory stores | **RESOLVED** |
+| **DEF-010** | Tooling | CLI / Environment | GitHub CLI (`gh`) executable missing from PATH | Automated `gh pr create` failed with `CommandNotFoundException` | **RESOLVED** (Pushed branch directly to origin & generated web PR compare link) |
 
 ---
 
@@ -66,3 +67,9 @@ This document records all defects, security regressions, and build failures iden
 - **Symptom**: `RedisNonceStore` silently degraded to `MemoryNonceStore` whenever Redis connection failed.
 - **Root Cause**: In multi-replica production environments (`replicas: 2` to `10`), falling back to process-local memory stores breaks distributed replay protection.
 - **Resolution**: Restricted `MemoryNonceStore` fallback to `ENVIRONMENT` in `("development", "dev", "local", "test")`. In production/staging, connection or command failures raise `RuntimeError`, failing closed and halting un-protected ingestion.
+
+### DEF-010: Missing GitHub CLI (`gh`) Binary in Host Environment
+- **Symptom**: Executing `gh pr create` resulted in `gh : The term 'gh' is not recognized as the name of a cmdlet, function, script file, or operable program`.
+- **Root Cause**: GitHub CLI package (`gh.exe`) is not installed on the system `PATH`.
+- **Resolution**: Branch `claude/m1-verifier` was pushed directly to origin via `git push origin claude/m1-verifier`. Provided the standard GitHub web compare link `https://github.com/SumitAG008/apacheiceberg/pull/new/claude/m1-verifier` to open the PR directly.
+

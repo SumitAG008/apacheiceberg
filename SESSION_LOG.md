@@ -223,6 +223,37 @@ Today's security fixes (`backend/api/main.py`, `backend/query_engine/*.py`, `bac
 4. **Git Sync**:
    - Committed changes (`35146fb`) and pushed to remote branch `claude/m1-verifier`.
 
+---
+
+## 📅 Session Log — 2026-09-27T22:50:00Z (CLM-001 Proven, Native C++ Fixes & Git Branch Push)
+
+### Summary of Completed Work:
+
+1. **Cleanup**:
+   - Removed stray files `cls` and `cmake` from repository root.
+   - Cleaned up accidental folder `backend/backend/`.
+
+2. **C++ Native Core Build & Test Suite**:
+   - Resolved header inclusions in `cpp/src/proof_pack.cpp` (`#include "etp/merkle.hpp"`) and `cpp/src/pybind_bindings.cpp` (`<openssl/evp.h>`, `<iomanip>`, `<sstream>`).
+   - Synchronized `RouteMutator` bindings in `pybind_bindings.cpp` with exact header methods.
+   - Built C++ binaries using MSVC CMake (`etp_core.dll`, `etp_verifier.exe`, `test_etp_core.exe`).
+   - Ran `test_etp_core.exe` -> **All native C++ tests passed cleanly**.
+   - Committed C++ fixes (`319b758`).
+
+3. **CLM-001 Verification & Governance**:
+   - Written `test_clm001_detects_post_hoc_modifications_and_sequence_gaps()` in `backend/tests/test_verifier_rigor.py`:
+     - Test A: Verified 1-byte reading alteration is rejected (`BLOCK_HASH_MISMATCH` / `verified: False`).
+     - Test B: Verified dropped sequence number is rejected (`MERKLE_ROOT_MISMATCH` / `verified: False`).
+   - Executed Pytest: **All 8 tests passed** (28.52s).
+   - Updated `docs/governance/CLAIMS_REGISTER.md` setting CLM-001 status to **✅ Proven**.
+   - Verified governance via `python tools/governance/check_governance.py` (**✅ No blocking issues**).
+   - Committed claim proof and register update (`875fce4`).
+
+4. **Remote Branch Synchronization & Defect DEF-010**:
+   - Pushed branch `claude/m1-verifier` to remote `origin`.
+   - Logged **DEF-010** in `docs/DEFECT_LOG.md` documenting missing `gh` CLI executable on Windows host PATH, providing direct GitHub PR creation link.
+
+
 
 
 
