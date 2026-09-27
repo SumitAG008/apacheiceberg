@@ -4,10 +4,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyd
+*.so
+*.dll
 *.egg-info/
 dist/
 build/
 .eggs/
+scratch/
+cmake/
+
 
 # ── Environments & Secrets (NEVER COMMIT) ────────────
 .env
