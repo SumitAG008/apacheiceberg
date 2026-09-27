@@ -8,6 +8,7 @@ Verifies that:
 """
 
 import pytest
+import json
 import hashlib
 from fastapi.testclient import TestClient
 from api.main import app
@@ -273,6 +274,80 @@ def test_live_sample_proof_pack_verifies():
     assert data["verified"] is True
     assert data["status"] == "ANCHORED_WITH_GAPS"
     assert data["sequence_gap_count"] == 6
+
+
+def test_clm001_detects_post_hoc_modifications_and_sequence_gaps():
+    """Proves CLM-001: Verifier detects post-hoc data modifications (1-byte change) and sequence gaps (dropped sequence number)."""
+    checkpointer = MerkleCheckpointer(storage_path="backend/data/test_checkpoints_clm001.json")
+    readings = []
+    mpan = "MPAN-1200098765432"
+    first_nonce = 1000
+    for i in range(48):
+        nonce = first_nonce + i
+        reading_kwh = 15.5 + (i * 0.1)
+        timestamp = f"2026-09-22T{(i//2):02d}:{(i%2)*30:02d}:00.000Z"
+        prev_hash = "0" * 64 if i == 0 else readings[-1]["etp_block_hash"]
+        
+        block_hash = compute_canonical_hash(
+            mpan=mpan, reading_kwh=reading_kwh, timestamp=timestamp,
+            prev_hash=prev_hash, nonce=nonce, crypto_suite_id="ECDSA-P256-SHA256-v1", key_id="k-test"
+        )
+        readings.append({
+            "mpan": mpan, "reading_kwh": reading_kwh, "timestamp": timestamp,
+            "prev_hash": prev_hash, "etp_nonce": nonce, "crypto_suite_id": "ECDSA-P256-SHA256-v1",
+            "key_id": "k-test", "etp_block_hash": block_hash
+        })
+
+    ckpt = checkpointer.build_meter_day_checkpoint(
+        mpan=mpan, day="2026-09-22", readings=readings, prev_day_last_nonce=999, expected_daily_readings=48
+    )
+
+    valid_proof_pack = {
+        "merkle_root": ckpt["merkle_root"],
+        "anchor_digest": ckpt["anchor_digest"],
+        "readings": list(readings),
+        "first_nonce": ckpt["first_nonce"],
+        "last_nonce": ckpt["last_nonce"],
+        "prev_day_last_nonce": ckpt["prev_day_last_nonce"],
+        "eod_gap": ckpt["eod_gap"],
+        "gap_count": ckpt["gap_count"],
+        "expected_readings": 48,
+        "observed_leaf_count": ckpt["leaf_count"]
+    }
+
+    # Verify baseline valid proof pack passes
+    resp = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": valid_proof_pack})
+    assert resp.status_code == 200
+    assert resp.json()["verified"] is True
+
+    # -------------------------------------------------------------------------
+    # TEST A: Post-hoc Modification (Change 1 byte in reading_kwh or timestamp)
+    # -------------------------------------------------------------------------
+    tampered_pack_a = json.loads(json.dumps(valid_proof_pack))
+    # Modify 1 byte of reading #20's kWh (from 17.5 to 17.6) without updating block_hash or Merkle root
+    tampered_pack_a["readings"][20]["reading_kwh"] = 17.6
+
+    resp_a = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": tampered_pack_a})
+    assert resp_a.status_code == 200
+    data_a = resp_a.json()
+    assert data_a["verified"] is False
+    assert data_a["status"] == "FAILED"
+    assert data_a["reason"] in ("BLOCK_HASH_MISMATCH", "MERKLE_ROOT_MISMATCH")
+
+    # -------------------------------------------------------------------------
+    # TEST B: Sequence Gap / Omission (Drop one sequence number / reading)
+    # -------------------------------------------------------------------------
+    tampered_pack_b = json.loads(json.dumps(valid_proof_pack))
+    # Drop reading #15 (sequence number 1015) from the array without updating Merkle root
+    del tampered_pack_b["readings"][15]
+
+    resp_b = client.post("/v1/etp/proof-pack/verify", json={"proof_pack": tampered_pack_b})
+    assert resp_b.status_code == 200
+    data_b = resp_b.json()
+    assert data_b["verified"] is False
+    assert data_b["status"] == "FAILED"
+    assert data_b["reason"] in ("MERKLE_ROOT_MISMATCH", "BLOCK_HASH_MISMATCH", "LEAF_COUNT_MISMATCH")
+
 
 
 
