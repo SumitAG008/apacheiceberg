@@ -1,4 +1,5 @@
 #include "etp/proof_pack.hpp"
+#include "etp/merkle.hpp"
 #include "etp/ecdsa.hpp"
 #include "etp/timestamp.hpp"
 #include <openssl/evp.h>
@@ -196,44 +197,31 @@ ProofPackVerifyResult verify_proof_pack(
         return res;
     }
 
-    // Key Registry Verification
+    // Key Registry Verification (M1-01 Fail-Closed Security)
     std::string key_to_use = trusted_public_key_pem;
-    if (!key_to_use.empty()) {
-        if (!pack.public_key_pem.empty() && pack.public_key_pem != key_to_use) {
-            res.error_message = "Meter public key in proof pack does not match trusted key registry";
-            return res;
-        }
-        res.key_registry_verified = true;
-    } else {
-        if (pack.public_key_pem.empty()) {
-            res.error_message = "Missing meter public_key_pem and no trusted_public_key_pem provided";
-            return res;
-        }
-        key_to_use = pack.public_key_pem;
-        res.key_registry_verified = false; // Self-asserted key, not registry validated
+    if (key_to_use.empty()) {
+        res.error_message = "No trusted_public_key_pem provided (self-asserted meter keys are rejected in fail-closed mode)";
+        return res;
     }
+    if (!pack.public_key_pem.empty() && pack.public_key_pem != key_to_use) {
+        res.error_message = "Meter public key in proof pack does not match trusted key registry";
+        return res;
+    }
+    res.key_registry_verified = true;
 
-    // 1. Merkle Proof Verification
-    std::string current = pack.leaf_hash;
+    // 1. Merkle Proof Verification using domain-separated MerkleTree::verify_proof (0x00 leaf / 0x01 internal)
+    std::vector<MerkleProofStep> proof_steps;
     for (const auto& step : pack.proof) {
-        if (step.second) { // is_left
-            current = sha256_hex(step.first + current);
-        } else {
-            current = sha256_hex(current + step.first);
-        }
+        proof_steps.push_back(MerkleProofStep{.hash = step.first, .is_left = step.second});
     }
-    if (current != pack.merkle_root) {
-        res.error_message = "Merkle proof verification failed: computed root " + current + " != " + pack.merkle_root;
+    if (!MerkleTree::verify_proof(pack.leaf_hash, proof_steps, pack.merkle_root)) {
+        res.error_message = "Merkle proof verification failed against root: " + pack.merkle_root;
         return res;
     }
     res.merkle_verified = true;
 
     // 2. Meter ECDSA Signature Verification
-    std::string reading_str = format_reading_kwh(pack.reading_kwh);
-    std::string msg = pack.mpan + "|" + reading_str + "|" + pack.timestamp + "|" + pack.prev_hash + "|" + std::to_string(pack.nonce) + "|" + pack.leaf_hash;
-    std::string msg_hash = sha256_hex(msg);
-
-    if (!verify_ecdsa_signature(msg_hash, pack.signature, key_to_use)) {
+    if (!verify_ecdsa_signature(pack.leaf_hash, pack.signature, key_to_use)) {
         res.error_message = "ECDSA meter signature verification failed";
         return res;
     }
@@ -255,18 +243,23 @@ ProofPackVerifyResult verify_proof_pack(
         return res;
     }
 
-    // Verify timestamp token date against reading day interval
+    // Verify timestamp token date against reading day interval (reject pre-dated and post-dated tokens)
     if (!pack.timestamp.empty() && !ts_res.gen_time.empty()) {
         std::string reading_day = pack.timestamp.substr(0, 10);
         std::string token_day = ts_res.gen_time.substr(0, 10);
-        if (!reading_day.empty() && !token_day.empty() && token_day < reading_day) {
-            res.error_message = "Timestamp token gen_time (" + ts_res.gen_time + ") is prior to reading day (" + reading_day + ")";
-            return res;
+        if (!reading_day.empty() && !token_day.empty()) {
+            if (token_day < reading_day) {
+                res.error_message = "Timestamp token gen_time (" + ts_res.gen_time + ") is prior to reading day (" + reading_day + ")";
+                return res;
+            }
+            if (token_day > reading_day) {
+                res.error_message = "Timestamp token gen_time (" + ts_res.gen_time + ") is post-dated (after reading day " + reading_day + ")";
+                return res;
+            }
         }
     }
 
     res.timestamp_verified = true;
-
 
     // All verification checks passed
     res.verified = true;

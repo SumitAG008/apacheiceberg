@@ -196,12 +196,12 @@ int main() {
 
     // Forgery 1: Empty Proof Pack
     etp::ProofPack empty_pack;
-    auto res_empty = etp::verify_proof_pack(empty_pack);
+    auto res_empty = etp::verify_proof_pack(empty_pack, pub_pem);
     ETP_CHECK(!res_empty.verified, "Forgery test 1 failed: Empty proof pack MUST be rejected");
     std::cout << "  ✓ Forgery 1: Empty proof pack strictly rejected.\n";
 
-    // Forgery 2: Self-Asserted Key (untrusted meter key vs trusted registry key mismatch)
-    etp::ProofPack self_key_pack{
+    // Forgery 2a: No Trusted Key provided (self-asserted key without registry key)
+    etp::ProofPack no_trusted_key_pack{
         .mpan = mpan,
         .reading_kwh = 12.345,
         .timestamp = "2026-09-20T23:00:00.000Z",
@@ -210,7 +210,7 @@ int main() {
         .crypto_suite_id = "ECDSA-P256-SHA256-v1",
         .key_id = "k-test",
         .signature = block.signature,
-        .public_key_pem = "UNTRUSTED_SELF_ASSERTED_KEY_PEM",
+        .public_key_pem = pub_pem,
         .leaf_hash = block.block_hash,
         .proof = {{leaf2, false}},
         .merkle_root = root,
@@ -222,9 +222,16 @@ int main() {
         .anchor_digest = "0000000000000000000000000000000000000000000000000000000000000000",
         .timestamp_token = "invalid_token"
     };
+    auto res_no_key = etp::verify_proof_pack(no_trusted_key_pack, ""); // Empty trusted key
+    ETP_CHECK(!res_no_key.verified, "Forgery test 2a failed: Proof pack without trusted key MUST be rejected");
+    std::cout << "  ✓ Forgery 2a: Proof pack without trusted key strictly rejected.\n";
+
+    // Forgery 2b: Attacker Key Mismatch
+    etp::ProofPack self_key_pack = no_trusted_key_pack;
+    self_key_pack.public_key_pem = "UNTRUSTED_SELF_ASSERTED_KEY_PEM";
     auto res_self_key = etp::verify_proof_pack(self_key_pack, pub_pem);
-    ETP_CHECK(!res_self_key.verified, "Forgery test 2 failed: Mismatching self-asserted key MUST be rejected");
-    std::cout << "  ✓ Forgery 2: Self-asserted key mismatch strictly rejected.\n";
+    ETP_CHECK(!res_self_key.verified, "Forgery test 2b failed: Mismatching self-asserted key MUST be rejected");
+    std::cout << "  ✓ Forgery 2b: Self-asserted key mismatch strictly rejected.\n";
 
     // Forgery 3: Unsigned / Corrupt Timestamp Token
     auto res_unsigned_ts = etp::verify_rfc3161_timestamp("invalid_b64_garbage_token", "1f145bd697f44d967781afccaebc44ea04b6b4e821ab9171441454d1502a5e41", false);
@@ -236,11 +243,57 @@ int main() {
     ETP_CHECK(!res_forged_sim.valid, "Forgery test 4 failed: Forged simulated token MUST be rejected when allow_simulated=false");
     std::cout << "  ✓ Forgery 4: Forged simulated token strictly rejected in strict mode.\n";
 
-    // Forgery 5: Token dated after the reading's day interval
-    etp::ProofPack dated_after_pack = self_key_pack;
-    dated_after_pack.public_key_pem = pub_pem;
-    dated_after_pack.timestamp = "2026-09-20T23:00:00.000Z";
-    dated_after_pack.timestamp_token = "urn:meldra:simulated-tsa:MWYxNDViZDY5N2Y0NGQ5Njc3ODE0ZmNjYWViYzQ0ZWEwNGI2YjRlODIxYWI5MTcxNDQxNDU0ZDE1MDJhNWU0MQ==";
+    // Forgery 5: Token dated after the reading's day interval (post-dated attack)
+    etp::ProofPack dated_after_pack = no_trusted_key_pack;
+    dated_after_pack.timestamp = "2026-09-20T23:00:00.000Z"; // Day 2026-09-20
+    // Token has gen_time 2026-09-25 (post-dated day 2026-09-25)
+    std::string post_dated_sim_token = "urn:meldra:simulated-tsa:MWYxNDViZDY5N2Y0NGQ5Njc3ODE0ZmNjYWViYzQ0ZWEwNGI2YjRlODIxYWI5MTcxNDQxNDU0ZDE1MDJhNWU0MQ==";
+    dated_after_pack.timestamp_token = post_dated_sim_token;
+    // Compute correct anchor digest for anchor verification to pass and reach date check
+    std::string valid_anchor_payload = root + "|100|101|2|-1|0";
+    uint8_t anchor_hash[32];
+    EVP_MD_CTX* ctx_a = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx_a, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx_a, valid_anchor_payload.data(), valid_anchor_payload.size());
+    EVP_DigestFinal_ex(ctx_a, anchor_hash, nullptr);
+    EVP_MD_CTX_free(ctx_a);
+    std::stringstream ss_a;
+    for (int i = 0; i < 32; ++i) ss_a << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(anchor_hash[i]);
+    dated_after_pack.anchor_digest = ss_a.str();
+    dated_after_pack.leaf_hash = block.block_hash;
+
+    // Use single leaf tree so proof matches
+    etp::MerkleTree tree_single;
+    tree_single.add_leaf_hex(block.block_hash);
+    dated_after_pack.merkle_root = tree_single.compute_root();
+    dated_after_pack.proof = {}; // No proof steps needed for single leaf
+
+    // Now test post-dated token: timestamp is 2026-09-20, token gen_time is 2026-09-20 -> passes date check if matching, but if post-dated (e.g. reading 2026-09-10 vs token 2026-09-20) -> fails
+    dated_after_pack.timestamp = "2026-09-10T23:00:00.000Z";
+    std::string post_dated_anchor_payload = dated_after_pack.merkle_root + "|100|101|2|-1|0";
+    EVP_MD_CTX* ctx_pd = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx_pd, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx_pd, post_dated_anchor_payload.data(), post_dated_anchor_payload.size());
+    EVP_DigestFinal_ex(ctx_pd, anchor_hash, nullptr);
+    EVP_MD_CTX_free(ctx_pd);
+    std::stringstream ss_pd;
+    for (int i = 0; i < 32; ++i) ss_pd << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(anchor_hash[i]);
+    dated_after_pack.anchor_digest = ss_pd.str();
+    // Re-create simulated token containing this anchor_digest
+    std::string sim_payload_pd = "{\"hashed_message\": \"" + dated_after_pack.anchor_digest + "\"}";
+    // Base64 encode sim_payload_pd
+    BIO* bio_b64 = BIO_new(BIO_s_mem());
+    BIO* b64_f = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64_f, BIO_FLAGS_BASE64_NO_NL);
+    bio_b64 = BIO_push(b64_f, bio_b64);
+    BIO_write(bio_b64, sim_payload_pd.data(), sim_payload_pd.size());
+    BIO_flush(bio_b64);
+    char* b64_pd_ptr = nullptr;
+    long b64_pd_len = BIO_get_mem_data(bio_b64, &b64_pd_ptr);
+    std::string b64_pd_str(b64_pd_ptr, b64_pd_len);
+    BIO_free_all(bio_b64);
+    dated_after_pack.timestamp_token = "urn:meldra:simulated-tsa:" + b64_pd_str;
+
     auto res_dated_after = etp::verify_proof_pack(dated_after_pack, pub_pem, true);
     ETP_CHECK(!res_dated_after.verified, "Forgery test 5 failed: Token dated after/mismatched day interval MUST be rejected");
     std::cout << "  ✓ Forgery 5: Token dated after day interval strictly rejected.\n";

@@ -63,19 +63,25 @@ TimestampVerifyResult verify_rfc3161_timestamp(
         return res;
     }
 
+    // Strip urn:ietf:rfc:3161: prefix if present
+    std::string clean_token = token_str;
+    const std::string rfc_prefix = "urn:ietf:rfc:3161:";
+    if (clean_token.rfind(rfc_prefix, 0) == 0) {
+        clean_token = clean_token.substr(rfc_prefix.length());
+    }
+
     // Check if token is a simulated TSA token
-    if (token_str.rfind("urn:meldra:simulated-tsa:", 0) == 0 || token_str.find("is_simulated") != std::string::npos) {
+    if (clean_token.rfind("urn:meldra:simulated-tsa:", 0) == 0 || clean_token.find("is_simulated") != std::string::npos) {
         if (!allow_simulated) {
             res.error = "Simulated TSA tokens are rejected in strict mode (allow_simulated = false). Cryptographic RFC 3161 token required.";
             return res;
         }
 
         // Handle simulated token (demo mode only)
-        // Extract base64 portion after prefix if present
-        std::string payload_b64 = token_str;
-        size_t prefix_pos = token_str.find("urn:meldra:simulated-tsa:");
+        std::string payload_b64 = clean_token;
+        size_t prefix_pos = clean_token.find("urn:meldra:simulated-tsa:");
         if (prefix_pos != std::string::npos) {
-            payload_b64 = token_str.substr(prefix_pos + strlen("urn:meldra:simulated-tsa:"));
+            payload_b64 = clean_token.substr(prefix_pos + strlen("urn:meldra:simulated-tsa:"));
         }
 
         std::vector<uint8_t> decoded = base64_decode_ts(payload_b64);
@@ -94,7 +100,7 @@ TimestampVerifyResult verify_rfc3161_timestamp(
     }
 
     // Decode ASN.1 DER TS_RESP token
-    std::vector<uint8_t> der_bytes = base64_decode_ts(token_str);
+    std::vector<uint8_t> der_bytes = base64_decode_ts(clean_token);
     if (der_bytes.empty()) {
         res.error = "Failed to base64 decode RFC 3161 timestamp token";
         return res;
@@ -132,6 +138,28 @@ TimestampVerifyResult verify_rfc3161_timestamp(
         TS_RESP_free(response);
         res.error = "Missing TS_TST_INFO structure in RFC 3161 response";
         return res;
+    }
+
+    // Extract gen_time and policy_oid
+    const ASN1_GENERALIZEDTIME* gtime = TS_TST_INFO_get_time(tst_info);
+    if (gtime) {
+        const char* str = reinterpret_cast<const char*>(ASN1_STRING_get0_data(gtime));
+        int len = ASN1_STRING_length(gtime);
+        if (str && len >= 14) {
+            std::string y(str, 4);
+            std::string m(str + 4, 2);
+            std::string d(str + 6, 2);
+            std::string hh(str + 8, 2);
+            std::string mm(str + 10, 2);
+            std::string ss(str + 12, 2);
+            res.gen_time = y + "-" + m + "-" + d + "T" + hh + ":" + mm + ":" + ss + ".000Z";
+        }
+    }
+    const ASN1_OBJECT* policy = TS_TST_INFO_get_policy_id(tst_info);
+    if (policy) {
+        char policy_buf[128] = {0};
+        OBJ_obj2txt(policy_buf, sizeof(policy_buf), policy, 1);
+        res.policy_oid = policy_buf;
     }
 
     // Verify Message Imprint (Digest)
@@ -199,14 +227,14 @@ TimestampVerifyResult verify_rfc3161_timestamp(
     }
 
     TS_VERIFY_CTX_init(ctx);
-    TS_VERIFY_CTX_set_flags(ctx, TS_VFY_DATA | TS_VFY_SIGNER);
+    TS_VERIFY_CTX_set_flags(ctx, TS_VFY_SIGNER | TS_VFY_VERSION);
     TS_VERIFY_CTX_set_store(ctx, store);
 
     int verify_status = TS_RESP_verify_token(ctx, token);
 
     TS_VERIFY_CTX_free(ctx);
+    X509_STORE_free(store);
     TS_RESP_free(response);
-
 
     if (verify_status != 1) {
         ERR_clear_error();

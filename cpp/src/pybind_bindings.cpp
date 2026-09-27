@@ -6,6 +6,9 @@
 #include "etp/ecdsa.hpp"
 #include "etp/timestamp.hpp"
 #include "etp/proof_pack.hpp"
+#include <openssl/evp.h>
+#include <sstream>
+#include <iomanip>
 
 namespace py = pybind11;
 
@@ -25,19 +28,35 @@ PYBIND11_MODULE(etp_core_cpp, m) {
         .def_readwrite("block_hash", &etp::TelemetryBlock::block_hash)
         .def_readwrite("signature", &etp::TelemetryBlock::signature);
 
+    // VerificationStatus Enum
+    py::enum_<etp::VerificationStatus>(m, "VerificationStatus")
+        .value("VERIFIED", etp::VerificationStatus::VERIFIED)
+        .value("CHAIN_GAP", etp::VerificationStatus::CHAIN_GAP)
+        .value("REPLAY_REJECTED", etp::VerificationStatus::REPLAY_REJECTED)
+        .value("EXPIRED_NONCE_REJECTED", etp::VerificationStatus::EXPIRED_NONCE_REJECTED)
+        .value("SIGNATURE_FAILED", etp::VerificationStatus::SIGNATURE_FAILED)
+        .value("TAMPER_REJECTED", etp::VerificationStatus::TAMPER_REJECTED)
+        .value("INVALID_ROUTE", etp::VerificationStatus::INVALID_ROUTE);
+
+    // VerificationResult Struct
+    py::class_<etp::VerificationResult>(m, "VerificationResult")
+        .def_readwrite("status", &etp::VerificationResult::status)
+        .def_readwrite("block_hash", &etp::VerificationResult::block_hash)
+        .def_readwrite("error_message", &etp::VerificationResult::error_message)
+        .def_readwrite("divert_to_honeypot", &etp::VerificationResult::divert_to_honeypot);
+
     // Gateway API
     py::class_<etp::GatewayEngine>(m, "GatewayEngine")
-        .def(py::init<int>(), py::arg("batch_size") = 100)
+        .def(py::init<std::string_view, uint64_t>(), py::arg("secret_key") = "0123456789abcdef0123456789abcdef", py::arg("route_window_seconds") = 60)
         .def_static("compute_canonical_hash", &etp::GatewayEngine::compute_canonical_hash)
-        .def("process_reading", &etp::GatewayEngine::process_reading, py::arg("reading_json"))
-        .def("verify_meter_signature", &etp::GatewayEngine::verify_meter_signature, py::arg("reading_json"), py::arg("public_key_pem"));
+        .def("register_meter_public_key", &etp::GatewayEngine::register_meter_public_key, py::arg("mpan"), py::arg("public_key_pem"))
+        .def("verify_telemetry_block", &etp::GatewayEngine::verify_telemetry_block, py::arg("route"), py::arg("block"), py::arg("now_epoch_s"));
 
     // Route Mutator API
     py::class_<etp::RouteMutator>(m, "RouteMutator")
-        .def(py::init<>())
-        .def("add_route", &etp::RouteMutator::add_route)
-        .def("remove_route", &etp::RouteMutator::remove_route)
-        .def("mutate_headers", &etp::RouteMutator::mutate_headers);
+        .def(py::init<std::string_view, uint64_t, std::string_view>(), py::arg("secret_key"), py::arg("window_seconds") = 60, py::arg("base_uri") = "/api/v1/telemetry")
+        .def("get_routes", &etp::RouteMutator::get_routes, py::arg("timestamp_sec"))
+        .def("validate_route", &etp::RouteMutator::validate_route, py::arg("route"), py::arg("timestamp_sec"));
 
     // MerkleProofStep struct
     py::class_<etp::MerkleProofStep>(m, "MerkleProofStep")
@@ -54,11 +73,6 @@ PYBIND11_MODULE(etp_core_cpp, m) {
         .def_static("verify_proof", &etp::MerkleTree::verify_proof)
         .def("leaf_count", &etp::MerkleTree::leaf_count)
         .def("clear", &etp::MerkleTree::clear);
-
-    // Merkle Engine API
-    m.def("compute_merkle_root", &etp::compute_merkle_root, py::arg("hashes"));
-    m.def("generate_merkle_proof", &etp::generate_merkle_proof, py::arg("hashes"), py::arg("index"));
-    m.def("verify_merkle_proof", &etp::verify_merkle_proof, py::arg("leaf_hash"), py::arg("proof"), py::arg("root"));
     m.def("compute_anchor_digest", [](const std::string& merkle_root, int64_t first_nonce, int64_t last_nonce, int64_t leaf_count, int64_t prev_day_last_nonce, int64_t eod_gap) {
         std::string anchor_payload = merkle_root + "|" + std::to_string(first_nonce) + "|" + std::to_string(last_nonce) + "|" + std::to_string(leaf_count) + "|" + std::to_string(prev_day_last_nonce) + "|" + std::to_string(eod_gap);
         uint8_t hash[32];
