@@ -2,7 +2,7 @@
 
 **Status:** Living document. This is the single source of truth for what we build, for whom, in what order, and why.
 **Created:** 2026-09-25T23:15Z
-**Last updated:** 2026-09-27T12:00Z
+**Last updated:** 2026-09-27T14:00Z
 **Supersedes:** `NOVEMBER_GO_LIVE_ROADMAP.md` (see §11)
 
 ### How to use this document
@@ -18,6 +18,8 @@
 **One-line edge:**
 > Wherever energy data crosses between parties who don't fully trust each other, and there is no neutral hub, we provide the proof.
 
+**Investor/market framing:** *energy data infrastructure — trust for the grid and for AI's energy use.* Not pitched as "climate tech" (early-stage climate VC is selective; money concentrates on AI/data-centre, grid and storage themes).
+
 **What we sell:** a *receipt* for energy data — independent proof of which readings arrived, which are missing or estimated, and that nothing changed afterwards — which the counterparty can check **without trusting us or the data owner**.
 
 **What we say (and don't say) today:**
@@ -31,6 +33,7 @@
 |---|---|---|---|
 | **1st (now)** | **Flexibility aggregators & battery/asset operators (UK)** | Paid on delivered volume measured from asset meters they install themselves (P375); new standard baselining rule (Apr 2026); no neutral hub at asset level | Discovery not started |
 | 1st (parallel) | **Partners/vendors**: flexibility platforms (e.g. Piclo, Electron, Axle, KrakenFlex), EnergyTag certificate issuers (e.g. Granular Energy, Flexidao), battery/EV/inverter software vendors | They have customers + data; they embed our SDK | Discovery not started |
+| 1st (discovery test) | **Data-centre energy teams** | Need verified hourly meter data for 24/7 clean-energy claims; increasingly paid for grid flexibility | Add 2–3 to discovery |
 | 2nd | DNO flexibility / innovation teams | Funded pilots; credibility | Later |
 | Year 2 | Large suppliers (E.ON, EDF…), meter-data providers | Need references first | Later |
 | Year 2+ | Channel partners: Siemens, Kraken, Itron, Landis+Gyr, SAP | Resell/embed once proven | Later |
@@ -104,9 +107,20 @@ Always tell customers which level they are getting.
 
 **Licensing — open core:** only the proof library and verifier are open source (Apache-2.0). Platform (pipeline, cases, AI, UI) stays proprietary. Requires founder sign-off; repository licence today is proprietary.
 
+### 3.5a Own IoT device — staged, hardware last
+| Stage | What | When | Why this order |
+|---|---|---|---|
+| 1 | **Software site agent** on partners' existing devices (battery EMS, EV charger via OCPP, inverter via SunSpec) | Q1 2027 (L2) | No hardware cost; reaches devices already installed |
+| 2 | **Reference gateway**: off-the-shelf certified industrial edge gateway + hardware secure element (keys never leave the chip), running the agent; reads existing meters over Modbus / M-Bus / DLMS | 2027 H2, for sites without a smart controller | Proves the model with a partner's hardware; no manufacturing |
+| 3 | **Meldra-branded "proof gateway"** (white-label or own design) | 2028+, only if volume and customers demand it | Hardware needs capital, certification (CE/UKCA, radio), supply chain and support |
+| — | **Not planned:** making revenue-grade meters | — | Metering certification (MID / ANSI) and incumbents (Landis+Gyr, Itron) make it a different business |
+
+Rule: the gateway reads and signs data from existing meters; it never replaces them.
+
 ### 3.6 Testing partner & funding path
 - **Testing partner (one, by M4):** in order of likelihood — university smart-meter research group; small flexibility aggregator / battery operator from outreach; Energy Systems Catapult introduction. Offer: 8–12 week pilot on one month of data, gap report, ideally paid.
 - **Non-dilutive funding:** Innovate UK competitions (check open rounds); DNO innovation / Ofgem SIF (needs DNO lead partner); government energy-innovation competitions; paid pilot.
+- **Strategic investors:** venture arms of utilities, grid operators and energy companies — invest for strategic reasons when climate VC is cautious.
 - **Investment:** energy/climate angels (obtain SEIS advance assurance early); climate-tech accelerators / pre-seed.
 - **What funders need:** discovery evidence, working product (M1–M4), partner letter of support.
 
@@ -179,11 +193,13 @@ Always tell customers which level they are getting.
 | Elexon BSC dispute bundle (`/bsc-pack`) | Elexon's DIP is now the neutral hub for supplier settlement | A supplier customer asks |
 | Direct pitch to SAP / Siemens / Kraken | Need customer references first | After 1–2 paying customers |
 | Phantom Grid / route-mutation polish, branding polish | Not on the path to a partner pilot | After M6 |
+| Own IoT hardware (stages 2–3 of §3.5a) | Capital-intensive; software agent and partner hardware come first | After L2 agent proven with a device partner |
 
 ## 10. Change log (newest first)
 
 | Timestamp (UTC) | Change | Rationale | Evidence |
 |---|---|---|---|
+| 2026-09-27T14:00Z | Added data-centre energy teams to discovery; investor framing "energy data infrastructure" (not "climate tech"); strategic investors in funding path; §3.5a staged own-IoT plan (software agent → reference gateway → own device; no meters) | Climate VC rose to $26.1bn in H1 2026 but is concentrated in AI/data-centre and later stages, with fewer early deals; data centres need verified hourly data for 24/7 claims and flexibility. Founder wants own IoT: staged to avoid hardware capital before the software model is proven | CTVC H1'26 report; Trellis 2026 |
 | 2026-09-27T12:00Z | Added §3.5 (November library/API/DB scope; open-core Apache-2.0 proof library; Postgres + Apache AGE as the single DB; Go as stretch via generated REST client) and §3.6 (testing partner & funding path) | Founder goals: open-source library, C++ core, Python & Go APIs, knowledge graph, Postgres for now. Scoped to what one person can ship by 13 Nov without delaying the partner pilot; AGE already runs on Postgres, and Iceberg is readable by major cloud warehouses | `backend/graph_db.py` (AGE), 78 FastAPI endpoints, repo licence currently proprietary |
 | 2026-09-26T00:25Z | **M0 complete**; next focus M1 (cannot be forged) + discovery outreach | CI green on `main` for the first time since masks were removed; live sample pack; no auto-Admin paths | CI run #113 @ `32beedc` |
 | 2026-09-26T01:10Z | Status: sample pack fixed; registration no longer auto-assigns Admin; M0 complete once merged | `eba6d71` gated login bootstrap on `BOOTSTRAP_ADMIN_EMAIL`, but `/auth/register` still made the first signup Admin — CI kept failing and the hole stayed open | CI run #112 failure reproduced locally; passes with fix |
